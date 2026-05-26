@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>eRank Market Dashboard</title>
+  <link rel="stylesheet" href="assets/styles.css">
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+</head>
+<body>
+  <div class="shell">
+    <header class="topbar">
+      <div>
+        <h1>eRank Market Dashboard</h1>
+        <p id="snapshot-note">Loading snapshot...</p>
+      </div>
+      <a id="workbook-link" class="link-button" href="#" target="_blank" rel="noreferrer">Open workbook</a>
+    </header>
+
+    <nav class="tabs" aria-label="Dashboard sections">
+      <button class="tab active" data-view="overview">Overview</button>
+      <button class="tab" data-view="comparison">Comparison</button>
+      <button class="tab" data-view="listings">Listings</button>
+      <button class="tab" data-view="operations">Operations</button>
+      <button class="tab" data-view="raw">Raw Preview</button>
+    </nav>
+
+    <main>
+      <section id="overview" class="view active">
+        <div id="metric-grid" class="metric-grid"></div>
+        <div class="grid two">
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Latest Successful Automation Stages</h2>
+            </div>
+            <div id="latest-ok"></div>
+          </section>
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Blocked Or Partial Stages</h2>
+            </div>
+            <div id="latest-problem"></div>
+          </section>
+        </div>
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Overall 10-Day Sales Trend</h2>
+          </div>
+          <div id="overall-chart" class="chart tall"></div>
+          <div id="overall-table"></div>
+        </section>
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Data-Entry Adjusted Sales View</h2>
+          </div>
+          <div id="import-chart" class="chart"></div>
+        </section>
+        <div class="grid two-wide">
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Daily Sales Trend</h2>
+            </div>
+            <div id="market-trend-chart" class="chart"></div>
+          </section>
+          <section class="panel">
+            <div class="panel-head with-control">
+              <h2>Top Shops</h2>
+              <select id="top-shop-metric" aria-label="Top shop metric">
+                <option>30D Sales</option>
+                <option>7D Sales</option>
+                <option>Avg Daily Sales (30D)</option>
+              </select>
+            </div>
+            <div id="top-shops"></div>
+          </section>
+        </div>
+      </section>
+
+      <section id="comparison" class="view">
+        <section class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>Product Category Workspace</h2>
+              <p class="subtle">Precomputed with the default search: <strong id="category-query"></strong></p>
+            </div>
+          </div>
+          <div id="category-metrics" class="metric-grid compact"></div>
+          <div id="category-movement-callout" class="callout"></div>
+          <div id="category-shop-chart" class="chart"></div>
+          <div id="category-comparison"></div>
+        </section>
+        <div class="grid two">
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Demand Intent Rollup</h2>
+            </div>
+            <div id="demand-intent-chart" class="chart"></div>
+            <div id="demand-intent-table"></div>
+          </section>
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Shop Movement</h2>
+            </div>
+            <div id="shop-trend-chart" class="chart"></div>
+            <div id="shop-trends"></div>
+          </section>
+        </div>
+      </section>
+
+      <section id="listings" class="view">
+        <div class="grid two-wide">
+          <section class="panel">
+            <div class="panel-head with-control">
+              <h2>Top Listings</h2>
+              <input id="listing-search" type="search" placeholder="Filter listings, shops, categories">
+            </div>
+            <div id="top-listings"></div>
+          </section>
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Product Category Rollups</h2>
+            </div>
+            <div id="category-rollup-chart" class="chart"></div>
+            <div id="category-rollup-table"></div>
+          </section>
+        </div>
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Demand Clusters</h2>
+          </div>
+          <div id="demand-summary-chart" class="chart"></div>
+          <div id="demand-summary-table"></div>
+        </section>
+      </section>
+
+      <section id="operations" class="view">
+        <div class="grid two">
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Shop Coverage Queue</h2>
+            </div>
+            <div id="coverage-queue"></div>
+          </section>
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Recent Automation Runs</h2>
+            </div>
+            <div id="recent-runs"></div>
+          </section>
+        </div>
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Daily Sales Data Quality</h2>
+          </div>
+          <div id="quality-table"></div>
+        </section>
+      </section>
+
+      <section id="raw" class="view">
+        <section class="panel">
+          <div class="panel-head with-control">
+            <h2>Raw Tab Previews</h2>
+            <select id="raw-select" aria-label="Raw tab"></select>
+          </div>
+          <div id="raw-table"></div>
+        </section>
+      </section>
+    </main>
+  </div>
+  <script src="assets/app.js"></script>
+</body>
+</html>
