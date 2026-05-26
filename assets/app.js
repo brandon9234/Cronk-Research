@@ -339,8 +339,8 @@ function renderAll() {
     `${escapeHtml(dashboard.meta.source)} Generated ${escapeHtml(dashboard.meta.generatedAt)} from cache modified ${escapeHtml(dashboard.meta.sourceWorkbookModifiedAt)}.`;
   document.getElementById("workbook-link").href = dashboard.meta.workbookUrl;
   renderMetrics();
-  renderStatusTable("latest-ok", dashboard.automation.latestOk, ["Run Timestamp", "Pipeline / Stage", "Automation Version", "Status", "eRank Sales Date", "Next Action"]);
-  renderStatusTable("latest-problem", dashboard.automation.latestProblem, ["Run Timestamp", "Pipeline / Stage", "Status", "Blocker / Issue", "Next Action"]);
+  renderStatusTable("latest-ok", dashboard.automation.latestOk, ["Status", "Run Timestamp", "Pipeline / Stage", "Automation Version", "eRank Sales Date", "Next Action"]);
+  renderStatusTable("latest-problem", dashboard.automation.latestProblem, ["Status", "Run Timestamp", "Pipeline / Stage", "Blocker / Issue", "Next Action"]);
   renderOverallChart();
   renderImportChart();
   renderMarketTrend();
@@ -358,7 +358,7 @@ function renderAll() {
   renderBar("demand-summary-chart", dashboard.listing.demandSummary || [], "Total Est. Daily Sales", "Demand Intent Cluster", 20, "#0f766e");
   renderTable("demand-summary-table", dashboard.listing.demandSummary, ["Demand Intent Cluster", "Total Est. Daily Sales", "Listing Count", "Review Count", "Avg Daily Sales / Listing", "Shop Count"], 50);
   renderTable("coverage-queue", dashboard.operations.coverageQueue, ["Shop", "eRank 7D Sales", "eRank 30D Sales", "Avg Daily Sales (30D)", "Has Tab", "Tab Status", "Review Ledger Rows", "Last Evidence Run", "Last Scrape Status", "Next Action"], 80);
-  renderStatusTable("recent-runs", dashboard.automation.recentRuns, ["Run Timestamp", "Pipeline / Stage", "Automation Version", "Status", "Source / Context", "eRank Sales Date", "Counts / Metrics", "Blocker / Issue", "Next Action"], 60);
+  renderStatusTable("recent-runs", dashboard.automation.recentRuns, ["Status", "Run Timestamp", "Pipeline / Stage", "Automation Version", "Source / Context", "eRank Sales Date", "Counts / Metrics", "Blocker / Issue", "Next Action"], 60);
   renderTable("quality-table", dashboard.market.quality, ["Date", "Raw Rows", "Unique Shops", "Duplicate Shop-Date Pairs", "Raw Market Sales", "Deduped Market Sales", "Potential Inflation", "Likely Partial Final Day", "Source Files"], 120);
   initRawSelect();
 }
