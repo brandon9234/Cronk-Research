@@ -1,6 +1,6 @@
-# eRank Market Dashboard
+# Cronk Research
 
-Static GitHub Pages snapshot generated from the cached eRank workbook plus the local SQLite market warehouse.
+Static GitHub Pages research snapshot generated from the cached eRank workbook plus the local SQLite market warehouse.
 
 Regenerate from the parent project with the static snapshot builder:
 
@@ -8,7 +8,7 @@ Regenerate from the parent project with the static snapshot builder:
 python scripts/build_github_pages_snapshot.py
 ```
 
-Then add the SQL-backed MyMaravia opportunity layer:
+Then add the SQL-backed Cronk Research opportunity layer:
 
 ```bash
 python scripts/build_sql_opportunity_snapshot.py
@@ -20,4 +20,4 @@ For the frequent SQL-only refresh after review/eRank imports:
 scripts/refresh_github_pages_opportunity.sh
 ```
 
-The second step reads the current eRank SQLite database and MyMaravia Etsy API snapshot, then rewrites `github-pages-export/assets/data.json` with the Opportunity tab data. GitHub Pages stays static; the SQLite database remains local/private.
+The second step reads the current eRank SQLite database and Cronk Research Etsy API snapshot, then rewrites `github-pages-export/assets/data.json` with the Opportunity tab data. GitHub Pages stays static; the SQLite database remains local/private.
