@@ -154,7 +154,12 @@
           <section class="panel">
             <div class="panel-head with-control">
               <h2>Top Listings</h2>
-              <input id="listing-search" type="search" placeholder="Filter listings, shops, categories">
+              <div class="listing-controls">
+                <select id="production-filter" aria-label="Production method filter">
+                  <option value="">All production methods</option>
+                </select>
+                <input id="listing-search" type="search" placeholder="Filter listings, shops, categories">
+              </div>
             </div>
             <div id="top-listings"></div>
           </section>
