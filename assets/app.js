@@ -10,7 +10,7 @@ const numericColumns = new Set([
   "Latest Complete Daily Sales", "Total Daily Sales In Range", "eRank 7D Sales", "eRank 30D Sales",
   "Review Ledger Rows", "Recent Matching-Shop Avg Daily Sales", "Prior Matching-Shop Avg Daily Sales",
   "Matching Listings", "Matching Shops", "Days Used", "Tracked Shop Rows", "Opportunity Score",
-  "Demand Score", "MyMaravia Fit", "Evidence Score", "Momentum Score", "Saturation Penalty",
+  "Demand Score", "Cronk Research Fit", "Evidence Score", "Momentum Score", "Saturation Penalty",
   "Market Daily Sales", "Market 30D Sales", "Avg Daily Sales / Listing", "Current 7D Sales",
   "Current 30D Sales", "Current Avg Daily Sales", "SQL Daily Rows", "SQL Shops", "Receipts",
   "Transactions", "Listings", "Reviews", "Launch Priority"
@@ -308,15 +308,15 @@ function renderOpportunity() {
   const launches = opp.launchQueue || [];
   const matrix = opp.intentProductMatrix || [];
   const health = opp.health || [];
-  const baseline = opp.mymaravia || {};
+  const baseline = opp.cronkBaseline || {};
 
   const metricRows = [
     ["Top opportunity", queue[0]?.["Product Bet"] || "Unavailable"],
     ["Opportunity score", fmt(queue[0]?.["Opportunity Score"], "Opportunity Score") || "Unavailable"],
     ["SQL latest date", metrics.sqlLatestDate || "Unavailable"],
     ["Tracked SQL shops", fmt(metrics.sqlShops, "SQL Shops") || "Unavailable"],
-    ["MyMaravia current 30D", fmt(baseline["Current 30D Sales"], "Current 30D Sales") || "Unavailable"],
-    ["MyMaravia Etsy transactions", fmt(baseline.Transactions, "Transactions") || "Unavailable"]
+    ["Cronk current 30D", fmt(baseline["Current 30D Sales"], "Current 30D Sales") || "Unavailable"],
+    ["Cronk Etsy transactions", fmt(baseline.Transactions, "Transactions") || "Unavailable"]
   ];
   document.getElementById("opportunity-metrics").innerHTML = metricRows.map(([label, value]) => metric(label, value)).join("");
 
@@ -325,8 +325,9 @@ function renderOpportunity() {
 
   if (queue.length) {
     const leader = queue[0];
+    const fit = leader["Cronk Research Fit"];
     document.getElementById("opportunity-callout").innerHTML =
-      `<strong>${escapeHtml(leader["Product Bet"])}</strong> is the current best bet because it combines ${fmt(leader["Market Daily Sales"], "Market Daily Sales")} market daily sales, ${fmt(leader["MyMaravia Fit"], "MyMaravia Fit")} MyMaravia fit, and ${escapeHtml(leader["Evidence Note"] || "usable evidence")}`;
+      `<strong>${escapeHtml(leader["Product Bet"])}</strong> is the current best bet because it combines ${fmt(leader["Market Daily Sales"], "Market Daily Sales")} market daily sales, ${fmt(fit, "Cronk Research Fit")} Cronk Research fit, and ${escapeHtml(leader["Evidence Note"] || "usable evidence")}`;
     renderBar("opportunity-score-chart", queue, "Opportunity Score", "Product Bet", 12, "#0f766e");
   } else {
     document.getElementById("opportunity-callout").innerHTML = "No opportunity rows are available in this snapshot.";
@@ -335,7 +336,7 @@ function renderOpportunity() {
 
   renderTable("opportunity-queue", queue, [
     "Launch Priority", "Product Bet", "Buyer Intent", "Opportunity Score", "Market Daily Sales",
-    "Demand Score", "MyMaravia Fit", "Evidence Score", "Saturation Penalty", "Why It Matters"
+    "Demand Score", "Cronk Research Fit", "Evidence Score", "Saturation Penalty", "Why It Matters"
   ], 40);
 
   renderTable("launch-queue", launches, [
@@ -343,7 +344,7 @@ function renderOpportunity() {
     "Launch Brief", "Source", "Opportunity Score"
   ], 30);
 
-  renderTable("mymaravia-baseline", [baseline], [
+  renderTable("cronk-baseline", [baseline], [
     "Current 7D Sales", "Current 30D Sales", "Current Avg Daily Sales", "Active Listings",
     "Listings", "Transactions", "Receipts", "Reviews"
   ]);
