@@ -265,6 +265,17 @@ input[type="search"] {
   min-width: 260px;
 }
 
+.listing-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.listing-controls select {
+  min-width: 210px;
+}
+
 .empty {
   color: var(--muted);
   border: 1px dashed var(--line);
@@ -290,5 +301,12 @@ input[type="search"] {
     width: 100%;
     min-width: 0;
     margin-top: 8px;
+  }
+  .listing-controls {
+    display: block;
+    margin-top: 8px;
+  }
+  .listing-controls select {
+    width: 100%;
   }
 }
