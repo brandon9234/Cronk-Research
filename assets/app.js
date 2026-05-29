@@ -1,5 +1,5 @@
 let dashboard;
-const DATA_ASSET_VERSION = "listing-thumbnails-20260529";
+const DATA_ASSET_VERSION = "generic-source-links-20260529";
 
 const numericColumns = new Set([
   "7D Sales", "30D Sales", "Avg Daily Sales (30D)", "Active Listings", "Daily Sales",
@@ -15,7 +15,9 @@ const numericColumns = new Set([
   "Market Daily Sales", "Market 30D Sales", "Avg Daily Sales / Listing", "Current 7D Sales",
   "Current 30D Sales", "Current Avg Daily Sales", "SQL Daily Rows", "SQL Shops", "Receipts",
   "Transactions", "Listings", "Reviews", "Launch Priority", "Tag Confidence",
-  "Price", "Views", "Favorites", "Tags Count", "Recent 180D Sales", "Recent 180D Revenue"
+  "Price", "Views", "Favorites", "Tags Count", "Recent 180D Sales", "Recent 180D Revenue",
+  "MyMaravia Listings", "Current Product Categories", "Market Long Tails In Current Categories",
+  "Market Long Tails", "Built Long Tails", "Needs Build", "Coverage %", "Top Open Daily Sales"
 ]);
 
 const wrappedColumns = new Set([
@@ -24,10 +26,13 @@ const wrappedColumns = new Set([
   "Product Bet", "Buyer Intent", "Why It Matters", "Launch Brief", "Suggested Listings",
   "Primary Product Family", "Strategic Read", "Evidence Note", "Source", "Refresh Step",
   "Product Substrate Category", "Original Broad Category", "Category Aliases", "Production Tag",
-  "Customization Tag", "Tag Evidence"
+  "Customization Tag", "Tag Evidence", "Blank / Generic Sources", "Top Open Long Tail",
+  "Existing MyMaravia Long Tails", "Market Long Tail", "Matching MyMaravia Listing",
+  "Build Recommendation", "Match Tokens", "Market Listing URL"
 ]);
 
-const thumbnailColumns = new Set(["Thumbnail", "Listing Thumbnail"]);
+const thumbnailColumns = new Set(["Thumbnail", "Listing Thumbnail", "Market Thumbnail"]);
+const sourceLinkColumns = new Set(["Blank / Generic Sources"]);
 
 const plotConfig = { responsive: true, displayModeBar: false };
 
@@ -66,6 +71,20 @@ function thumbnailCell(row, column) {
   return `<a class="listing-thumb-link" href="${escapeHtml(href)}" target="_blank" rel="noreferrer"><img class="listing-thumb" src="${escapeHtml(src)}" alt="${escapeHtml(title)}" loading="lazy"></a>`;
 }
 
+function sourceLinksCell(value) {
+  const text = String(value ?? "").trim();
+  if (!text) return `<span class="source-status">Not researched yet</span>`;
+  if (/^(cannot buy|not researched)/i.test(text)) {
+    return `<span class="source-status">${escapeHtml(text)}</span>`;
+  }
+  const links = text.split(/\n+/).map(item => {
+    const [label, url] = item.split("|");
+    if (!label || !/^https?:\/\//i.test(url || "")) return escapeHtml(item);
+    return `<a href="${escapeHtml(url)}" target="_blank" rel="noreferrer">${escapeHtml(label)}</a>`;
+  }).join("");
+  return `<div class="source-links">${links}</div>`;
+}
+
 function renderTable(targetId, rows, columns = null, limit = null) {
   const target = document.getElementById(targetId);
   if (!target) return;
@@ -90,6 +109,8 @@ function renderTable(targetId, rows, columns = null, limit = null) {
       ].filter(Boolean).join(" ");
       const value = thumbnailColumns.has(col)
         ? thumbnailCell(row, col)
+        : sourceLinkColumns.has(col)
+          ? sourceLinksCell(row[col])
         : col.toLowerCase().includes("url")
           ? linkCell(row[col])
           : escapeHtml(fmt(row[col], col));
@@ -527,6 +548,54 @@ function renderOpportunity() {
   renderTable("opportunity-health", health, ["Source", "Status", "Refresh Step", "Notes"], 20);
 }
 
+function renderMyMaravia() {
+  const my = dashboard.myMaravia || {};
+  const metrics = my.metrics || {};
+  const metricRows = [
+    ["MyMaravia listings", fmt(metrics["MyMaravia Listings"], "MyMaravia Listings") || "0"],
+    ["Current categories", fmt(metrics["Current Product Categories"], "Current Product Categories") || "0"],
+    ["Market long tails", fmt(metrics["Market Long Tails In Current Categories"], "Market Long Tails In Current Categories") || "0"],
+    ["Built long tails", fmt(metrics["Built Long Tails"], "Built Long Tails") || "0"],
+    ["Needs build", fmt(metrics["Needs Build"], "Needs Build") || "0"],
+    ["Coverage", metrics["Coverage %"] == null ? "Unavailable" : fmt(metrics["Coverage %"], "Coverage %")]
+  ];
+
+  document.getElementById("mymaravia-metrics").innerHTML = metricRows.map(([label, value]) => metric(label, value)).join("");
+  document.getElementById("mymaravia-method").textContent = my.method || "";
+
+  renderTable("mymaravia-categories", my.categories || [], [
+    "Product Category", "MyMaravia Listings", "Market Long Tails", "Built Long Tails",
+    "Needs Build", "Coverage %", "Top Open Daily Sales", "Top Open Long Tail",
+    "Existing MyMaravia Long Tails"
+  ]);
+
+  const category = document.getElementById("my-category-filter")?.value || "";
+  const status = document.getElementById("my-status-filter")?.value || "";
+  const query = (document.getElementById("my-long-tail-search")?.value || "").trim().toLowerCase();
+  const allRows = my.longTailQueue || [];
+  let rows = allRows;
+
+  if (category) rows = rows.filter(row => row["Product Category"] === category);
+  if (status) rows = rows.filter(row => row.Status === status);
+  if (query) rows = rows.filter(row => Object.values(row).join(" ").toLowerCase().includes(query));
+
+  const count = fmt(rows.length, "Listing Count");
+  const total = fmt(allRows.length, "Listing Count");
+  document.getElementById("mymaravia-long-tail-count").textContent =
+    rows.length === allRows.length ? `Showing all ${total} long tails` : `Showing ${count} of ${total} long tails`;
+
+  renderTable("mymaravia-long-tail-queue", rows, [
+    "Status", "Product Category", "Market Thumbnail", "Market Daily Sales", "Market Long Tail",
+    "Market Shop", "Matching MyMaravia Listing", "Match Tokens",
+    "Build Recommendation", "Market Listing URL"
+  ], 250);
+
+  renderTable("mymaravia-listings", my.myListings || [], [
+    "Thumbnail", "Product Category", "Est. Daily Sales", "Product Title", "Recent 180D Sales",
+    "Views", "Favorites", "Tags Count", "State", "Listing URL"
+  ], 200);
+}
+
 function renderListings() {
   const query = document.getElementById("listing-search").value.trim().toLowerCase();
   const production = document.getElementById("production-filter").value;
@@ -544,7 +613,7 @@ function renderListings() {
   document.getElementById("listing-count").textContent =
     rows.length === allRows.length ? `Showing all ${total} listings` : `Showing ${count} of ${total} listings`;
   renderTable("top-listings", rows, [
-    "Overall Rank", "Thumbnail", "Shop", "Est. Daily Sales", "Product Title", "Product Category", "Product Substrate Category",
+    "Overall Rank", "Thumbnail", "Shop", "Est. Daily Sales", "Blank / Generic Sources", "Product Title", "Product Category", "Product Substrate Category",
     "Production Tag", "Customization Tag", "Tag Confidence", "Tag Evidence",
     "Est. 30D Sales", "Evidence Confidence", "Last Review ISO", "Listing URL"
   ]);
@@ -598,11 +667,39 @@ function initProductionFilter() {
     });
 }
 
+function initMyMaraviaFilters() {
+  const categorySelect = document.getElementById("my-category-filter");
+  if (!categorySelect) return;
+
+  const existingValues = new Set([...categorySelect.options].map(option => option.value));
+  (dashboard.myMaravia?.categories || [])
+    .map(row => row["Product Category"])
+    .filter(Boolean)
+    .forEach(category => {
+      if (existingValues.has(category)) return;
+      const option = document.createElement("option");
+      option.value = category;
+      option.textContent = category;
+      categorySelect.appendChild(option);
+      existingValues.add(category);
+    });
+
+  ["my-category-filter", "my-status-filter", "my-long-tail-search"].forEach(id => {
+    const element = document.getElementById(id);
+    if (!element || element.dataset.bound === "true") return;
+    element.addEventListener("input", renderMyMaravia);
+    element.addEventListener("change", renderMyMaravia);
+    element.dataset.bound = "true";
+  });
+}
+
 function renderAll() {
   document.getElementById("snapshot-note").innerHTML =
     `${escapeHtml(dashboard.meta.source)} Generated ${escapeHtml(dashboard.meta.generatedAt)} from cache modified ${escapeHtml(dashboard.meta.sourceWorkbookModifiedAt)}.`;
   document.getElementById("workbook-link").href = dashboard.meta.workbookUrl;
   renderOpportunity();
+  initMyMaraviaFilters();
+  renderMyMaravia();
   renderMetrics();
   renderStatusTable("latest-ok", dashboard.automation.latestOk, ["Status", "Run Timestamp", "Pipeline / Stage", "Automation Version", "eRank Sales Date", "Next Action"]);
   renderStatusTable("latest-problem", dashboard.automation.latestProblem, ["Status", "Run Timestamp", "Pipeline / Stage", "Blocker / Issue", "Next Action"]);

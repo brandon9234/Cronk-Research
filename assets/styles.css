@@ -324,6 +324,33 @@ th.thumbnail-cell {
   background: #f8fafc;
 }
 
+.source-links {
+  display: flex;
+  min-width: 190px;
+  flex-direction: column;
+  gap: 4px;
+  line-height: 1.25;
+}
+
+.source-links a {
+  color: var(--blue);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.source-links a:hover {
+  text-decoration: underline;
+}
+
+.source-status {
+  display: inline-block;
+  max-width: 210px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+  white-space: normal;
+}
+
 .badge {
   display: inline-flex;
   align-items: center;

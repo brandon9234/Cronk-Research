@@ -19,6 +19,7 @@
 
     <nav class="tabs" aria-label="Dashboard sections">
       <button class="tab active" data-view="opportunity">Opportunity</button>
+      <button class="tab" data-view="mymaravia">MyMaravia</button>
       <button class="tab" data-view="overview">Overview</button>
       <button class="tab" data-view="comparison">Comparison</button>
       <button class="tab" data-view="listings">Listings</button>
@@ -65,6 +66,45 @@
             <h2>Data Freshness And Export Path</h2>
           </div>
           <div id="opportunity-health"></div>
+        </section>
+      </section>
+
+      <section id="mymaravia" class="view">
+        <div id="mymaravia-metrics" class="metric-grid"></div>
+        <section class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>MyMaravia Category Coverage</h2>
+              <p id="mymaravia-method" class="subtle"></p>
+            </div>
+          </div>
+          <div id="mymaravia-categories"></div>
+        </section>
+        <section class="panel">
+          <div class="panel-head with-control">
+            <div>
+              <h2>Build Queue</h2>
+              <p id="mymaravia-long-tail-count" class="subtle listing-count"></p>
+            </div>
+            <div class="listing-controls">
+              <select id="my-category-filter" aria-label="MyMaravia category filter">
+                <option value="">All current categories</option>
+              </select>
+              <select id="my-status-filter" aria-label="MyMaravia build status filter">
+                <option value="">All statuses</option>
+                <option value="Needs build">Needs build</option>
+                <option value="Built">Built</option>
+              </select>
+              <input id="my-long-tail-search" type="search" placeholder="Filter long tails">
+            </div>
+          </div>
+          <div id="mymaravia-long-tail-queue"></div>
+        </section>
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Current MyMaravia Listings</h2>
+          </div>
+          <div id="mymaravia-listings"></div>
         </section>
       </section>
 
@@ -224,6 +264,6 @@
       </section>
     </main>
   </div>
-  <script src="assets/app.js?v=daily-before-title-20260529"></script>
+  <script src="assets/app.js?v=generic-source-links-20260529"></script>
 </body>
 </html>
