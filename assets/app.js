@@ -1,5 +1,6 @@
 let dashboard;
-const DATA_ASSET_VERSION = "ask-sheet-20260529";
+let selectedCompany = "";
+const DATA_ASSET_VERSION = "company-profile-ask-20260529-2";
 
 const numericColumns = new Set([
   "7D Sales", "30D Sales", "Avg Daily Sales (30D)", "Active Listings", "Daily Sales",
@@ -18,7 +19,8 @@ const numericColumns = new Set([
   "Price", "Views", "Favorites", "Tags Count", "Recent 180D Sales", "Recent 180D Revenue",
   "MyMaravia Listings", "Current Product Categories", "Market Long Tails In Current Categories",
   "Market Long Tails", "Built Long Tails", "Needs Build", "Coverage %", "Top Open Daily Sales",
-  "Recent Reviews", "Recent Avg Rating"
+  "Recent Reviews", "Recent Avg Rating", "Tracked Listings", "Tracked Product Categories",
+  "Tracked Production Methods", "Tracked Est. Daily Sales", "Tracked Est. 30D Sales"
 ]);
 
 const wrappedColumns = new Set([
@@ -34,6 +36,7 @@ const wrappedColumns = new Set([
 
 const thumbnailColumns = new Set(["Thumbnail", "Listing Thumbnail", "Market Thumbnail"]);
 const sourceLinkColumns = new Set(["Blank / Generic Sources"]);
+const companyColumns = new Set(["Shop", "Market Shop", "Top Shop"]);
 
 const plotConfig = { responsive: true, displayModeBar: false };
 
@@ -86,6 +89,16 @@ function sourceLinksCell(value) {
   return `<div class="source-links">${links}</div>`;
 }
 
+function companyName(value) {
+  return String(value ?? "").trim();
+}
+
+function companyLinkCell(value) {
+  const name = companyName(value);
+  if (!name) return "";
+  return `<button class="company-link" type="button" data-company="${escapeHtml(name)}">${escapeHtml(name)}</button>`;
+}
+
 function renderTable(targetId, rows, columns = null, limit = null) {
   const target = document.getElementById(targetId);
   if (!target) return;
@@ -112,6 +125,8 @@ function renderTable(targetId, rows, columns = null, limit = null) {
         ? thumbnailCell(row, col)
         : sourceLinkColumns.has(col)
           ? sourceLinksCell(row[col])
+        : companyColumns.has(col)
+          ? companyLinkCell(row[col])
         : col.toLowerCase().includes("url")
           ? linkCell(row[col])
           : escapeHtml(fmt(row[col], col));
@@ -237,7 +252,11 @@ function renderStatusTable(targetId, rows, columns, limit) {
   const body = mapped.slice(0, limit || mapped.length).map(row => {
     const cells = cols.map(col => {
       const cls = wrappedColumns.has(col) ? "wrap" : "";
-      const value = col === "Status" ? row[col] : escapeHtml(fmt(row[col], col));
+      const value = col === "Status"
+        ? row[col]
+        : companyColumns.has(col)
+          ? companyLinkCell(row[col])
+          : escapeHtml(fmt(row[col], col));
       return `<td class="${cls}">${value ?? ""}</td>`;
     }).join("");
     return `<tr>${cells}</tr>`;
@@ -257,7 +276,11 @@ function renderTrendTable(targetId, rows, columns, limit) {
   const body = mapped.slice(0, limit || mapped.length).map(row => {
     const cells = cols.map(col => {
       const cls = wrappedColumns.has(col) ? "wrap" : "";
-      const value = col === "Trend" ? row[col] : escapeHtml(fmt(row[col], col));
+      const value = col === "Trend"
+        ? row[col]
+        : companyColumns.has(col)
+          ? companyLinkCell(row[col])
+          : escapeHtml(fmt(row[col], col));
       return `<td class="${cls}">${value ?? ""}</td>`;
     }).join("");
     return `<tr>${cells}</tr>`;
@@ -644,6 +667,260 @@ function renderTopShops() {
   const metricName = document.getElementById("top-shop-metric").value;
   const rows = [...dashboard.market.topShops].sort((a, b) => Number(b[metricName] || 0) - Number(a[metricName] || 0));
   renderTable("top-shops", rows, ["Shop", "Label", "7D Sales", "30D Sales", "Avg Daily Sales (30D)", "Active Listings"], 15);
+}
+
+function companyStats() {
+  const stats = new Map();
+  const ensure = name => {
+    const clean = companyName(name);
+    if (!clean) return null;
+    if (!stats.has(clean)) {
+      stats.set(clean, { name: clean, listings: 0, daily: 0, thirty: 0, eRank30: 0, score: 0 });
+    }
+    return stats.get(clean);
+  };
+
+  getListingRows().forEach(row => {
+    const stat = ensure(row.Shop);
+    if (!stat) return;
+    stat.listings += 1;
+    stat.daily += numericCell(row, "Est. Daily Sales");
+    stat.thirty += numericCell(row, "Est. 30D Sales");
+  });
+  (dashboard.market.topShops || []).forEach(row => {
+    const stat = ensure(row.Shop);
+    if (!stat) return;
+    stat.eRank30 = Math.max(stat.eRank30, numericCell(row, "30D Sales"));
+  });
+  (dashboard.operations.coverageQueue || []).forEach(row => {
+    const stat = ensure(row.Shop);
+    if (!stat) return;
+    stat.eRank30 = Math.max(stat.eRank30, numericCell(row, "eRank 30D Sales"));
+  });
+  (dashboard.comparison.shopTrends || []).forEach(row => {
+    const stat = ensure(row.Shop);
+    if (!stat) return;
+    stat.score = Math.max(stat.score, numericCell(row, "Total Daily Sales In Range"));
+  });
+
+  stats.forEach(stat => {
+    stat.score = Math.max(stat.thirty, stat.eRank30, stat.score);
+  });
+  return stats;
+}
+
+function companyOptions(filter = "") {
+  const query = filter.trim().toLowerCase();
+  const options = [...companyStats().values()]
+    .filter(stat => !query || stat.name.toLowerCase().includes(query))
+    .sort((a, b) => b.score - a.score || a.name.localeCompare(b.name));
+  if (selectedCompany && !options.some(option => option.name === selectedCompany)) {
+    const selected = companyStats().get(selectedCompany);
+    if (selected) options.unshift(selected);
+  }
+  return options;
+}
+
+function renderCompanyOptions() {
+  const select = document.getElementById("company-select");
+  if (!select) return;
+  const filter = document.getElementById("company-search")?.value || "";
+  const options = companyOptions(filter);
+  select.innerHTML = "";
+  options.forEach(stat => {
+    const option = document.createElement("option");
+    option.value = stat.name;
+    const suffix = stat.listings ? `${fmt(stat.listings, "Listing Count")} listings` : `${fmt(stat.eRank30, "30D Sales")} eRank 30D`;
+    option.textContent = `${stat.name} (${suffix})`;
+    select.appendChild(option);
+  });
+  if (selectedCompany && [...select.options].some(option => option.value === selectedCompany)) {
+    select.value = selectedCompany;
+  } else if (select.options.length) {
+    selectedCompany = select.value;
+  }
+}
+
+function companyRows(company) {
+  return getListingRows().filter(row => companyName(row.Shop) === company);
+}
+
+function companyLookup(rows, key = "Shop") {
+  return new Map((rows || []).map(row => [companyName(row[key]), row]).filter(([name]) => name));
+}
+
+function buildCompanyProductRows(rows) {
+  const groups = new Map();
+  rows.forEach(row => {
+    const category = comparisonCategory(row);
+    if (!groups.has(category)) {
+      groups.set(category, { category, rows: [], daily: 0, thirty: 0 });
+    }
+    const group = groups.get(category);
+    group.rows.push(row);
+    group.daily += numericCell(row, "Est. Daily Sales");
+    group.thirty += numericCell(row, "Est. 30D Sales");
+  });
+  return [...groups.values()].map(group => {
+    const top = sortRowsByMetric(group.rows, "Est. Daily Sales")[0] || {};
+    return {
+      "Product Substrate Category": group.category,
+      "Est. Daily Sales": Number(group.daily.toFixed(1)),
+      "Est. 30D Sales": Number(group.thirty.toFixed(1)),
+      "Listing Count": group.rows.length,
+      "Top Listing": top["Product Title"] || ""
+    };
+  }).sort((a, b) => numericCell(b, "Est. Daily Sales") - numericCell(a, "Est. Daily Sales"));
+}
+
+function buildCompanyProductionRows(rows) {
+  const groups = new Map();
+  rows.forEach(row => {
+    const tag = row["Production Tag"] || "Unclassified";
+    if (!groups.has(tag)) {
+      groups.set(tag, { tag, rows: [], categories: new Set(), daily: 0, thirty: 0 });
+    }
+    const group = groups.get(tag);
+    group.rows.push(row);
+    group.categories.add(comparisonCategory(row));
+    group.daily += numericCell(row, "Est. Daily Sales");
+    group.thirty += numericCell(row, "Est. 30D Sales");
+  });
+  return [...groups.values()].map(group => {
+    const top = sortRowsByMetric(group.rows, "Est. Daily Sales")[0] || {};
+    return {
+      "Production Tag": group.tag,
+      "Est. Daily Sales": Number(group.daily.toFixed(1)),
+      "Est. 30D Sales": Number(group.thirty.toFixed(1)),
+      "Listing Count": group.rows.length,
+      "Product Categories": [...group.categories].sort().slice(0, 8).join(", "),
+      "Top Listing": top["Product Title"] || ""
+    };
+  }).sort((a, b) => numericCell(b, "Est. Daily Sales") - numericCell(a, "Est. Daily Sales"));
+}
+
+function renderCompanyProfile() {
+  const select = document.getElementById("company-select");
+  const company = selectedCompany || select?.value || "MyMaravia";
+  selectedCompany = company;
+  if (select && [...select.options].some(option => option.value === company)) select.value = company;
+
+  const listings = sortRowsByMetric(companyRows(company), "Est. Daily Sales");
+  const productRows = buildCompanyProductRows(listings);
+  const productionRows = buildCompanyProductionRows(listings);
+  const topShop = companyLookup(dashboard.market.topShops || []).get(company) || {};
+  const coverage = companyLookup(dashboard.operations.coverageQueue || []).get(company) || {};
+  const trend = companyLookup(dashboard.comparison.shopTrends || []).get(company) || {};
+  const chartRows = (dashboard.comparison.shopTrendChart || []).filter(row => companyName(row.Shop) === company);
+  const trackedDaily = listings.reduce((sum, row) => sum + numericCell(row, "Est. Daily Sales"), 0);
+  const trackedThirty = listings.reduce((sum, row) => sum + numericCell(row, "Est. 30D Sales"), 0);
+  const views = listings.reduce((sum, row) => sum + numericCell(row, "Views"), 0);
+  const favorites = listings.reduce((sum, row) => sum + numericCell(row, "Favorites"), 0);
+  const recentReviews = listings.reduce((sum, row) => sum + numericCell(row, "Recent Reviews"), 0);
+  const categories = new Set(listings.map(row => comparisonCategory(row)).filter(Boolean));
+
+  document.getElementById("company-summary").textContent =
+    `${company} profile from listings, product categories, production tags, eRank shop metrics, coverage queue, and trend snapshots.`;
+  document.getElementById("company-metrics").innerHTML = [
+    ["Tracked listings", fmt(listings.length, "Tracked Listings")],
+    ["Tracked 30D sales", fmt(trackedThirty, "Tracked Est. 30D Sales")],
+    ["Tracked daily sales", fmt(trackedDaily, "Tracked Est. Daily Sales")],
+    ["Product categories", fmt(categories.size, "Tracked Product Categories")],
+    ["Trend", trend.Trend || "Unavailable"]
+  ].map(([label, value]) => metric(label, value)).join("");
+
+  const eRank30 = numericCell(coverage, "eRank 30D Sales") || numericCell(topShop, "30D Sales");
+  const calloutBits = [
+    `${fmt(listings.length, "Listing Count")} tracked listing rows`,
+    `${fmt(categories.size, "Listing Count")} product categories`,
+    `${fmt(productionRows.length, "Listing Count")} production methods`
+  ];
+  if (eRank30) calloutBits.push(`${fmt(eRank30, "30D Sales")} eRank 30-day sales`);
+  if (views || favorites || recentReviews) {
+    calloutBits.push(`${fmt(views, "Views")} views, ${fmt(favorites, "Favorites")} favorites, ${fmt(recentReviews, "Recent Reviews")} recent reviews in visible listing data`);
+  }
+  document.getElementById("company-callout").textContent = calloutBits.join(" · ");
+
+  renderTable("company-snapshot", [{
+    "Company": company,
+    "Label": topShop.Label || "",
+    "Tracked Listings": listings.length,
+    "Tracked Product Categories": categories.size,
+    "Tracked Production Methods": productionRows.length,
+    "Tracked Est. Daily Sales": Number(trackedDaily.toFixed(1)),
+    "Tracked Est. 30D Sales": Number(trackedThirty.toFixed(1)),
+    "eRank 7D Sales": coverage["eRank 7D Sales"] ?? topShop["7D Sales"] ?? "",
+    "eRank 30D Sales": coverage["eRank 30D Sales"] ?? topShop["30D Sales"] ?? "",
+    "Avg Daily Sales (30D)": coverage["Avg Daily Sales (30D)"] ?? topShop["Avg Daily Sales (30D)"] ?? "",
+    "Active Listings": topShop["Active Listings"] ?? "",
+    "Trend": trend.Trend || "",
+    "Recent Avg Daily Sales": trend["Recent Avg Daily Sales"] ?? "",
+    "Prior Avg Daily Sales": trend["Prior Avg Daily Sales"] ?? "",
+    "Delta": trend.Delta ?? "",
+    "Delta %": trend["Delta %"] ?? "",
+    "Latest Complete Date": trend["Latest Complete Date"] ?? "",
+    "Latest Complete Daily Sales": trend["Latest Complete Daily Sales"] ?? "",
+    "Total Daily Sales In Range": trend["Total Daily Sales In Range"] ?? "",
+    "Has Tab": coverage["Has Tab"] ?? "",
+    "Tab Status": coverage["Tab Status"] ?? "",
+    "Review Ledger Rows": coverage["Review Ledger Rows"] ?? "",
+    "Last Evidence Run": coverage["Last Evidence Run"] ?? "",
+    "Last Scrape Status": coverage["Last Scrape Status"] ?? "",
+    "Next Action": coverage["Next Action"] ?? ""
+  }]);
+
+  if (chartRows.length) {
+    Plotly.newPlot("company-sales-chart", [{
+      type: "scatter",
+      mode: "lines+markers",
+      x: chartRows.map(row => row.Date),
+      y: chartRows.map(row => row["Daily Sales"]),
+      line: { color: "#1f5fbf", width: 3 },
+      marker: { size: 7 },
+      hovertemplate: "%{x}<br>Daily sales: %{y:,.0f}<extra></extra>"
+    }], {
+      margin: { l: 48, r: 16, t: 8, b: 44 },
+      yaxis: { title: "Daily sales" },
+      paper_bgcolor: "white",
+      plot_bgcolor: "white"
+    }, plotConfig);
+  } else {
+    document.getElementById("company-sales-chart").innerHTML = `<div class="empty">No daily trend chart rows are available for this company in the public snapshot.</div>`;
+  }
+
+  if (productRows.length) {
+    renderBar("company-product-chart", productRows, "Est. Daily Sales", "Product Substrate Category", 15, "#1f5fbf");
+    renderTable("company-products", productRows, ["Product Substrate Category", "Est. Daily Sales", "Est. 30D Sales", "Listing Count", "Top Listing"], 80);
+  } else {
+    document.getElementById("company-product-chart").innerHTML = `<div class="empty">No product rows are available for this company.</div>`;
+    document.getElementById("company-products").innerHTML = "";
+  }
+
+  if (productionRows.length) {
+    renderBar("company-production-chart", productionRows, "Est. Daily Sales", "Production Tag", 15, "#0f766e");
+    renderTable("company-production", productionRows, ["Production Tag", "Est. Daily Sales", "Est. 30D Sales", "Listing Count", "Product Categories", "Top Listing"], 80);
+  } else {
+    document.getElementById("company-production-chart").innerHTML = `<div class="empty">No production-method rows are available for this company.</div>`;
+    document.getElementById("company-production").innerHTML = "";
+  }
+
+  renderTable("company-listings", listings, [
+    "Overall Rank", "Thumbnail", "Est. Daily Sales", "Est. 30D Sales", "Product Title",
+    "Product Category", "Product Substrate Category", "Original Broad Category", "Production Tag",
+    "Customization Tag", "Tag Confidence", "Tag Evidence", "Evidence Confidence", "Last Review ISO",
+    "Price", "Views", "Favorites", "Recent 180D Sales", "Recent 180D Revenue", "Recent Reviews",
+    "Recent Avg Rating", "Blank / Generic Sources", "Listing URL"
+  ], 300);
+
+  requestAnimationFrame(updateAllBottomScrollbars);
+}
+
+function openCompanyProfile(company) {
+  selectedCompany = companyName(company);
+  if (!selectedCompany) return;
+  renderCompanyOptions();
+  activateView("company");
+  renderCompanyProfile();
 }
 
 function renderOpportunity() {
@@ -1127,15 +1404,23 @@ function renderRaw() {
   renderTable("raw-table", dashboard.rawPreviews[key] || []);
 }
 
+function activateView(viewId) {
+  const view = document.getElementById(viewId);
+  if (!view) return;
+  document.querySelectorAll(".tab").forEach(tab => {
+    tab.classList.toggle("active", tab.dataset.view === viewId);
+  });
+  document.querySelectorAll(".view").forEach(section => {
+    section.classList.toggle("active", section.id === viewId);
+  });
+  window.dispatchEvent(new Event("resize"));
+  requestAnimationFrame(updateAllBottomScrollbars);
+}
+
 function setupTabs() {
   document.querySelectorAll(".tab").forEach(button => {
     button.addEventListener("click", () => {
-      document.querySelectorAll(".tab").forEach(tab => tab.classList.remove("active"));
-      document.querySelectorAll(".view").forEach(view => view.classList.remove("active"));
-      button.classList.add("active");
-      document.getElementById(button.dataset.view).classList.add("active");
-      window.dispatchEvent(new Event("resize"));
-      requestAnimationFrame(updateAllBottomScrollbars);
+      activateView(button.dataset.view);
     });
   });
 }
@@ -1241,6 +1526,40 @@ function initMyMaraviaFilters() {
   });
 }
 
+function initCompanyProfile() {
+  const allCompanies = companyStats();
+  if (!selectedCompany) {
+    selectedCompany = allCompanies.has("MyMaravia") ? "MyMaravia" : companyOptions()[0]?.name || "";
+  }
+  renderCompanyOptions();
+
+  const select = document.getElementById("company-select");
+  if (select.dataset.bound !== "true") {
+    select.addEventListener("change", () => {
+      selectedCompany = select.value;
+      renderCompanyProfile();
+    });
+    select.dataset.bound = "true";
+  }
+
+  const search = document.getElementById("company-search");
+  if (search && search.dataset.bound !== "true") {
+    search.addEventListener("input", renderCompanyOptions);
+    search.dataset.bound = "true";
+  }
+
+  if (document.body.dataset.companyLinksBound !== "true") {
+    document.addEventListener("click", event => {
+      const target = event.target.closest(".company-link");
+      if (!target) return;
+      openCompanyProfile(target.dataset.company || target.textContent);
+    });
+    document.body.dataset.companyLinksBound = "true";
+  }
+
+  renderCompanyProfile();
+}
+
 function initAsk() {
   const input = document.getElementById("sheet-question");
   const submit = document.getElementById("sheet-question-submit");
@@ -1287,6 +1606,7 @@ function renderAll() {
   renderTable("demand-intent-table", dashboard.comparison.demandIntentRollup, ["Demand Intent Cluster", "Total Est. 30D Sales", "Listing Count", "Shop Count", "Top Substrates"], 40);
   renderLineByGroup("shop-trend-chart", dashboard.comparison.shopTrendChart || [], "Date", "Daily Sales", "Shop");
   renderTrendTable("shop-trends", dashboard.comparison.shopTrends, ["Shop", "Trend", "Recent Avg Daily Sales", "Prior Avg Daily Sales", "Delta", "Delta %", "Latest Complete Date", "Latest Complete Daily Sales", "Total Daily Sales In Range", "Days Used"], 70);
+  initCompanyProfile();
   renderListings();
   renderAskScope();
   initAsk();

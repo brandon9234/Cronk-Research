@@ -22,6 +22,7 @@
       <button class="tab" data-view="mymaravia">MyMaravia</button>
       <button class="tab" data-view="overview">Overview</button>
       <button class="tab" data-view="comparison">Comparison</button>
+      <button class="tab" data-view="company">Company</button>
       <button class="tab" data-view="ask">Ask</button>
       <button class="tab" data-view="listings">Listings</button>
       <button class="tab" data-view="operations">Operations</button>
@@ -206,6 +207,59 @@
         </div>
       </section>
 
+      <section id="company" class="view">
+        <section class="panel">
+          <div class="panel-head with-control">
+            <div>
+              <h2>Company Profile</h2>
+              <p id="company-summary" class="subtle"></p>
+            </div>
+            <div class="listing-controls">
+              <select id="company-select" aria-label="Company profile selector"></select>
+              <input id="company-search" type="search" placeholder="Find company">
+            </div>
+          </div>
+          <div id="company-metrics" class="metric-grid compact"></div>
+          <div id="company-callout" class="callout"></div>
+        </section>
+        <div class="grid two-wide">
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Sales Trend</h2>
+            </div>
+            <div id="company-sales-chart" class="chart"></div>
+          </section>
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Company Snapshot</h2>
+            </div>
+            <div id="company-snapshot"></div>
+          </section>
+        </div>
+        <div class="grid two-wide">
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Products Sold</h2>
+            </div>
+            <div id="company-product-chart" class="chart"></div>
+            <div id="company-products"></div>
+          </section>
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Production Methods</h2>
+            </div>
+            <div id="company-production-chart" class="chart"></div>
+            <div id="company-production"></div>
+          </section>
+        </div>
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Listings And Evidence</h2>
+          </div>
+          <div id="company-listings"></div>
+        </section>
+      </section>
+
       <section id="ask" class="view">
         <section class="panel">
           <div class="panel-head">
@@ -308,6 +362,6 @@
       </section>
     </main>
   </div>
-  <script src="assets/app.js?v=ask-sheet-20260529"></script>
+  <script src="assets/app.js?v=company-profile-ask-20260529-2"></script>
 </body>
 </html>
