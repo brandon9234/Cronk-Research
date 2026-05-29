@@ -803,7 +803,7 @@ function askTokens(question) {
     .replace(/[^a-z0-9\s-]/g, " ")
     .split(/\s+/)
     .map(token => token.trim())
-    .filter(token => token.length > 2 && !askStopWords.has(token));
+    .filter(token => token.length > 2 && !askStopWords.has(token) && !/^\d+(d|-day|day)?$/.test(token));
 }
 
 function rowText(row) {
