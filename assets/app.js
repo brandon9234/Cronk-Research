@@ -1,5 +1,5 @@
 let dashboard;
-const DATA_ASSET_VERSION = "all-source-links-20260529";
+const DATA_ASSET_VERSION = "ask-sheet-20260529";
 
 const numericColumns = new Set([
   "7D Sales", "30D Sales", "Avg Daily Sales (30D)", "Active Listings", "Daily Sales",
@@ -17,7 +17,8 @@ const numericColumns = new Set([
   "Transactions", "Listings", "Reviews", "Launch Priority", "Tag Confidence",
   "Price", "Views", "Favorites", "Tags Count", "Recent 180D Sales", "Recent 180D Revenue",
   "MyMaravia Listings", "Current Product Categories", "Market Long Tails In Current Categories",
-  "Market Long Tails", "Built Long Tails", "Needs Build", "Coverage %", "Top Open Daily Sales"
+  "Market Long Tails", "Built Long Tails", "Needs Build", "Coverage %", "Top Open Daily Sales",
+  "Recent Reviews", "Recent Avg Rating"
 ]);
 
 const wrappedColumns = new Set([
@@ -277,30 +278,183 @@ function renderMetrics() {
   document.getElementById("metric-grid").innerHTML = cards.map(([label, value]) => metric(label, value)).join("");
 }
 
-function renderCategoryMetrics() {
-  const rows = dashboard.comparison.shopCategoryComparison || [];
-  const movement = dashboard.comparison.categoryMovement || [];
-  const totalDaily = rows.reduce((sum, row) => sum + Number(row["Category Est. Daily Sales"] || 0), 0);
-  const shops = new Set(rows.map(row => row.Shop).filter(Boolean)).size;
-  const up = rows.filter(row => row.Trend === "Up").length;
-  const down = rows.filter(row => row.Trend === "Down").length;
+function listingSearchText(row) {
+  return Object.values(row).join(" ").toLowerCase();
+}
+
+function comparisonCategory(row) {
+  return String(row["Product Substrate Category"] || row["Product Category"] || "Uncategorized");
+}
+
+function getComparisonListingRows() {
+  const category = document.getElementById("comparison-category-filter")?.value || "";
+  const production = document.getElementById("comparison-production-filter")?.value || "";
+  const query = (document.getElementById("comparison-search")?.value || "").trim().toLowerCase();
+  let rows = getListingRows();
+
+  if (category) {
+    rows = rows.filter(row => comparisonCategory(row) === category);
+  }
+  if (production) {
+    rows = rows.filter(row => row["Production Tag"] === production);
+  }
+  if (query) {
+    rows = rows.filter(row => listingSearchText(row).includes(query));
+  }
+
+  return rows;
+}
+
+function shopTrendLookup() {
+  return new Map((dashboard.comparison.shopTrends || []).map(row => [row.Shop, row]));
+}
+
+function summarizeShopTrends(shops, trends) {
+  const trendRows = [...shops].map(shop => trends.get(shop)).filter(Boolean);
+  const recent = trendRows.reduce((sum, row) => sum + Number(row["Recent Avg Daily Sales"] || 0), 0);
+  const previous = trendRows.reduce((sum, row) => sum + Number(row["Prior Avg Daily Sales"] || 0), 0);
+  const delta = recent - previous;
+  const pct = previous ? (delta / previous) * 100 : null;
+  const direction = pct == null || Math.abs(pct) < 5 ? "Flat" : pct > 0 ? "Up" : "Down";
+  return {
+    trendRows,
+    recent,
+    previous,
+    delta,
+    pct,
+    direction
+  };
+}
+
+function buildDynamicCategoryMovement(rows) {
+  const trends = shopTrendLookup();
+  const byCategory = new Map();
+  rows.forEach(row => {
+    const category = comparisonCategory(row);
+    if (!byCategory.has(category)) {
+      byCategory.set(category, { category, rows: [], shops: new Set(), daily: 0, thirty: 0 });
+    }
+    const group = byCategory.get(category);
+    group.rows.push(row);
+    if (row.Shop) group.shops.add(row.Shop);
+    group.daily += numericCell(row, "Est. Daily Sales");
+    group.thirty += numericCell(row, "Est. 30D Sales");
+  });
+
+  return [...byCategory.values()].map(group => {
+    const summary = summarizeShopTrends(group.shops, trends);
+    return {
+      "Product Substrate Category": group.category,
+      "Trend": summary.direction,
+      "Recent Matching-Shop Avg Daily Sales": Number(summary.recent.toFixed(1)),
+      "Prior Matching-Shop Avg Daily Sales": Number(summary.previous.toFixed(1)),
+      "Delta": Number(summary.delta.toFixed(1)),
+      "Delta %": summary.pct == null ? null : Number(summary.pct.toFixed(1)),
+      "Matching Listings": group.rows.length,
+      "Matching Shops": group.shops.size,
+      "Category Est. Daily Sales": Number(group.daily.toFixed(1)),
+      "Category Est. 30D Sales": Number(group.thirty.toFixed(1)),
+      "Days Used": Math.max(...summary.trendRows.map(row => Number(row["Days Used"] || 0)), 0)
+    };
+  }).sort((a, b) => Number(b["Category Est. Daily Sales"] || 0) - Number(a["Category Est. Daily Sales"] || 0));
+}
+
+function buildDynamicShopComparison(rows) {
+  const trends = shopTrendLookup();
+  const byShop = new Map();
+  rows.forEach(row => {
+    const shop = row.Shop || "Unknown shop";
+    if (!byShop.has(shop)) {
+      byShop.set(shop, { shop, categories: new Set(), daily: 0, thirty: 0, count: 0 });
+    }
+    const group = byShop.get(shop);
+    group.categories.add(comparisonCategory(row));
+    group.daily += numericCell(row, "Est. Daily Sales");
+    group.thirty += numericCell(row, "Est. 30D Sales");
+    group.count += 1;
+  });
+
+  return [...byShop.values()].map(group => {
+    const trend = trends.get(group.shop) || {};
+    return {
+      "Shop": group.shop,
+      "Trend": trend.Trend || "Flat",
+      "Category Est. Daily Sales": Number(group.daily.toFixed(1)),
+      "Category Est. 30D Sales": Number(group.thirty.toFixed(1)),
+      "Matching Listings": group.count,
+      "Matched Product Categories": [...group.categories].sort().slice(0, 8).join(", "),
+      "Recent Avg Daily Sales": trend["Recent Avg Daily Sales"] ?? "",
+      "Prior Avg Daily Sales": trend["Prior Avg Daily Sales"] ?? "",
+      "Delta": trend.Delta ?? "",
+      "Delta %": trend["Delta %"] ?? "",
+      "Latest Complete Date": trend["Latest Complete Date"] ?? "",
+      "Latest Complete Daily Sales": trend["Latest Complete Daily Sales"] ?? "",
+      "Days Used": trend["Days Used"] ?? ""
+    };
+  });
+}
+
+function sortComparisonRows(rows) {
+  const sort = document.getElementById("comparison-sort")?.value || "";
+  const sortMap = {
+    "daily-desc": ["Category Est. Daily Sales", "desc"],
+    "daily-asc": ["Category Est. Daily Sales", "asc"],
+    "thirty-desc": ["Category Est. 30D Sales", "desc"],
+    "thirty-asc": ["Category Est. 30D Sales", "asc"]
+  };
+  const [column, direction] = sortMap[sort] || ["Category Est. Daily Sales", "desc"];
+  return rows.slice().sort((a, b) => {
+    const delta = numericCell(a, column) - numericCell(b, column);
+    const ordered = direction === "asc" ? delta : -delta;
+    if (ordered) return ordered;
+    return String(a.Shop || "").localeCompare(String(b.Shop || ""));
+  });
+}
+
+function renderCategoryWorkspace() {
+  const allRows = getListingRows();
+  const listingRows = getComparisonListingRows();
+  const movement = buildDynamicCategoryMovement(listingRows);
+  const comparisonRows = sortComparisonRows(buildDynamicShopComparison(listingRows));
+  const totalDaily = listingRows.reduce((sum, row) => sum + numericCell(row, "Est. Daily Sales"), 0);
+  const shops = new Set(listingRows.map(row => row.Shop).filter(Boolean)).size;
+  const up = comparisonRows.filter(row => row.Trend === "Up").length;
+  const down = comparisonRows.filter(row => row.Trend === "Down").length;
+  const category = document.getElementById("comparison-category-filter")?.value || "";
+  const production = document.getElementById("comparison-production-filter")?.value || "";
+  const query = (document.getElementById("comparison-search")?.value || "").trim();
+  const scope = [
+    category || "all product categories",
+    production ? `production: ${production}` : "",
+    query ? `search: ${query}` : ""
+  ].filter(Boolean).join(" · ");
+
   const cards = [
-    ["Matching listings", fmt(dashboard.comparison.categoryMatchesCount)],
-    ["Matching shops", fmt(shops)],
+    ["Matching listings", fmt(listingRows.length, "Listing Count")],
+    ["Matching shops", fmt(shops, "Shop Count")],
     ["Category est. daily sales", fmt(totalDaily, "Category Est. Daily Sales")],
     ["Up shops", fmt(up)],
     ["Down shops", fmt(down)]
   ];
   document.getElementById("category-metrics").innerHTML = cards.map(([label, value]) => metric(label, value)).join("");
-  document.getElementById("category-query").textContent = dashboard.comparison.categoryQuery;
-  if (movement.length) {
-    const focus = movement.slice().sort((a, b) => Number(b["Category Est. Daily Sales"] || 0) - Number(a["Category Est. Daily Sales"] || 0))[0];
+  document.getElementById("category-query").textContent =
+    `Comparing ${scope} across ${fmt(allRows.length, "Listing Count")} available listing rows.`;
+
+  const callout = document.getElementById("category-movement-callout");
+  if (!listingRows.length) {
+    callout.innerHTML = "No listings match the current comparison filters.";
+    document.getElementById("category-shop-chart").innerHTML = `<div class="empty">No matching shops to chart.</div>`;
+  } else {
+    const focus = movement[0];
     const direction = String(focus.Trend || "Flat").toLowerCase();
     const delta = Math.abs(Number(focus.Delta || 0));
     const pct = focus["Delta %"] == null ? "" : ` (${Math.abs(Number(focus["Delta %"])).toFixed(1)}%)`;
-    document.getElementById("category-movement-callout").innerHTML =
-      `<strong>${escapeHtml(focus["Product Substrate Category"])}</strong> is ${escapeHtml(direction)} ${fmt(delta, "Delta")} daily sales${pct} across matching shops.`;
+    callout.innerHTML =
+      `<strong>${escapeHtml(focus["Product Substrate Category"])}</strong> has ${fmt(focus["Matching Listings"], "Matching Listings")} matching listings across ${fmt(focus["Matching Shops"], "Matching Shops")} shops and is ${escapeHtml(direction)} ${fmt(delta, "Delta")} daily sales${pct} across shops with trend history.`;
+    renderBar("category-shop-chart", comparisonRows, "Category Est. Daily Sales", "Shop", 20, "#1f5fbf");
   }
+
+  renderTrendTable("category-comparison", comparisonRows, ["Shop", "Trend", "Category Est. Daily Sales", "Category Est. 30D Sales", "Matching Listings", "Matched Product Categories", "Recent Avg Daily Sales", "Prior Avg Daily Sales", "Delta", "Delta %", "Latest Complete Date", "Latest Complete Daily Sales", "Days Used"], 120);
 }
 
 function renderOverallChart() {
@@ -619,6 +773,354 @@ function renderListings() {
   ]);
 }
 
+const askStopWords = new Set([
+  "about", "across", "after", "again", "against", "all", "also", "and", "answer",
+  "are", "best", "between", "bring", "can", "category", "categories", "compare",
+  "daily", "data", "day", "days", "does", "est", "estimated", "everything", "find",
+  "for", "from", "give", "has", "have", "highest", "into", "list", "listing",
+  "listings", "lowest", "make", "market", "most", "much", "need", "needs", "now",
+  "ordered", "product", "products", "question", "sales", "sheet", "shop", "shops",
+  "show", "sort", "than", "that", "the", "their", "there", "these", "thing",
+  "things", "this", "top", "total", "what", "where", "which", "with", "within"
+]);
+
+function renderAskScope() {
+  const rows = getListingRows();
+  const shops = new Set(rows.map(row => row.Shop).filter(Boolean)).size;
+  const categories = new Set(rows.map(row => comparisonCategory(row)).filter(Boolean)).size;
+  const openLongTails = (dashboard.myMaravia?.longTailQueue || []).filter(row => row.Status === "Needs build").length;
+  const text = `${fmt(rows.length, "Listing Count")} listings, ${fmt(shops, "Shop Count")} shops, ${fmt(categories, "Listing Count")} categories, ${fmt(openLongTails, "Listing Count")} open MyMaravia long tails.`;
+  const scope = document.getElementById("ask-scope");
+  if (scope) scope.textContent = text;
+}
+
+function normalizeQuestion(question) {
+  return String(question || "").toLowerCase();
+}
+
+function askTokens(question) {
+  return normalizeQuestion(question)
+    .replace(/[^a-z0-9\s-]/g, " ")
+    .split(/\s+/)
+    .map(token => token.trim())
+    .filter(token => token.length > 2 && !askStopWords.has(token));
+}
+
+function rowText(row) {
+  return Object.values(row || {}).join(" ").toLowerCase();
+}
+
+function filterRowsByTokens(rows, tokens) {
+  if (!tokens.length) return rows;
+  const strict = rows.filter(row => {
+    const text = rowText(row);
+    return tokens.every(token => text.includes(token));
+  });
+  if (strict.length) return strict;
+  const loose = rows.filter(row => {
+    const text = rowText(row);
+    return tokens.some(token => text.includes(token));
+  });
+  return loose.length ? loose : rows;
+}
+
+function applyQuestionScope(rows, question) {
+  const q = normalizeQuestion(question);
+  let scoped = rows;
+  if (/mymaravia|my shop|my listings|mine\b/.test(q)) {
+    scoped = rows.filter(row => /mymaravia/i.test(String(row.Shop || row.Source || "")));
+  }
+  const tokens = askTokens(question).filter(token => !["mymaravia", "coverage", "gaps", "gap"].includes(token));
+  return filterRowsByTokens(scoped, tokens);
+}
+
+function askMetric(question) {
+  return /30|thirty|month|monthly/.test(normalizeQuestion(question)) ? "Est. 30D Sales" : "Est. Daily Sales";
+}
+
+function sortRowsByMetric(rows, metric) {
+  return rows.slice().sort((a, b) => {
+    const delta = numericCell(a, metric) - numericCell(b, metric);
+    if (delta) return -delta;
+    return numericCell(a, "Overall Rank") - numericCell(b, "Overall Rank") ||
+      String(a.Shop || "").localeCompare(String(b.Shop || "")) ||
+      String(a["Product Title"] || "").localeCompare(String(b["Product Title"] || ""));
+  });
+}
+
+function aggregateListings(rows, groupKey) {
+  const groups = new Map();
+  rows.forEach(row => {
+    const name = String(row[groupKey] || "Uncategorized");
+    if (!groups.has(name)) {
+      groups.set(name, { name, rows: [], shops: new Set(), daily: 0, thirty: 0 });
+    }
+    const group = groups.get(name);
+    group.rows.push(row);
+    if (row.Shop) group.shops.add(row.Shop);
+    group.daily += numericCell(row, "Est. Daily Sales");
+    group.thirty += numericCell(row, "Est. 30D Sales");
+  });
+  return [...groups.values()].map(group => {
+    const top = sortRowsByMetric(group.rows, "Est. Daily Sales")[0] || {};
+    return {
+      [groupKey]: group.name,
+      "Est. Daily Sales": Number(group.daily.toFixed(1)),
+      "Est. 30D Sales": Number(group.thirty.toFixed(1)),
+      "Listing Count": group.rows.length,
+      "Shop Count": group.shops.size,
+      "Top Shop": top.Shop || "",
+      "Top Listing": top["Product Title"] || ""
+    };
+  });
+}
+
+function result(title, summary, bullets = [], rows = [], columns = null, limit = 25) {
+  return { title, summary, bullets, rows, columns, limit };
+}
+
+function sourceStatus(row) {
+  const text = String(row["Blank / Generic Sources"] || "").trim();
+  if (!text) return "Not researched";
+  if (/^cannot buy/i.test(text)) return "No blank found";
+  if (/^not researched/i.test(text)) return "Not researched";
+  if (/https?:\/\//i.test(text)) return "Links available";
+  return "Note";
+}
+
+function answerCategoryQuestion(question) {
+  const allRows = getListingRows();
+  const rows = applyQuestionScope(allRows, question);
+  const metric = askMetric(question);
+  const groups = aggregateListings(rows, "Product Substrate Category")
+    .sort((a, b) => numericCell(b, metric) - numericCell(a, metric));
+  const leader = groups[0];
+  if (!leader) {
+    return result("No matching category data", "I could not find category rows for that question.");
+  }
+  return result(
+    "Category answer",
+    `${leader["Product Substrate Category"]} leads this scope with ${fmt(leader[metric], metric)} ${metric.toLowerCase()} across ${fmt(leader["Listing Count"], "Listing Count")} listings and ${fmt(leader["Shop Count"], "Shop Count")} shops.`,
+    [
+      `Scoped rows: ${fmt(rows.length, "Listing Count")} of ${fmt(allRows.length, "Listing Count")} available listings.`,
+      `Sorting by ${metric}.`
+    ],
+    groups,
+    ["Product Substrate Category", "Est. Daily Sales", "Est. 30D Sales", "Listing Count", "Shop Count", "Top Shop", "Top Listing"]
+  );
+}
+
+function answerShopQuestion(question) {
+  const allRows = getListingRows();
+  const rows = applyQuestionScope(allRows, question);
+  const metric = askMetric(question);
+  const groups = aggregateListings(rows, "Shop")
+    .sort((a, b) => numericCell(b, metric) - numericCell(a, metric));
+  const leader = groups[0];
+  if (!leader) {
+    return result("No matching shop data", "I could not find shop rows for that question.");
+  }
+  return result(
+    "Shop answer",
+    `${leader.Shop} leads this scope with ${fmt(leader[metric], metric)} ${metric.toLowerCase()} across ${fmt(leader["Listing Count"], "Listing Count")} listings.`,
+    [
+      `Scoped rows: ${fmt(rows.length, "Listing Count")} of ${fmt(allRows.length, "Listing Count")} available listings.`,
+      `Sorting by ${metric}.`
+    ],
+    groups,
+    ["Shop", "Est. Daily Sales", "Est. 30D Sales", "Listing Count", "Top Listing"]
+  );
+}
+
+function answerListingQuestion(question) {
+  const allRows = getListingRows();
+  const rows = sortRowsByMetric(applyQuestionScope(allRows, question), askMetric(question));
+  const metric = askMetric(question);
+  const leader = rows[0];
+  if (!leader) {
+    return result("No matching listings", "I could not find listing rows for that question.");
+  }
+  return result(
+    "Listing answer",
+    `${leader.Shop || "Unknown shop"} has the strongest matching listing by ${metric.toLowerCase()}: ${leader["Product Title"] || "Untitled listing"} at ${fmt(leader[metric], metric)}.`,
+    [
+      `Scoped rows: ${fmt(rows.length, "Listing Count")} of ${fmt(allRows.length, "Listing Count")} available listings.`,
+      `Use the table for the evidence trail and source links.`
+    ],
+    rows,
+    ["Overall Rank", "Thumbnail", "Shop", "Est. Daily Sales", "Est. 30D Sales", "Product Title", "Product Substrate Category", "Production Tag", "Listing URL"]
+  );
+}
+
+function answerSourceQuestion(question) {
+  const allRows = getListingRows();
+  const rows = sortRowsByMetric(applyQuestionScope(allRows, question), askMetric(question));
+  const withStatus = rows.map(row => ({ ...row, "Source Status": sourceStatus(row) }));
+  const linked = withStatus.filter(row => row["Source Status"] === "Links available").length;
+  const noBlank = withStatus.filter(row => row["Source Status"] === "No blank found").length;
+  const notResearched = withStatus.filter(row => row["Source Status"] === "Not researched").length;
+  return result(
+    "Blank and generic source answer",
+    `${fmt(linked, "Listing Count")} of ${fmt(withStatus.length, "Listing Count")} scoped listings have blank or generic source links. ${fmt(noBlank, "Listing Count")} are marked as no blank found and ${fmt(notResearched, "Listing Count")} are still unresearched.`,
+    [
+      `Scoped rows: ${fmt(rows.length, "Listing Count")} of ${fmt(allRows.length, "Listing Count")} available listings.`,
+      `Rows are sorted by ${askMetric(question)}.`
+    ],
+    withStatus,
+    ["Source Status", "Shop", "Est. Daily Sales", "Est. 30D Sales", "Blank / Generic Sources", "Product Title", "Product Substrate Category", "Listing URL"]
+  );
+}
+
+function answerMyMaraviaQuestion(question) {
+  const q = normalizeQuestion(question);
+  const my = dashboard.myMaravia || {};
+  const metrics = my.metrics || {};
+  const wantsCurrent = /current|already|have|my listings|what do i have/.test(q) && !/gap|missing|need|build/.test(q);
+  if (wantsCurrent) {
+    const rows = sortRowsByMetric(filterRowsByTokens(my.myListings || [], askTokens(question)), "Est. Daily Sales");
+    return result(
+      "MyMaravia current listings",
+      `MyMaravia has ${fmt(metrics["MyMaravia Listings"], "MyMaravia Listings") || fmt(rows.length, "Listing Count")} current listings across ${fmt(metrics["Current Product Categories"], "Current Product Categories") || "the visible"} categories.`,
+      [`Rows are sorted by estimated daily sales.`],
+      rows,
+      ["Thumbnail", "Product Category", "Est. Daily Sales", "Product Title", "Recent 180D Sales", "Recent Reviews", "Recent Avg Rating", "Views", "Favorites", "Listing URL"],
+      50
+    );
+  }
+
+  const queue = filterRowsByTokens(my.longTailQueue || [], askTokens(question).filter(token => !["mymaravia", "missing", "coverage", "build", "built", "gaps", "gap"].includes(token)));
+  const needs = queue
+    .filter(row => row.Status === "Needs build")
+    .sort((a, b) => numericCell(b, "Market Daily Sales") - numericCell(a, "Market Daily Sales"));
+  const top = needs[0];
+  const summary = top
+    ? `The largest MyMaravia coverage gap in this scope is ${top["Market Long Tail"] || top["Product Category"]} at ${fmt(top["Market Daily Sales"], "Market Daily Sales")} market daily sales.`
+    : `I do not see open MyMaravia coverage gaps in this scope.`;
+  return result(
+    "MyMaravia coverage answer",
+    summary,
+    [
+      `Coverage: ${metrics["Coverage %"] == null ? "unavailable" : fmt(metrics["Coverage %"], "Coverage %")}.`,
+      `Open long tails in scope: ${fmt(needs.length, "Listing Count")}.`
+    ],
+    needs,
+    ["Status", "Product Category", "Market Daily Sales", "Market 30D Sales", "Market Long Tail", "Market Shop", "Matching MyMaravia Listing", "Build Recommendation", "Market Listing URL"],
+    50
+  );
+}
+
+function answerOpportunityQuestion(question) {
+  const rows = filterRowsByTokens(dashboard.opportunity?.opportunityQueue || [], askTokens(question))
+    .sort((a, b) => numericCell(b, "Opportunity Score") - numericCell(a, "Opportunity Score"));
+  const leader = rows[0];
+  if (!leader) {
+    return result("No opportunity rows", "The opportunity queue is not available in this snapshot.");
+  }
+  return result(
+    "Opportunity answer",
+    `${leader["Product Bet"]} is the strongest matching opportunity with an opportunity score of ${fmt(leader["Opportunity Score"], "Opportunity Score")} and ${fmt(leader["Market Daily Sales"], "Market Daily Sales")} market daily sales.`,
+    [
+      leader["Why It Matters"] || "The score blends demand, Cronk Research fit, evidence, momentum, and saturation.",
+      `Rows are sorted by opportunity score.`
+    ],
+    rows,
+    ["Launch Priority", "Product Bet", "Buyer Intent", "Opportunity Score", "Market Daily Sales", "Demand Score", "Cronk Research Fit", "Evidence Score", "Saturation Penalty", "Why It Matters"],
+    25
+  );
+}
+
+function answerTrendQuestion(question) {
+  const q = normalizeQuestion(question);
+  const direction = /down|fall|dropping|declin/.test(q) ? "Down" : /up|moving|rising|grow/.test(q) ? "Up" : "";
+  let rows = dashboard.comparison?.shopTrends || [];
+  if (direction) rows = rows.filter(row => row.Trend === direction);
+  rows = filterRowsByTokens(rows, askTokens(question).filter(token => !["moving", "trend", "trends", "movement"].includes(token)))
+    .sort((a, b) => Math.abs(numericCell(b, "Delta")) - Math.abs(numericCell(a, "Delta")));
+  const leader = rows[0];
+  if (!leader) {
+    return result("No trend rows", "The shop movement rows are not available in this snapshot.");
+  }
+  return result(
+    "Movement answer",
+    `${leader.Shop} is the strongest matching movement row: ${leader.Trend || "Flat"} by ${fmt(leader.Delta, "Delta")} daily sales (${fmt(leader["Delta %"], "Delta %")}).`,
+    [`Rows use the recent vs prior shop trend snapshot.`],
+    rows,
+    ["Shop", "Trend", "Recent Avg Daily Sales", "Prior Avg Daily Sales", "Delta", "Delta %", "Latest Complete Date", "Latest Complete Daily Sales", "Days Used"],
+    40
+  );
+}
+
+function answerReviewQuestion(question) {
+  const rows = sortRowsByMetric(applyQuestionScope(getListingRows(), question), "Recent Reviews")
+    .filter(row => numericCell(row, "Recent Reviews") || row["Recent Avg Rating"]);
+  const totalReviews = rows.reduce((sum, row) => sum + numericCell(row, "Recent Reviews"), 0);
+  const leader = rows[0];
+  if (!rows.length) {
+    return result("Review answer", "This dashboard snapshot only exposes review counts and average rating where the Etsy API listing snapshot provided them. Public review text and review photos are not in this dashboard payload.");
+  }
+  return result(
+    "Review answer",
+    `${fmt(totalReviews, "Recent Reviews")} recent reviews are visible in this scope. ${leader.Shop || "The leading row"} has the highest visible review count at ${fmt(leader["Recent Reviews"], "Recent Reviews")} reviews and ${fmt(leader["Recent Avg Rating"], "Recent Avg Rating")} average rating.`,
+    [`This is listing-level review summary data, not full review text or customer photos.`],
+    rows,
+    ["Shop", "Product Category", "Product Title", "Recent Reviews", "Recent Avg Rating", "Est. Daily Sales", "Listing URL"],
+    50
+  );
+}
+
+function answerVariationQuestion() {
+  return result(
+    "Styles and variations",
+    "The sheet-facing dashboard does not currently expose customer ordered styles, options, or personalization fields. Those values are stored in the private Etsy SQL transaction raw_json, not in this public snapshot.",
+    [
+      "For MyMaravia orders, Etsy transaction JSON can include SKU, Styles, Base Option, Single Coaster or Set, and Personalization.",
+      "Competitor public review scraping generally cannot see the buyer's ordered variation unless Etsy renders it publicly."
+    ],
+    dashboard.myMaravia?.myListings || [],
+    ["Thumbnail", "Product Category", "Product Title", "Est. Daily Sales", "Recent 180D Sales", "Listing URL"],
+    25
+  );
+}
+
+function answerSheetQuestion(question) {
+  const q = normalizeQuestion(question);
+  if (!q.trim()) {
+    return result("Ask the sheet", "Type a question about listings, shops, categories, sales, coverage, blanks, or opportunities.");
+  }
+  if (/variation|style|option|personalization|customer ordered|ordered/.test(q)) return answerVariationQuestion(question);
+  if (/mymaravia|my shop|my listings|coverage|gap|missing|need.*build|build queue/.test(q)) return answerMyMaraviaQuestion(question);
+  if (/opportun|launch|priority|next|should.*build|best bet/.test(q)) return answerOpportunityQuestion(question);
+  if (/blank|generic|source|supplier|local stock|buy blank/.test(q)) return answerSourceQuestion(question);
+  if (/trend|moving|movement|momentum|rising|declin|dropping|falling/.test(q)) return answerTrendQuestion(question);
+  if (/review|rating|stars/.test(q)) return answerReviewQuestion(question);
+  if (/shop|seller|competitor/.test(q)) return answerShopQuestion(question);
+  if (/categor|substrate|rollup|family|cluster/.test(q)) return answerCategoryQuestion(question);
+  return answerListingQuestion(question);
+}
+
+function renderAskResult(answer) {
+  const target = document.getElementById("sheet-answer");
+  const table = document.getElementById("sheet-answer-table");
+  if (!target || !table) return;
+  const bullets = (answer.bullets || []).filter(Boolean);
+  target.innerHTML = `
+    <h3>${escapeHtml(answer.title)}</h3>
+    <p>${escapeHtml(answer.summary)}</p>
+    ${bullets.length ? `<ul>${bullets.map(item => `<li>${escapeHtml(item)}</li>`).join("")}</ul>` : ""}
+  `;
+  if (answer.rows && answer.rows.length) {
+    renderTable("sheet-answer-table", answer.rows, answer.columns, answer.limit || 25);
+  } else {
+    table.innerHTML = "";
+  }
+}
+
+function submitSheetQuestion() {
+  const input = document.getElementById("sheet-question");
+  const question = input?.value || "";
+  renderAskResult(answerSheetQuestion(question));
+}
+
 function renderRaw() {
   const select = document.getElementById("raw-select");
   const key = select.value;
@@ -667,6 +1169,52 @@ function initProductionFilter() {
     });
 }
 
+function initComparisonFilters() {
+  const categorySelect = document.getElementById("comparison-category-filter");
+  const productionSelect = document.getElementById("comparison-production-filter");
+  const categoryCounts = new Map();
+  const productionCounts = new Map();
+
+  getListingRows().forEach(row => {
+    const category = comparisonCategory(row);
+    categoryCounts.set(category, (categoryCounts.get(category) || 0) + 1);
+    const production = row["Production Tag"] || "Unclassified";
+    productionCounts.set(production, (productionCounts.get(production) || 0) + 1);
+  });
+
+  if (categorySelect && categorySelect.dataset.ready !== "true") {
+    [...categoryCounts.entries()]
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+      .forEach(([category, count]) => {
+        const option = document.createElement("option");
+        option.value = category;
+        option.textContent = `${category} (${count})`;
+        categorySelect.appendChild(option);
+      });
+    categorySelect.dataset.ready = "true";
+  }
+
+  if (productionSelect && productionSelect.dataset.ready !== "true") {
+    [...productionCounts.entries()]
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+      .forEach(([tag, count]) => {
+        const option = document.createElement("option");
+        option.value = tag;
+        option.textContent = `${tag} (${count})`;
+        productionSelect.appendChild(option);
+      });
+    productionSelect.dataset.ready = "true";
+  }
+
+  ["comparison-category-filter", "comparison-production-filter", "comparison-sort", "comparison-search"].forEach(id => {
+    const element = document.getElementById(id);
+    if (!element || element.dataset.bound === "true") return;
+    element.addEventListener("input", renderCategoryWorkspace);
+    element.addEventListener("change", renderCategoryWorkspace);
+    element.dataset.bound = "true";
+  });
+}
+
 function initMyMaraviaFilters() {
   const categorySelect = document.getElementById("my-category-filter");
   if (!categorySelect) return;
@@ -693,6 +1241,32 @@ function initMyMaraviaFilters() {
   });
 }
 
+function initAsk() {
+  const input = document.getElementById("sheet-question");
+  const submit = document.getElementById("sheet-question-submit");
+  if (submit && submit.dataset.bound !== "true") {
+    submit.addEventListener("click", submitSheetQuestion);
+    submit.dataset.bound = "true";
+  }
+  if (input && input.dataset.bound !== "true") {
+    input.addEventListener("keydown", event => {
+      if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
+        submitSheetQuestion();
+      }
+    });
+    input.dataset.bound = "true";
+  }
+  document.querySelectorAll(".prompt-button").forEach(button => {
+    if (button.dataset.bound === "true") return;
+    button.addEventListener("click", () => {
+      const question = button.dataset.question || "";
+      if (input) input.value = question;
+      renderAskResult(answerSheetQuestion(question));
+    });
+    button.dataset.bound = "true";
+  });
+}
+
 function renderAll() {
   document.getElementById("snapshot-note").innerHTML =
     `${escapeHtml(dashboard.meta.source)} Generated ${escapeHtml(dashboard.meta.generatedAt)} from cache modified ${escapeHtml(dashboard.meta.sourceWorkbookModifiedAt)}.`;
@@ -707,14 +1281,15 @@ function renderAll() {
   renderImportChart();
   renderMarketTrend();
   renderTopShops();
-  renderCategoryMetrics();
-  renderLineByGroup("category-shop-chart", dashboard.comparison.shopCategoryChart || [], "Date", "Daily Sales", "Shop");
-  renderTrendTable("category-comparison", dashboard.comparison.shopCategoryComparison, ["Shop", "Trend", "Category Est. Daily Sales", "Category Est. 30D Sales", "Matching Listings", "Matched Product Categories", "Recent Avg Daily Sales", "Prior Avg Daily Sales", "Delta", "Delta %", "Latest Complete Date", "Latest Complete Daily Sales", "Days Used"], 100);
+  initComparisonFilters();
+  renderCategoryWorkspace();
   renderBar("demand-intent-chart", dashboard.comparison.demandIntentRollup || [], "Total Est. 30D Sales", "Demand Intent Cluster", 20, "#0f766e");
   renderTable("demand-intent-table", dashboard.comparison.demandIntentRollup, ["Demand Intent Cluster", "Total Est. 30D Sales", "Listing Count", "Shop Count", "Top Substrates"], 40);
   renderLineByGroup("shop-trend-chart", dashboard.comparison.shopTrendChart || [], "Date", "Daily Sales", "Shop");
   renderTrendTable("shop-trends", dashboard.comparison.shopTrends, ["Shop", "Trend", "Recent Avg Daily Sales", "Prior Avg Daily Sales", "Delta", "Delta %", "Latest Complete Date", "Latest Complete Daily Sales", "Total Daily Sales In Range", "Days Used"], 70);
   renderListings();
+  renderAskScope();
+  initAsk();
   renderBar("category-rollup-chart", dashboard.listing.categoryRollup || [], "Total Est. Daily Sales", "Product Substrate Category", 15, "#1f5fbf");
   renderTable("category-rollup-table", dashboard.listing.categoryRollup, ["Product Substrate Category", "Total Est. Daily Sales", "Total Est. 30D Sales", "Listing Count", "Shop Count"], 40);
   renderBar("demand-summary-chart", dashboard.listing.demandSummary || [], "Total Est. Daily Sales", "Demand Intent Cluster", 20, "#0f766e");

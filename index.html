@@ -22,6 +22,7 @@
       <button class="tab" data-view="mymaravia">MyMaravia</button>
       <button class="tab" data-view="overview">Overview</button>
       <button class="tab" data-view="comparison">Comparison</button>
+      <button class="tab" data-view="ask">Ask</button>
       <button class="tab" data-view="listings">Listings</button>
       <button class="tab" data-view="operations">Operations</button>
       <button class="tab" data-view="raw">Raw Preview</button>
@@ -160,10 +161,26 @@
 
       <section id="comparison" class="view">
         <section class="panel">
-          <div class="panel-head">
+          <div class="panel-head with-control">
             <div>
               <h2>Product Category Workspace</h2>
-              <p class="subtle">Precomputed with the default search: <strong id="category-query"></strong></p>
+              <p id="category-query" class="subtle"></p>
+            </div>
+            <div class="listing-controls">
+              <select id="comparison-category-filter" aria-label="Comparison product category filter">
+                <option value="">All product categories</option>
+              </select>
+              <select id="comparison-production-filter" aria-label="Comparison production method filter">
+                <option value="">All production methods</option>
+              </select>
+              <select id="comparison-sort" aria-label="Comparison sort">
+                <option value="">Default order</option>
+                <option value="daily-desc">Est. daily sales: high to low</option>
+                <option value="daily-asc">Est. daily sales: low to high</option>
+                <option value="thirty-desc">Est. 30-day sales: high to low</option>
+                <option value="thirty-asc">Est. 30-day sales: low to high</option>
+              </select>
+              <input id="comparison-search" type="search" placeholder="Filter comparison">
             </div>
           </div>
           <div id="category-metrics" class="metric-grid compact"></div>
@@ -187,6 +204,33 @@
             <div id="shop-trends"></div>
           </section>
         </div>
+      </section>
+
+      <section id="ask" class="view">
+        <section class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>Ask The Sheet</h2>
+              <p id="ask-scope" class="subtle"></p>
+            </div>
+          </div>
+          <div class="ask-layout">
+            <div class="ask-entry">
+              <textarea id="sheet-question" rows="4" placeholder="Ask about listings, shops, categories, daily sales, 30-day sales, MyMaravia coverage, blanks, or opportunities"></textarea>
+              <div class="ask-actions">
+                <button id="sheet-question-submit" class="primary-button" type="button">Ask</button>
+                <button class="prompt-button" type="button" data-question="What are the highest daily sales product categories?">Top categories</button>
+                <button class="prompt-button" type="button" data-question="Where is MyMaravia missing the most coverage?">Coverage gaps</button>
+                <button class="prompt-button" type="button" data-question="What are the best LED desk nameplate listings by 30-day sales?">LED nameplates</button>
+                <button class="prompt-button" type="button" data-question="Which shops are moving up?">Shop movement</button>
+              </div>
+            </div>
+            <div id="sheet-answer" class="ask-answer">
+              <div class="empty">Ask a question to analyze the current snapshot.</div>
+            </div>
+          </div>
+          <div id="sheet-answer-table"></div>
+        </section>
       </section>
 
       <section id="listings" class="view">
@@ -264,6 +308,6 @@
       </section>
     </main>
   </div>
-  <script src="assets/app.js?v=all-source-links-20260529"></script>
+  <script src="assets/app.js?v=ask-sheet-20260529"></script>
 </body>
 </html>
