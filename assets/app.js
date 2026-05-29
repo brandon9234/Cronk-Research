@@ -1,4 +1,5 @@
 let dashboard;
+const DATA_ASSET_VERSION = "mymaravia-led-20260529";
 
 const numericColumns = new Set([
   "7D Sales", "30D Sales", "Avg Daily Sales (30D)", "Active Listings", "Daily Sales",
@@ -573,7 +574,7 @@ function renderAll() {
 
 async function boot() {
   setupTabs();
-  const response = await fetch("assets/data.json");
+  const response = await fetch(`assets/data.json?v=${DATA_ASSET_VERSION}`);
   dashboard = await response.json();
   renderAll();
   document.getElementById("top-shop-metric").addEventListener("change", renderTopShops);
