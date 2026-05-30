@@ -1,7 +1,7 @@
 let dashboard;
 let selectedCompany = "";
 let selectedCompanyProduction = "";
-const DATA_ASSET_VERSION = "review-ledger-sync-20260530";
+const DATA_ASSET_VERSION = "mymaravia-refresh-20260530-1116";
 
 const numericColumns = new Set([
   "7D Sales", "30D Sales", "Avg Daily Sales (30D)", "Active Listings", "Daily Sales",
