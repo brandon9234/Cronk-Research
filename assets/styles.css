@@ -573,12 +573,18 @@ input[type="search"] {
   font-size: 15px;
 }
 
+.buyer-moment-decision-grid > * {
+  min-width: 0;
+}
+
 .buyer-moment-decision-read {
   display: grid;
   gap: 8px;
+  min-width: 0;
   padding: 12px;
   border-left: 4px solid #0f766e;
   background: #f7faf9;
+  overflow-wrap: anywhere;
 }
 
 .buyer-moment-decision-read strong {
