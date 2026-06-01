@@ -560,6 +560,47 @@ input[type="search"] {
   font-weight: 700;
 }
 
+.buyer-moment-decision-grid {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.85fr) minmax(0, 1.15fr);
+  gap: 14px;
+  align-items: start;
+  margin: 12px 0 16px;
+}
+
+.buyer-moment-decision-grid h3 {
+  margin: 0 0 8px;
+  font-size: 15px;
+}
+
+.buyer-moment-decision-read {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border-left: 4px solid #0f766e;
+  background: #f7faf9;
+}
+
+.buyer-moment-decision-read strong {
+  color: var(--text);
+}
+
+.buyer-moment-decision-points {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.buyer-moment-decision-points li {
+  padding-left: 11px;
+  border-left: 2px solid #d6e4df;
+}
+
 .buyer-moment-calendar {
   margin: 12px 0;
   padding: 10px;
@@ -797,6 +838,9 @@ textarea {
   }
   .buyer-moment-filter-controls label {
     flex: 1 1 160px;
+  }
+  .buyer-moment-decision-grid {
+    grid-template-columns: 1fr;
   }
   .buyer-moment-months,
   .buyer-moment-timeline-shell {
