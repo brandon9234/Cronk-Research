@@ -7,7 +7,7 @@ let buyerMomentRowsCache = new Map();
 let buyerMomentSummariesCache = null;
 let customBuyerMomentRange = null;
 const CUSTOM_BUYER_MOMENT_ID = "custom-date-range";
-const DATA_ASSET_VERSION = "daily-before-weekly-20260601-1";
+const DATA_ASSET_VERSION = "graph-tags-cleanup-20260601-1";
 
 const numericColumns = new Set([
   "7D Sales", "30D Sales", "Avg Daily Sales (30D)", "Active Listings", "Daily Sales",
@@ -72,6 +72,7 @@ const thumbnailColumns = new Set(["Thumbnail", "Listing Thumbnail", "Market Thum
 const sourceLinkColumns = new Set(["Blank / Generic Sources"]);
 const companyColumns = new Set(["Shop", "Market Shop", "Top Shop"]);
 const badgeColumns = new Set(["Conquest Status", "Market State"]);
+const realTagColumns = new Set(["Tags", "Actual Tags", "My Actual Tags"]);
 
 const plotConfig = { responsive: true, displayModeBar: false };
 
@@ -163,6 +164,16 @@ function listingCycleLinkCell(row) {
   return `<button class="cycle-link${active}" type="button" data-cycle-key="${escapeHtml(key)}">Open graph</button>`;
 }
 
+function visibleColumnsForRows(rows, columns) {
+  const cols = [...(columns || Object.keys(rows[0] || {}))];
+  if (!cols.includes("Best Guess Tags")) return cols;
+  const visibleRealTagColumns = cols.filter(col => realTagColumns.has(col));
+  const hasVisibleRealTags = visibleRealTagColumns.some(col =>
+    rows.some(row => String(row[col] ?? "").trim())
+  );
+  return hasVisibleRealTags ? cols.filter(col => col !== "Best Guess Tags") : cols;
+}
+
 function renderTable(targetId, rows, columns = null, limit = null) {
   const target = document.getElementById(targetId);
   if (!target) return;
@@ -171,7 +182,7 @@ function renderTable(targetId, rows, columns = null, limit = null) {
     target.innerHTML = `<div class="empty">No rows available in this snapshot.</div>`;
     return;
   }
-  const cols = columns || Object.keys(data[0]);
+  const cols = visibleColumnsForRows(data, columns);
   const header = cols.map(col => {
     const cls = [
       wrappedColumns.has(col) ? "wrap" : "",
@@ -781,10 +792,14 @@ function renderListingCycle(cycleKey = selectedListingCycleKey) {
 function openListingCycle(cycleKey, options = {}) {
   if (!cycleKey) return;
   selectedListingCycleKey = String(cycleKey);
-  renderListingCycle(selectedListingCycleKey);
+  if (options.switchView !== false) {
+    activateView("listings");
+  }
   renderListings();
   if (options.scroll !== false) {
-    document.getElementById("listing-cycle-panel")?.scrollIntoView({ block: "start" });
+    requestAnimationFrame(() => {
+      document.getElementById("listing-cycle-panel")?.scrollIntoView({ block: "start" });
+    });
   }
 }
 
