@@ -12,7 +12,7 @@ let buyerMomentTopListingRowsCache = null;
 let buyerMomentListingCycleRowsCache = new Map();
 let customBuyerMomentRange = null;
 const CUSTOM_BUYER_MOMENT_ID = "custom-date-range";
-const DATA_ASSET_VERSION = "listing-thumbnail-fallback-20260601-1";
+const DATA_ASSET_VERSION = "sheet-quality-ask-moments-20260601-1";
 const BUYER_MOMENT_LANE_HEIGHT = 30;
 const BUYER_MOMENT_HIGH_OPPORTUNITY_SCORE = 68;
 const BUYER_MOMENT_FILTER_IDS = [
@@ -1123,7 +1123,13 @@ function getListingRows() {
     });
     byKey.set(key, merged);
   });
-  return Array.from(byKey.values()).map(withDailySales);
+  return Array.from(byKey.values()).map(row => {
+    const normalized = { ...row };
+    if (!String(normalized["Product Substrate Category"] || "").trim()) {
+      normalized["Product Substrate Category"] = normalized["Product Category"] || "Uncategorized";
+    }
+    return withDailySales(normalized);
+  });
 }
 
 function listingCycleMap() {
@@ -4141,12 +4147,59 @@ function answerVariationQuestion() {
   );
 }
 
+function answerBuyerMomentQuestion(question) {
+  const scoring = dashboard.buyerMoments?.opportunityScoring || {};
+  const threshold = numericCell(scoring, "highOpportunityThreshold") || BUYER_MOMENT_HIGH_OPPORTUNITY_SCORE;
+  const q = normalizeQuestion(question);
+  const tokens = askTokens(question).filter(token => ![
+    "buyer", "moment", "moments", "opportunity", "opportunities", "high", "best",
+    "build", "gift", "micro", "local", "review", "signal"
+  ].includes(token));
+  let rows = filterRowsByTokens(buyerMomentCatalog(), tokens);
+  if (/high|opportun|best|build|next/.test(q)) {
+    rows = rows.filter(row =>
+      numericCell(row, "Buyer Moment Opportunity Score") >= threshold ||
+      numericCell(row, "High Opportunity Listings") > 0
+    );
+  }
+  if (/local|review|signal/.test(q)) {
+    rows = rows.filter(row => numericCell(row, "Local Review Signal Listings") > 0);
+  }
+  rows = rows.sort((a, b) =>
+    numericCell(b, "Buyer Moment Opportunity Score") - numericCell(a, "Buyer Moment Opportunity Score") ||
+    numericCell(b, "High Opportunity Listings") - numericCell(a, "High Opportunity Listings") ||
+    numericCell(b, "Local Review Signal Listings") - numericCell(a, "Local Review Signal Listings") ||
+    String(a["Buyer Moment"]).localeCompare(String(b["Buyer Moment"]))
+  );
+  const leader = rows[0];
+  if (!leader) {
+    return result("Buyer moment answer", "No buyer-moment opportunity rows matched that question.");
+  }
+  return result(
+    "Buyer moment answer",
+    `${leader["Buyer Moment"]} is the strongest matching buyer moment at ${fmt(leader["Buyer Moment Opportunity Score"], "Buyer Moment Opportunity Score")} opportunity score, with ${fmt(leader["High Opportunity Listings"], "Listing Count")} high-opportunity listings.`,
+    [
+      `${fmt(scoring.listingMatches || 0, "Listing Count")} buyer-moment listing matches are scored; ${fmt(scoring.highOpportunityListingMatches || 0, "Listing Count")} clear the ${fmt(threshold, "Buyer Moment Opportunity Score")} high-opportunity threshold.`,
+      `${fmt(scoring.listingMatchesWithLocalReviewSignal || 0, "Listing Count")} scored rows have local review signal.`,
+      scoring.source || "Score blends rank, review velocity, engagement, shop strength, moment fit, category fit, and MyMaravia build fit."
+    ],
+    rows,
+    [
+      "Buyer Moment", "Parent Buyer Moment", "Source Run", "Moment Timeframe",
+      "Buyer Moment Opportunity Score", "Opportunity Band", "High Opportunity Listings",
+      "Local Review Signal Listings", "Top Opportunity Shop", "Top Opportunity Listing", "Buyer Moment Tags"
+    ],
+    40
+  );
+}
+
 function answerSheetQuestion(question) {
   const q = normalizeQuestion(question);
   if (!q.trim()) {
-    return result("Ask the sheet", "Type a question about listings, shops, categories, sales, coverage, blanks, or opportunities.");
+    return result("Ask the sheet", "Type a question about listings, shops, categories, buyer moments, sales, coverage, blanks, or opportunities.");
   }
   if (/variation|style|option|personalization|customer ordered|ordered/.test(q)) return answerVariationQuestion(question);
+  if (/buyer\s*moment|gift moment|micro moment|moment opportun|seasonal moment|high-opportunity/.test(q)) return answerBuyerMomentQuestion(question);
   if (/mymaravia|my shop|my listings|coverage|gap|missing|need.*build|build queue/.test(q)) return answerMyMaraviaQuestion(question);
   if (/opportun|launch|priority|next|should.*build|best bet/.test(q)) return answerOpportunityQuestion(question);
   if (/blank|generic|source|supplier|local stock|buy blank/.test(q)) return answerSourceQuestion(question);
