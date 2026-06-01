@@ -26,6 +26,7 @@
       <button class="tab" data-view="company">Company</button>
       <button class="tab" data-view="buyer-moments">Buyer Moments</button>
       <button class="tab" data-view="listings">Listings</button>
+      <button class="tab" data-view="ask">Ask</button>
       <button class="tab" data-view="operations">Operations</button>
       <button class="tab" data-view="raw">Raw Preview</button>
     </nav>
@@ -502,6 +503,34 @@
         </section>
       </section>
 
+      <section id="ask" class="view">
+        <section class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>Ask The Sheet</h2>
+              <p id="ask-scope" class="subtle"></p>
+            </div>
+          </div>
+          <div class="ask-layout">
+            <div class="ask-entry">
+              <textarea id="sheet-question" placeholder="Ask about listings, shops, categories, gaps, reviews, or opportunities"></textarea>
+              <div class="ask-actions">
+                <button id="sheet-question-submit" class="primary-button" type="button">Answer</button>
+                <button class="prompt-button" type="button" data-question="What should I build next for MyMaravia?">Build gaps</button>
+                <button class="prompt-button" type="button" data-question="Which category has the highest daily sales?">Top category</button>
+                <button class="prompt-button" type="button" data-question="Which shops are moving up?">Moving up</button>
+                <button class="prompt-button" type="button" data-question="How many reviews are being used?">Review corpus</button>
+              </div>
+            </div>
+            <div id="sheet-answer" class="ask-answer">
+              <h3>Ready</h3>
+              <p>Ask a focused market question and the answer will use the current dashboard snapshot.</p>
+            </div>
+          </div>
+          <div id="sheet-answer-table"></div>
+        </section>
+      </section>
+
       <section id="raw" class="view">
         <section class="panel">
           <div class="panel-head with-control">
@@ -513,6 +542,6 @@
       </section>
     </main>
   </div>
-  <script src="assets/app.js?v=buyer-moment-timeline-20260601-1"></script>
+  <script src="assets/app.js?v=ask-aliases-20260601-1"></script>
 </body>
 </html>

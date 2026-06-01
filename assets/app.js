@@ -9,7 +9,7 @@ let buyerMomentRowsCache = new Map();
 let buyerMomentSummariesCache = null;
 let customBuyerMomentRange = null;
 const CUSTOM_BUYER_MOMENT_ID = "custom-date-range";
-const DATA_ASSET_VERSION = "buyer-moment-timeline-20260601-1";
+const DATA_ASSET_VERSION = "ask-aliases-20260601-1";
 
 const numericColumns = new Set([
   "7D Sales", "30D Sales", "Avg Daily Sales (30D)", "Active Listings", "Daily Sales",
@@ -3525,7 +3525,7 @@ function initAsk() {
     });
     input.dataset.bound = "true";
   }
-  document.querySelectorAll(".prompt-button").forEach(button => {
+  document.querySelectorAll(".ask-actions .prompt-button[data-question]").forEach(button => {
     if (button.dataset.bound === "true") return;
     button.addEventListener("click", () => {
       const question = button.dataset.question || "";
