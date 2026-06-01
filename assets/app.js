@@ -7,9 +7,32 @@ let selectedImportBuyerMomentId = "";
 let selectedMarketSegment = "";
 let buyerMomentRowsCache = new Map();
 let buyerMomentSummariesCache = null;
+let buyerMomentCatalogCache = null;
+let buyerMomentTopListingRowsCache = null;
 let customBuyerMomentRange = null;
 const CUSTOM_BUYER_MOMENT_ID = "custom-date-range";
-const DATA_ASSET_VERSION = "ask-aliases-20260601-1";
+const DATA_ASSET_VERSION = "buyer-review-final-20260601-1";
+const BUYER_MOMENT_LANE_HEIGHT = 30;
+const LISTING_RENDER_LIMIT = 500;
+const REVIEW_LISTING_PREVIEW_CHUNKS = 1;
+const REVIEW_LISTING_RESULT_LIMIT = 5000;
+const REVIEW_LISTING_SEARCH_MIN_CHARS = 2;
+let listingRenderTimer = null;
+const reviewListingState = {
+  rowChunks: new Map(),
+  cycleChunks: new Map(),
+  rowByCycleKey: new Map(),
+  previewRows: [],
+  previewLoaded: false,
+  previewLoading: false,
+  searchKey: "",
+  searchRows: [],
+  searchMatches: 0,
+  searchScanned: 0,
+  searchComplete: false,
+  searchLoading: false,
+  searchToken: 0
+};
 
 const numericColumns = new Set([
   "7D Sales", "30D Sales", "Avg Daily Sales (30D)", "Active Listings", "Daily Sales",
@@ -42,8 +65,10 @@ const numericColumns = new Set([
   "Peak Daily Sales", "Peak Weekly Sales", "Cycle Weeks Covered",
   "Moment Estimated Sales", "Moment Avg Daily Sales", "Moment Avg Weekly Sales", "Moment Review Count",
   "Moment Weeks", "Moment Weeks With Demand", "Matching Listings", "Listings With Velocity",
-  "Top Listing Sales"
-  , "Draft Listings", "My Daily Sales", "Current Market Daily Sales", "Current Market Share %",
+  "Top Listing Sales", "API Total Matches Sum", "Selected Listing Rows", "Unique Top Listing IDs",
+  "Unique Top Shop IDs", "API Rank", "API Matches", "Shop Sold Count", "Shop Review Count",
+  "Shop Avg Rating", "Favorites", "Local Review Rows", "Local 365D Reviews", "Local 90D Reviews",
+  "Draft Listings", "My Daily Sales", "Current Market Daily Sales", "Current Market Share %",
   "Fix Conversion", "Saturated / Niche Down", "Active Listings", "My Category Daily Sales",
   "Market Daily Sales", "My Market Share %", "Top Competitor Daily Sales", "Leader Gap Daily",
   "View-Favorite Rate %", "Sales / 100 Views", "Market Share %", "Market Listings",
@@ -423,6 +448,211 @@ function listingSearchText(row) {
   return Object.values(row).join(" ").toLowerCase();
 }
 
+function reviewListingManifest() {
+  return dashboard?.listing?.reviewListingIndex || null;
+}
+
+function reviewListingTotal() {
+  return Number(reviewListingManifest()?.reviewListingsExported || 0);
+}
+
+function reviewListingAssetUrl(file) {
+  return `assets/${file}?v=${DATA_ASSET_VERSION}`;
+}
+
+function reviewListingDictionaryValue(manifest, column, value) {
+  if (value === "" || value === null || value === undefined) return "";
+  manifest._dictionaryColumnSet ||= new Set(manifest.dictionaryColumns || []);
+  if (!manifest._dictionaryColumnSet.has(column)) return value;
+  const values = manifest.dictionaries?.[column] || [];
+  return values[Number(value)] ?? "";
+}
+
+function fullReviewListingUrl(value, manifest) {
+  const text = String(value || "").trim();
+  if (!text) return "";
+  if (/^https?:\/\//i.test(text)) return text;
+  if (text.startsWith("/listing/")) return `${manifest.urlPrefix || "https://www.etsy.com"}${text}`;
+  return text;
+}
+
+function listingIdFromUrl(value) {
+  const match = String(value || "").match(/\/listing\/(\d+)/i);
+  return match ? match[1] : "";
+}
+
+function decodeReviewListingRows(payload, chunkIndex, options = {}) {
+  const manifest = reviewListingManifest();
+  if (!manifest) return [];
+  const columns = payload.columns || manifest.rowColumns || [];
+  const labels = manifest.columnLabels || {};
+  const rows = (payload.rows || []).map((values, rowIndex) => {
+    const row = {};
+    columns.forEach((column, index) => {
+      let value = reviewListingDictionaryValue(manifest, column, values[index]);
+      if (column === "p") {
+        row["Listing URL"] = fullReviewListingUrl(value, manifest);
+        return;
+      }
+      if (column === "c") {
+        row["Product Category"] = value;
+        row["Product Substrate Category"] = value;
+        return;
+      }
+      const label = labels[column];
+      if (label) row[label] = value;
+    });
+    const listingId = listingIdFromUrl(row["Listing URL"]) || row["Overall Rank"] || rowIndex;
+    row["Weekly Sales Graph"] = "Open graph";
+    row["Weekly Cycle Key"] = `review:${chunkIndex}:${rowIndex}:${listingId}`;
+    row["Evidence Confidence"] = row["Evidence Confidence"] || "Review-derived estimate";
+    const enriched = withDailySales(row);
+    if (options.trackRows) {
+      reviewListingState.rowByCycleKey.set(enriched["Weekly Cycle Key"], enriched);
+    }
+    return enriched;
+  });
+  return rows;
+}
+
+async function fetchReviewListingRows(chunkIndex, options = {}) {
+  const manifest = reviewListingManifest();
+  if (!manifest?.rowFiles?.[chunkIndex]) return [];
+  if (options.cacheRows && reviewListingState.rowChunks.has(chunkIndex)) {
+    return reviewListingState.rowChunks.get(chunkIndex);
+  }
+  const response = await fetch(reviewListingAssetUrl(manifest.rowFiles[chunkIndex]));
+  if (!response.ok) throw new Error(`Review listing chunk ${chunkIndex} failed to load`);
+  const rows = decodeReviewListingRows(await response.json(), chunkIndex, options);
+  if (options.cacheRows) {
+    reviewListingState.rowChunks.set(chunkIndex, rows);
+  }
+  return rows;
+}
+
+function reviewListingFilterKey(query, production) {
+  return `${query || ""}\n${production || ""}`;
+}
+
+function shouldSearchReviewListings(query, production) {
+  return Boolean(reviewListingManifest() && (production || query.length >= REVIEW_LISTING_SEARCH_MIN_CHARS));
+}
+
+function rowMatchesListingFilters(row, query, production) {
+  if (production && row["Production Tag"] !== production) return false;
+  if (query && !listingSearchText(row).includes(query)) return false;
+  return true;
+}
+
+function ensureReviewListingPreview() {
+  const manifest = reviewListingManifest();
+  if (!manifest || reviewListingState.previewLoaded || reviewListingState.previewLoading) return;
+  reviewListingState.previewLoading = true;
+  (async () => {
+    try {
+      const chunkCount = Math.min(REVIEW_LISTING_PREVIEW_CHUNKS, manifest.rowFiles?.length || 0);
+      const rows = [];
+      for (let index = 0; index < chunkCount; index += 1) {
+        rows.push(...await fetchReviewListingRows(index, { cacheRows: true, trackRows: true }));
+      }
+      reviewListingState.previewRows = rows;
+      reviewListingState.previewLoaded = true;
+    } catch (error) {
+      console.warn(error);
+    } finally {
+      reviewListingState.previewLoading = false;
+      if (document.getElementById("listings")?.classList.contains("active")) renderListings();
+    }
+  })();
+}
+
+function startReviewListingSearch(query, production) {
+  const manifest = reviewListingManifest();
+  if (!manifest) return;
+  const key = reviewListingFilterKey(query, production);
+  if (reviewListingState.searchKey === key && (reviewListingState.searchLoading || reviewListingState.searchComplete)) return;
+  const token = reviewListingState.searchToken + 1;
+  reviewListingState.searchToken = token;
+  reviewListingState.searchKey = key;
+  reviewListingState.searchRows = [];
+  reviewListingState.searchMatches = 0;
+  reviewListingState.searchScanned = 0;
+  reviewListingState.searchComplete = false;
+  reviewListingState.searchLoading = true;
+  (async () => {
+    try {
+      for (let index = 0; index < (manifest.rowFiles?.length || 0); index += 1) {
+        if (reviewListingState.searchToken !== token) return;
+        const cached = reviewListingState.rowChunks.has(index);
+        const rows = cached
+          ? reviewListingState.rowChunks.get(index)
+          : await fetchReviewListingRows(index, { cacheRows: false, trackRows: false });
+        reviewListingState.searchScanned += rows.length;
+        rows.forEach(row => {
+          if (!rowMatchesListingFilters(row, query, production)) return;
+          reviewListingState.searchMatches += 1;
+          if (reviewListingState.searchRows.length < REVIEW_LISTING_RESULT_LIMIT) {
+            reviewListingState.searchRows.push(row);
+            reviewListingState.rowByCycleKey.set(row["Weekly Cycle Key"], row);
+          }
+        });
+        if (index % 2 === 1 && document.getElementById("listings")?.classList.contains("active")) {
+          renderListings();
+          await new Promise(resolve => setTimeout(resolve, 0));
+        }
+      }
+      reviewListingState.searchComplete = true;
+    } catch (error) {
+      console.warn(error);
+    } finally {
+      if (reviewListingState.searchToken === token) {
+        reviewListingState.searchLoading = false;
+        if (document.getElementById("listings")?.classList.contains("active")) renderListings();
+      }
+    }
+  })();
+}
+
+function reviewListingRowsForListings(query, production) {
+  const manifest = reviewListingManifest();
+  if (!manifest) return [];
+  if (shouldSearchReviewListings(query, production)) {
+    startReviewListingSearch(query, production);
+    const key = reviewListingFilterKey(query, production);
+    return reviewListingState.searchKey === key ? reviewListingState.searchRows : [];
+  }
+  ensureReviewListingPreview();
+  if (!query) return reviewListingState.previewRows;
+  return reviewListingState.previewRows.filter(row => rowMatchesListingFilters(row, query, production));
+}
+
+function reviewListingStatusText(query, production) {
+  const manifest = reviewListingManifest();
+  if (!manifest) return "";
+  const total = fmt(reviewListingTotal(), "Listing Count");
+  if (shouldSearchReviewListings(query, production)) {
+    const key = reviewListingFilterKey(query, production);
+    if (reviewListingState.searchKey !== key) return `Review index queued across ${total} listings.`;
+    const matches = fmt(reviewListingState.searchMatches, "Listing Count");
+    if (reviewListingState.searchComplete) {
+      const capped = reviewListingState.searchMatches > reviewListingState.searchRows.length
+        ? `; first ${fmt(reviewListingState.searchRows.length, "Listing Count")} loaded`
+        : "";
+      return `Review index searched ${total} listings; ${matches} matches${capped}.`;
+    }
+    return `Searching review index: ${fmt(reviewListingState.searchScanned, "Listing Count")} of ${total} scanned, ${matches} matches so far.`;
+  }
+  if (reviewListingState.previewLoaded) {
+    return `Review index preview loaded from ${total} review-sourced listings.`;
+  }
+  return `Review index available with ${total} review-sourced listings; loading preview.`;
+}
+
+function scheduleRenderListings() {
+  window.clearTimeout(listingRenderTimer);
+  listingRenderTimer = window.setTimeout(renderListings, 160);
+}
+
 function comparisonCategory(row) {
   return String(row["Product Substrate Category"] || row["Product Category"] || "Uncategorized");
 }
@@ -779,6 +1009,96 @@ function fullListingCycleRows(cycle) {
   return rows;
 }
 
+function parseReviewListingCycleKey(cycleKey) {
+  const match = String(cycleKey || "").match(/^review:(\d+):(\d+):/);
+  if (!match) return null;
+  return { chunkIndex: Number(match[1]), rowIndex: Number(match[2]) };
+}
+
+function reviewListingCycleWeeks(encoded, manifest, row) {
+  const counts = new Map(
+    String(encoded || "")
+      .split(";")
+      .filter(Boolean)
+      .map(item => {
+        const [index, count] = item.split(":");
+        return [Number(index), Number(count || 0)];
+      })
+  );
+  const start = new Date(`${manifest.weekStart}T00:00:00Z`);
+  const weeksBack = Number(manifest.weeksBack || 52);
+  const salesPerReview = numericCell(row, "Sales Per Review Used") || Number(manifest.fallbackSalesPerReview || 0);
+  const rows = [];
+  for (let index = 0; index < weeksBack; index += 1) {
+    const cursor = new Date(start);
+    cursor.setUTCDate(start.getUTCDate() + index * 7);
+    const reviewCount = counts.get(index) || 0;
+    rows.push(withDailySales({
+      "Week Start": cursor.toISOString().slice(0, 10),
+      "Review Count": reviewCount,
+      "Estimated Weekly Sales": roundOne(reviewCount * salesPerReview),
+      "Sales Per Review Used": salesPerReview,
+      "Trend Source": row["Trend Source"] || "Review listing sidecar",
+      "Trend Confidence": row["Cycle Confidence"] || row["Evidence Confidence"] || "Review-derived estimate"
+    }));
+  }
+  return rows;
+}
+
+async function loadReviewListingCycle(cycleKey) {
+  const manifest = reviewListingManifest();
+  const parsed = parseReviewListingCycleKey(cycleKey);
+  if (!manifest || !parsed || !manifest.cycleFiles?.[parsed.chunkIndex]) return null;
+  if (!reviewListingState.cycleChunks.has(parsed.chunkIndex)) {
+    const response = await fetch(reviewListingAssetUrl(manifest.cycleFiles[parsed.chunkIndex]));
+    if (!response.ok) throw new Error(`Review cycle chunk ${parsed.chunkIndex} failed to load`);
+    reviewListingState.cycleChunks.set(parsed.chunkIndex, await response.json());
+  }
+  const payload = reviewListingState.cycleChunks.get(parsed.chunkIndex);
+  const encoded = payload.rows?.[parsed.rowIndex]?.[0] || "";
+  const row = reviewListingState.rowByCycleKey.get(cycleKey) || {};
+  return { row, rows: reviewListingCycleWeeks(encoded, manifest, row) };
+}
+
+function renderReviewListingCycle(cycleKey, target, summary) {
+  target.innerHTML = `<div class="empty">Loading review-sourced listing cycle...</div>`;
+  summary.textContent = "";
+  document.getElementById("listing-cycle-table").innerHTML = "";
+  loadReviewListingCycle(cycleKey)
+    .then(result => {
+      if (selectedListingCycleKey !== cycleKey) return;
+      if (!result) {
+        target.innerHTML = `<div class="empty">No review-sourced listing cycle is available.</div>`;
+        return;
+      }
+      const { row, rows } = result;
+      const title = row["Product Title"] || "Review-sourced listing";
+      summary.textContent = `${row.Shop || "Unknown shop"} · ${fmt(row["Review Corpus Count"], "Review Corpus Count")} reviews · ${row["Cycle Confidence"] || row["Evidence Confidence"] || "Review-derived estimate"} · ${row["Trend Source"] || ""}`;
+      Plotly.newPlot("listing-cycle-chart", [{
+        type: "bar",
+        name: "Estimated daily sales",
+        x: rows.map(item => item["Week Start"]),
+        y: rows.map(item => item["Estimated Daily Sales"]),
+        customdata: rows.map(item => [item["Estimated Weekly Sales"], item["Review Count"], item["Sales Per Review Used"], item["Trend Confidence"]]),
+        marker: { color: "#1f5fbf" },
+        hovertemplate: "%{x}<br>Estimated daily sales: %{y:,.1f}<br>Estimated weekly sales: %{customdata[0]:,.1f}<br>Reviews: %{customdata[1]:,.0f}<br>Sales/review: %{customdata[2]:,.2f}<br>%{customdata[3]}<extra></extra>"
+      }], {
+        title: { text: title, font: { size: 14 } },
+        margin: { l: 58, r: 18, t: 38, b: 44 },
+        yaxis: { title: "Estimated daily sales" },
+        paper_bgcolor: "white",
+        plot_bgcolor: "white"
+      }, plotConfig);
+      renderTable("listing-cycle-table", [...rows].reverse(), ["Week Start", "Estimated Daily Sales", "Estimated Weekly Sales", "Review Count", "Sales Per Review Used", "Trend Confidence", "Trend Source"], 52);
+    })
+    .catch(error => {
+      console.warn(error);
+      if (selectedListingCycleKey === cycleKey) {
+        target.innerHTML = `<div class="empty">Review-sourced listing cycle failed to load.</div>`;
+      }
+    });
+}
+
 function renderListingCycle(cycleKey = selectedListingCycleKey) {
   const target = document.getElementById("listing-cycle-chart");
   const summary = document.getElementById("listing-cycle-summary");
@@ -786,6 +1106,10 @@ function renderListingCycle(cycleKey = selectedListingCycleKey) {
   const cycles = dashboard.reviewCorpus?.listingCycles || [];
   if (!cycleKey && cycles.length) cycleKey = String(cycles[0].key || "");
   selectedListingCycleKey = cycleKey || "";
+  if (String(selectedListingCycleKey).startsWith("review:")) {
+    renderReviewListingCycle(selectedListingCycleKey, target, summary);
+    return;
+  }
   const cycle = listingCycleMap().get(selectedListingCycleKey);
   if (!cycle) {
     target.innerHTML = `<div class="empty">No listing sales cycle is selected.</div>`;
@@ -1013,7 +1337,181 @@ function matchedBuyerMomentCues(row, definition) {
 }
 
 function buyerMomentDefinition(id) {
-  return buyerMomentDefinitions.find(definition => definition.id === id) || buyerMomentDefinitions[0];
+  return buyerMomentDefinitions.find(definition => definition.id === id) || null;
+}
+
+function normalizeBuyerMomentId(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/[’']/g, "")
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9-]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function buyerMomentSourceLabel(value) {
+  return String(value || "Catalog").trim() || "Catalog";
+}
+
+function buyerMomentCalendarFor(row) {
+  const sourceId = row.sourceId || row["Moment Source ID"] || row["Moment ID"] || row.id || "";
+  const calendar = row.calendar || {};
+  const fallback = importMomentWindow(sourceId) || {};
+  const windowStart = calendar.startMonthDay || calendar.windowStart || row.windowStart || row["Window Start"] || fallback.windowStart || "01-01";
+  const windowEnd = calendar.endMonthDay || calendar.windowEnd || row.windowEnd || row["Window End"] || fallback.windowEnd || "12-31";
+  return {
+    recurrence: calendar.recurrence || row.recurrence || "annual",
+    windowStart,
+    windowEnd
+  };
+}
+
+function buyerMomentKeywordsFor(row) {
+  const keywords = row.keywords || row.Keywords || row["Matched Cues"] || "";
+  if (Array.isArray(keywords)) return keywords.filter(Boolean).map(String);
+  if (typeof keywords === "number") return [];
+  return String(keywords || "")
+    .split(/[;,|]/)
+    .map(item => item.trim())
+    .filter(Boolean);
+}
+
+function standardBuyerMoment(row, fallback = {}) {
+  const sourceId = String(row.sourceId || row["Moment Source ID"] || row["Buyer Moment / Group"] || row["Moment ID"] || row.id || fallback.sourceId || "").trim();
+  const id = normalizeBuyerMomentId(row.id || row["Moment ID"] || sourceId || row.label || row["Buyer Moment"]);
+  if (!id) return null;
+  const calendar = buyerMomentCalendarFor({ ...row, sourceId });
+  const timeline = buyerMomentTimelineRange(calendar);
+  const label = row.label || row["Buyer Moment"] || importMomentLabel(sourceId || id);
+  const parentLabel = row.parentLabel || row["Parent Buyer Moment"] || row.parentBuyerMoment || "";
+  const keyword = row.keyword || row.Keyword || "";
+  const sourceRun = buyerMomentSourceLabel(row.sourceRun || row["Source Run"] || fallback.sourceRun);
+  const selectedRows = numericCell(row.stats || row, "Selected Listing Rows");
+  const apiMatches = numericCell(row.stats || row, "API Total Matches Sum");
+  const uniqueListings = numericCell(row.stats || row, "Unique Top Listing IDs");
+  const uniqueShops = numericCell(row.stats || row, "Unique Top Shop IDs");
+  return {
+    ...row,
+    "Moment ID": id,
+    "Moment Source ID": sourceId || id,
+    "Buyer Moment": label,
+    "Parent Buyer Moment": parentLabel,
+    "Keyword": keyword,
+    "Source Run": sourceRun,
+    "Moment Type": row.type || row["Moment Type"] || fallback.type || "",
+    "Moment Timeframe": formatDefinitionWindow(calendar),
+    "API Total Matches Sum": apiMatches,
+    "Selected Listing Rows": selectedRows,
+    "Unique Top Listing IDs": uniqueListings,
+    "Unique Top Shop IDs": uniqueShops,
+    "Matching Listings": selectedRows || uniqueListings || numericCell(row, "Matching Listings"),
+    "Matched Cues": buyerMomentKeywordsFor(row).slice(0, 12).join(", "),
+    "Timeline Start": timeline.start,
+    "Timeline End": timeline.end,
+    "Timeline Duration": timeline.end - timeline.start,
+    ...timeline,
+    _calendar: calendar,
+    _keywords: buyerMomentKeywordsFor(row),
+    _sourceRow: row
+  };
+}
+
+function buyerMomentCatalog() {
+  if (buyerMomentCatalogCache) return buyerMomentCatalogCache;
+  const byId = new Map();
+  const add = (row, fallback = {}) => {
+    const moment = standardBuyerMoment(row, fallback);
+    if (!moment) return;
+    const existing = byId.get(moment["Moment ID"]);
+    byId.set(moment["Moment ID"], existing ? { ...existing, ...moment } : moment);
+  };
+
+  const payloadMoments = dashboard.buyerMoments?.moments || [];
+  payloadMoments.forEach(row => add(row));
+  if (!payloadMoments.length) {
+    rawPreviewRows("buyer_moment_summary").forEach(row => add(row));
+  }
+
+  if (!byId.size) {
+    buyerMomentDefinitions.forEach(definition => add({
+      id: definition.id,
+      label: definition.label,
+      sourceRun: "Cue Match",
+      type: "cue",
+      calendar: {
+        recurrence: "annual",
+        startMonthDay: definition.windowStart,
+        endMonthDay: definition.windowEnd
+      },
+      keywords: definition.cues
+    }));
+  }
+
+  buyerMomentCatalogCache = [...byId.values()].sort(buyerMomentChronology);
+  return buyerMomentCatalogCache;
+}
+
+function buyerMomentTopListingRows() {
+  if (buyerMomentTopListingRowsCache) return buyerMomentTopListingRowsCache;
+  const rows = dashboard.buyerMoments?.listingMatches || rawPreviewRows("buyer_moment_top_listings");
+  buyerMomentTopListingRowsCache = (rows || []).map(row => {
+    const id = normalizeBuyerMomentId(row.momentId || row["Moment ID"] || row.keyword_group || row["Buyer Moment / Group"] || "");
+    const sourceId = row.sourceId || row["Moment Source ID"] || row.keyword_group || row["Buyer Moment / Group"] || id;
+    const title = row["Product Title"] || row.title || "";
+    const url = row["Listing URL"] || row.url || "";
+    const shop = row.Shop || row.shop_name || "";
+    const keyword = row.Keyword || row.keyword || "";
+    return {
+      ...row,
+      "Moment ID": id,
+      "Moment Source ID": sourceId,
+      "Buyer Moment": row["Buyer Moment"] || row.buyerMoment || keyword || importMomentLabel(sourceId),
+      "Parent Buyer Moment": row["Parent Buyer Moment"] || row.parentBuyerMoment || importMomentLabel(sourceId),
+      "Parent Moment ID": row.parentMomentId || "",
+      "Source Run": row.sourceRun || row["Source Run"] || "",
+      "Keyword": keyword,
+      "API Rank": row.rank || row.keyword_top10_rank || row.api_search_rank || "",
+      "API Matches": row.keyword_api_total_matches || row["API Total Matches Sum"] || "",
+      "Shop": shop,
+      "Shop URL": row.shop_url || "",
+      "Shop Sold Count": row.shop_transaction_sold_count || row["Shop Sold Count"] || "",
+      "Shop Review Count": row.shop_review_count || row["Shop Review Count"] || "",
+      "Shop Avg Rating": row.shop_review_average || row["Shop Avg Rating"] || "",
+      "Views": row.views || row.Views || "",
+      "Favorites": row.num_favorers || row.Favorites || "",
+      "Price": row.price || row.Price || "",
+      "Currency": row.currency || row.Currency || "",
+      "Personalizable": row.is_personalizable,
+      "Customizable": row.is_customizable,
+      "Has Variations": row.has_variations,
+      "Product Title": title,
+      "Listing URL": url,
+      "Tags": row.tags || row.Tags || "",
+      "Materials": row.materials || row.Materials || "",
+      "Local Review Rows": row.local_review_rows_total || "",
+      "Local 365D Reviews": row.local_review_rows_365 || "",
+      "Local 90D Reviews": row.local_review_rows_90 || "",
+      "Local Latest Review": row.local_latest_review || ""
+    };
+  }).filter(row => row["Moment ID"]);
+  return buyerMomentTopListingRowsCache;
+}
+
+function buyerMomentListingCounts() {
+  const counts = new Map();
+  buyerMomentTopListingRows().forEach(row => {
+    counts.set(row["Moment ID"], (counts.get(row["Moment ID"] || "") || 0) + 1);
+  });
+  return counts;
+}
+
+function listingLookupByUrl() {
+  const byUrl = new Map();
+  getListingRows().forEach(row => {
+    const url = String(row["Listing URL"] || "").trim();
+    if (url && !byUrl.has(url)) byUrl.set(url, row);
+  });
+  return byUrl;
 }
 
 function parseIsoDate(value) {
@@ -1242,7 +1740,53 @@ function buyerMomentRows(momentId) {
     return momentRowsForRange(range, "Custom Date Range", formatMomentWindow(range));
   }
   if (buyerMomentRowsCache.has(momentId)) return buyerMomentRowsCache.get(momentId);
+  const catalogRows = buyerMomentTopListingRows().filter(row => row["Moment ID"] === momentId);
+  if (catalogRows.length) {
+    const lookup = listingLookupByUrl();
+    const summary = buyerMomentSummaries().find(row => row["Moment ID"] === momentId);
+    const range = summary?._calendar ? activeBuyerMomentWindow(summary._calendar) : null;
+    const cycles = listingCycleMap();
+    const rows = catalogRows.map(row => {
+      const linked = lookup.get(String(row["Listing URL"] || "").trim()) || {};
+      const cycleKey = String(linked["Weekly Cycle Key"] || row["Weekly Cycle Key"] || "");
+      const cycle = cycles.get(cycleKey);
+      const weeks = cycle && range
+        ? fullListingCycleRows(cycle).filter(week => weekOverlapsMomentWindow(week["Week Start"], range))
+        : [];
+      const estimatedSales = weeks.reduce((sum, week) => sum + numericCell(week, "Estimated Weekly Sales"), 0);
+      const reviewCount = weeks.reduce((sum, week) => sum + numericCell(week, "Review Count"), 0);
+      const weeksWithDemand = weeks.filter(week => numericCell(week, "Estimated Weekly Sales") > 0).length;
+      const peak = weeks.reduce((winner, week) => {
+        if (!winner) return week;
+        const delta = numericCell(week, "Estimated Weekly Sales") - numericCell(winner, "Estimated Weekly Sales");
+        return delta > 0 ? week : winner;
+      }, null);
+      return withDailySales({
+        ...row,
+        ...linked,
+        ...row,
+        "Buyer Moment": summary?.["Buyer Moment"] || row["Buyer Moment"],
+        "Moment Timeframe": summary?.["Moment Timeframe"] || "",
+        "Moment Window": range ? formatMomentWindow(range) : summary?.["Moment Timeframe"] || "",
+        "Moment Estimated Sales": roundOne(estimatedSales),
+        "Moment Avg Weekly Sales": roundOne(weeks.length ? estimatedSales / weeks.length : 0),
+        "Moment Review Count": reviewCount,
+        "Moment Weeks": weeks.length,
+        "Moment Weeks With Demand": weeksWithDemand,
+        "Peak Moment Week": peak?.["Week Start"] || "",
+        "Moment Source": cycle?.source || row["Source Run"] || "Buyer moment API listing",
+        _momentWeeks: weeks,
+        _momentKey: listingRowKey({ ...linked, ...row })
+      });
+    });
+    buyerMomentRowsCache.set(momentId, rows);
+    return rows;
+  }
   const definition = buyerMomentDefinition(momentId);
+  if (!definition) {
+    buyerMomentRowsCache.set(momentId, []);
+    return [];
+  }
   const window = activeBuyerMomentWindow(definition);
   const cycles = listingCycleMap();
   const rows = getListingRows().map(row => {
@@ -1319,18 +1863,15 @@ function customBuyerMomentSummary() {
 
 function buyerMomentSummaries() {
   if (buyerMomentSummariesCache) return buyerMomentSummariesCache;
-  buyerMomentSummariesCache = buyerMomentDefinitions.map(definition => {
-    const rows = buyerMomentRows(definition.id);
-    if (!rows.length) return null;
-    const window = activeBuyerMomentWindow(definition);
-    const timeline = buyerMomentTimelineRange(definition);
-    return summarizeMomentRows(definition.id, definition.label, formatDefinitionWindow(definition), formatMomentWindow(window), rows, {
-      "Matched Cues": definition.cues.slice(0, 10).join(", "),
-      "Timeline Start": timeline.start,
-      "Timeline End": timeline.end,
-      "Timeline Duration": timeline.end - timeline.start
-    });
-  }).filter(Boolean).sort(buyerMomentChronology);
+  const counts = buyerMomentListingCounts();
+  buyerMomentSummariesCache = buyerMomentCatalog().map(moment => ({
+    ...moment,
+    "Matching Listings": counts.get(moment["Moment ID"]) || numericCell(moment, "Matching Listings"),
+    "Listings With Velocity": 0,
+    "Moment Estimated Sales": 0,
+    "Moment Avg Weekly Sales": 0,
+    "Moment Review Count": 0
+  })).sort(buyerMomentChronology);
   return buyerMomentSummariesCache;
 }
 
@@ -1350,6 +1891,7 @@ function sortBuyerMomentRows(rows, forcedSort = null) {
     if (ordered) return ordered;
     return numericCell(b, "Moment Estimated Sales") - numericCell(a, "Moment Estimated Sales") ||
       numericCell(a, "Overall Rank") - numericCell(b, "Overall Rank") ||
+      numericCell(a, "API Rank") - numericCell(b, "API Rank") ||
       String(a.Shop || "").localeCompare(String(b.Shop || "")) ||
       String(a["Product Title"] || "").localeCompare(String(b["Product Title"] || ""));
   });
@@ -1365,6 +1907,22 @@ function selectedBuyerMomentSummary(summaries) {
     selectedBuyerMomentId = summaries[0]["Moment ID"];
   }
   return summaries.find(row => row["Moment ID"] === selectedBuyerMomentId) || summaries[0];
+}
+
+function filteredBuyerMomentSummaries(summaries) {
+  const source = document.getElementById("buyer-moment-source-filter")?.value || "";
+  const query = (document.getElementById("buyer-moment-calendar-search")?.value || "").trim().toLowerCase();
+  return summaries.filter(row => {
+    if (source && row["Source Run"] !== source) return false;
+    if (!query) return true;
+    return [
+      row["Buyer Moment"],
+      row["Moment Source ID"],
+      row["Source Run"],
+      row["Moment Type"],
+      row["Matched Cues"]
+    ].join(" ").toLowerCase().includes(query);
+  });
 }
 
 function buyerMomentCategoryRows(rows) {
@@ -1403,11 +1961,7 @@ function buyerMomentCategoryRows(rows) {
 }
 
 function layoutBuyerMomentTimeline(summaries) {
-  const items = summaries.map(row => {
-    const definition = buyerMomentDefinition(row["Moment ID"]);
-    const range = buyerMomentTimelineRange(definition);
-    return { ...row, ...range };
-  }).sort((a, b) =>
+  const items = summaries.map(row => ({ ...row })).sort((a, b) =>
     numericCell(a, "Timeline Start") - numericCell(b, "Timeline Start") ||
     numericCell(b, "Timeline Duration") - numericCell(a, "Timeline Duration") ||
     String(a["Buyer Moment"]).localeCompare(String(b["Buyer Moment"]))
@@ -1433,7 +1987,7 @@ function renderBuyerMomentTimeline(summaries) {
   monthTarget.innerHTML = months.map(month => `<div>${month}</div>`).join("");
   const { items, laneCount } = layoutBuyerMomentTimeline(summaries);
   const colors = ["#0f766e", "#1f5fbf", "#8a5a00", "#9f1239", "#6d28d9", "#0e7490"];
-  timelineTarget.style.height = `${Math.max(1, laneCount) * 38}px`;
+  timelineTarget.style.height = `${Math.max(1, laneCount) * BUYER_MOMENT_LANE_HEIGHT}px`;
   timelineTarget.innerHTML = items.map((item, index) => {
     const active = item["Moment ID"] === selectedBuyerMomentId ? " active" : "";
     const compact = item.width < 11 ? " compact" : "";
@@ -1441,10 +1995,11 @@ function renderBuyerMomentTimeline(summaries) {
     const style = [
       `left:${item.left}%`,
       `width:${item.width}%`,
-      `top:${item.lane * 38}px`,
+      `top:${item.lane * BUYER_MOMENT_LANE_HEIGHT}px`,
       `--moment-color:${color}`
     ].join(";");
-    const title = `${item["Buyer Moment"]}: ${item["Moment Timeframe"]}, ${fmt(item["Matching Listings"], "Matching Listings")} matching listings`;
+    const source = item["Source Run"] ? `${item["Source Run"]}, ` : "";
+    const title = `${item["Buyer Moment"]}: ${source}${item["Moment Timeframe"]}, ${fmt(item["Matching Listings"], "Matching Listings")} top listings`;
     return `<button class="buyer-moment-button${active}${compact}" type="button" data-moment-id="${escapeHtml(item["Moment ID"])}" style="${style}" title="${escapeHtml(title)}"><span>${escapeHtml(item["Buyer Moment"])}</span><strong>${escapeHtml(fmt(item["Matching Listings"], "Matching Listings"))}</strong></button>`;
   }).join("");
   timelineTarget.querySelectorAll(".buyer-moment-button").forEach(button => {
@@ -1499,7 +2054,22 @@ function initBuyerMomentFilters() {
   selectedBuyerMomentSummary(summaries);
   syncCustomRangeInputs();
 
+  const sourceSelect = document.getElementById("buyer-moment-source-filter");
+  if (sourceSelect && sourceSelect.dataset.ready !== "true") {
+    [...new Set(summaries.map(row => row["Source Run"]).filter(Boolean))]
+      .sort((a, b) => a.localeCompare(b))
+      .forEach(source => {
+        const option = document.createElement("option");
+        option.value = source;
+        option.textContent = source;
+        sourceSelect.appendChild(option);
+      });
+    sourceSelect.dataset.ready = "true";
+  }
+
   [
+    ["buyer-moment-source-filter", "change"],
+    ["buyer-moment-calendar-search", "input"],
     ["buyer-moment-sort", "change"],
     ["buyer-moment-search", "input"]
   ].forEach(([id, eventName]) => {
@@ -1569,11 +2139,11 @@ function renderBuyerMomentWeekChart(rows) {
 function renderBuyerMoments() {
   const summaryTarget = document.getElementById("buyer-moment-summary");
   if (!summaryTarget) return;
-  renderBuyerMomentImport();
   const summaries = buyerMomentSummaries();
-  const selected = selectedBuyerMomentSummary(summaries);
+  const visibleSummaries = filteredBuyerMomentSummaries(summaries);
+  const selected = selectedBuyerMomentSummary(visibleSummaries.length ? visibleSummaries : summaries);
   syncCustomRangeInputs();
-  renderBuyerMomentTimeline(summaries);
+  renderBuyerMomentTimeline(visibleSummaries);
 
   if (!selected) {
     summaryTarget.innerHTML = "No buyer moments were detected in this snapshot.";
@@ -1595,17 +2165,22 @@ function renderBuyerMoments() {
   rows = sortBuyerMomentRows(rows);
   const observed = rows.filter(row => numericCell(row, "Moment Estimated Sales") > 0);
   const categoryRows = buyerMomentCategoryRows(rows);
+  const totalTopListings = buyerMomentTopListingRows().length;
+  const latestReview = lookupSnapshotMetric("Latest review captured_at") || dashboard.reviewCorpus?.latestReviewISO || "";
+  const activeSource = document.getElementById("buyer-moment-source-filter")?.value || "";
   document.getElementById("buyer-moment-metrics").innerHTML = [
-    metric("Buyer moments found", fmt(summaries.length, "Listing Count")),
-    metric("Matching listings", fmt(rows.length, "Matching Listings")),
+    metric("Calendar moments", `${fmt(visibleSummaries.length, "Listing Count")} / ${fmt(summaries.length, "Listing Count")}`),
+    metric("Selected top listings", fmt(rows.length, "Matching Listings")),
+    metric("Catalog top listings", fmt(totalTopListings, "Listing Count")),
     metric("Best-selling categories", fmt(categoryRows.length, "Listing Count")),
-    metric("Moment est. sales", fmt(rows.reduce((sum, row) => sum + numericCell(row, "Moment Estimated Sales"), 0), "Moment Estimated Sales"))
+    metric("Moment est. sales", fmt(rows.reduce((sum, row) => sum + numericCell(row, "Moment Estimated Sales"), 0), "Moment Estimated Sales")),
+    metric("Latest review", latestReview || "Unavailable")
   ].join("");
   document.getElementById("buyer-moment-count").textContent =
-    `Showing ${fmt(rows.length, "Matching Listings")} ${selected["Buyer Moment"]} listings for ${selected["Moment Timeframe"]}`;
+    `Showing ${fmt(rows.length, "Matching Listings")} ${selected["Buyer Moment"]} top listings for ${selected["Moment Timeframe"]}${activeSource ? ` · ${activeSource}` : ""}`;
   summaryTarget.innerHTML = selected["Moment ID"] === CUSTOM_BUYER_MOMENT_ID
     ? `<strong>Custom Date Range</strong> ranks categories and listings by review-derived daily sales velocity from ${escapeHtml(selected["Moment Window"])}.`
-    : `<strong>${escapeHtml(selected["Buyer Moment"])}</strong> spans ${escapeHtml(selected["Moment Timeframe"])} and is ranked by review-derived daily sales velocity from ${escapeHtml(selected["Moment Window"])} in the available review corpus.`;
+    : `<strong>${escapeHtml(selected["Buyer Moment"])}</strong> spans ${escapeHtml(selected["Moment Timeframe"])}. Calendar clicks show the catalog/API top listings first, and review-derived weekly velocity appears when a listing is present in the tracked review cycle.`;
 
   renderBar("buyer-moment-rollup-chart", categoryRows, "Moment Estimated Sales", "Product Substrate Category", 20, "#0f766e");
   renderTable("buyer-moment-rollups", categoryRows, [
@@ -1614,11 +2189,13 @@ function renderBuyerMoments() {
   ], 30);
   renderBuyerMomentWeekChart(rows);
   renderTable("buyer-moment-listings", rows, [
-    "Thumbnail", "Moment Avg Daily Sales", "Moment Avg Weekly Sales", "Moment Estimated Sales", "Buyer Moment", "Moment Timeframe", "Moment Window",
+    "Thumbnail", "Moment Avg Daily Sales", "Moment Avg Weekly Sales", "Moment Estimated Sales", "Buyer Moment", "Parent Buyer Moment", "Source Run",
+    "Keyword", "API Rank", "API Matches", "Moment Timeframe", "Moment Window",
     "Moment Review Count", "Moment Weeks With Demand", "Peak Moment Week", "Weekly Sales Graph",
-    "Shop", "Est. Daily Sales", "Est. 30D Sales", "Product Title", "Tags", "Best Guess Tags",
+    "Shop", "Shop Sold Count", "Shop Review Count", "Shop Avg Rating", "Views", "Favorites", "Price",
+    "Est. Daily Sales", "Est. 30D Sales", "Product Title", "Tags", "Best Guess Tags", "Materials",
     "Product Category", "Product Substrate Category", "Production Tag", "Matched Cues",
-    "Review Corpus Count", "Review Corpus 90D", "Review Corpus 365D", "Moment Source", "Listing URL"
+    "Review Corpus Count", "Review Corpus 90D", "Review Corpus 365D", "Local Review Rows", "Moment Source", "Listing URL"
   ], 250);
 }
 
@@ -2818,20 +3395,27 @@ function renderListings() {
     rows = rows.filter(row => row["Production Tag"] === production);
   }
   if (query) {
-    rows = rows.filter(row => Object.values(row).join(" ").toLowerCase().includes(query));
+    rows = rows.filter(row => listingSearchText(row).includes(query));
   }
+  const reviewRows = reviewListingRowsForListings(query, production);
+  rows = rows.concat(reviewRows);
   rows = sortListingRows(rows);
   const count = fmt(rows.length, "Listing Count");
-  const total = fmt(allRows.length, "Listing Count");
-  document.getElementById("listing-count").textContent =
-    rows.length === allRows.length ? `Showing all ${total} listings` : `Showing ${count} of ${total} listings`;
+  const totalCount = allRows.length + reviewListingTotal();
+  const total = fmt(totalCount, "Listing Count");
+  const shown = Math.min(rows.length, LISTING_RENDER_LIMIT);
+  const status = reviewListingStatusText(query, production);
+  const baseText = rows.length === totalCount
+    ? `Showing first ${fmt(shown, "Listing Count")} of ${total} listings`
+    : `Showing first ${fmt(shown, "Listing Count")} of ${count} visible/matching listings from ${total} total`;
+  document.getElementById("listing-count").textContent = [baseText, status].filter(Boolean).join(" ");
   renderTable("top-listings", rows, [
     "Overall Rank", "Thumbnail", "Weekly Sales Graph", "Recent Daily Sales", "Recent Weekly Sales", "Weekly Trend", "Peak Sales Week", "Peak Daily Sales", "Peak Weekly Sales",
     "Shop", "Est. Daily Sales", "Est. 30D Sales", "Blank / Generic Sources", "Product Title", "Tags", "Tags Source", "Best Guess Tags", "Product Category", "Product Substrate Category",
     "Production Tag", "Customization Tag", "Tag Confidence", "Tag Evidence",
     "Review Corpus Count", "Review Corpus 90D", "Review Corpus 365D",
     "Review Corpus Avg Rating", "Review Corpus Latest ISO", "Evidence Confidence", "Last Review ISO", "Listing URL"
-  ]);
+  ], LISTING_RENDER_LIMIT);
   renderListingCycle(selectedListingCycleKey);
 }
 
@@ -3319,6 +3903,9 @@ function initProductionFilter() {
     const tag = row["Production Tag"] || "Unclassified";
     counts.set(tag, (counts.get(tag) || 0) + 1);
   });
+  Object.entries(reviewListingManifest()?.productionTagCounts || {}).forEach(([tag, count]) => {
+    counts.set(tag, (counts.get(tag) || 0) + Number(count || 0));
+  });
   [...counts.entries()]
     .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
     .forEach(([tag, count]) => {
@@ -3581,7 +4168,7 @@ async function boot() {
   dashboard = await response.json();
   renderAll();
   document.getElementById("top-shop-metric").addEventListener("change", renderTopShops);
-  document.getElementById("listing-search").addEventListener("input", renderListings);
+  document.getElementById("listing-search").addEventListener("input", scheduleRenderListings);
   document.getElementById("production-filter").addEventListener("change", renderListings);
   document.getElementById("listing-sort").addEventListener("change", renderListings);
 }

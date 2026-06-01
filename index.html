@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Cronk Research</title>
-  <link rel="stylesheet" href="assets/styles.css?v=nameplate-product-split-20260601-1">
+  <link rel="stylesheet" href="assets/styles.css?v=buyer-review-final-20260601-1">
   <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
 </head>
 <body>
@@ -357,29 +357,15 @@
       <section id="buyer-moments" class="view">
         <div id="buyer-moment-metrics" class="metric-grid"></div>
         <section class="panel">
-          <div class="panel-head">
-            <div>
-              <h2>API Buyer Moment Import</h2>
-              <p id="buyer-moment-import-count" class="subtle listing-count"></p>
-            </div>
-          </div>
-          <div id="buyer-moment-import-metrics" class="metric-grid compact"></div>
-          <div class="buyer-moment-calendar" aria-label="API buyer moment calendar">
-            <div id="buyer-moment-import-months" class="buyer-moment-months"></div>
-            <div class="buyer-moment-timeline-shell">
-              <div id="buyer-moment-import-timeline" class="buyer-moment-timeline"></div>
-            </div>
-          </div>
-          <div id="buyer-moment-import-active" class="callout"></div>
-          <div id="buyer-moment-import-summary"></div>
-        </section>
-        <section class="panel">
           <div class="panel-head with-control">
             <div>
-              <h2>Buyer Moment Velocity</h2>
+              <h2>Buyer Moment Calendar</h2>
               <p id="buyer-moment-count" class="subtle listing-count"></p>
             </div>
             <div class="listing-controls">
+              <select id="buyer-moment-source-filter" aria-label="Buyer moment source filter">
+                <option value="">All sources</option>
+              </select>
               <select id="buyer-moment-sort" aria-label="Buyer moment sort">
                 <option value="velocity-desc">Moment daily velocity: high to low</option>
                 <option value="sales-desc">Moment estimated sales: high to low</option>
@@ -387,7 +373,8 @@
                 <option value="daily-desc">Current daily sales: high to low</option>
                 <option value="thirty-desc">Current 30-day sales: high to low</option>
               </select>
-              <input id="buyer-moment-search" type="search" placeholder="Filter listings, shops, categories">
+              <input id="buyer-moment-calendar-search" type="search" placeholder="Find buyer moment">
+              <input id="buyer-moment-search" type="search" placeholder="Filter top listings">
             </div>
           </div>
           <div class="buyer-moment-range-controls">
@@ -402,7 +389,7 @@
             <button id="buyer-moment-apply-range" class="primary-button" type="button">Apply range</button>
             <button id="buyer-moment-clear-range" class="prompt-button" type="button">Clear range</button>
           </div>
-          <div class="buyer-moment-calendar" aria-label="Buyer moment calendar">
+          <div class="buyer-moment-calendar giant" aria-label="Buyer moment calendar">
             <div id="buyer-moment-months" class="buyer-moment-months"></div>
             <div class="buyer-moment-timeline-shell">
               <div id="buyer-moment-timeline" class="buyer-moment-timeline"></div>
@@ -542,6 +529,6 @@
       </section>
     </main>
   </div>
-  <script src="assets/app.js?v=ask-aliases-20260601-1"></script>
+  <script src="assets/app.js?v=buyer-review-final-20260601-1"></script>
 </body>
 </html>
