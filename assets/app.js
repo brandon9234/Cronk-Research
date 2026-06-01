@@ -12,12 +12,13 @@ let buyerMomentTopListingRowsCache = null;
 let buyerMomentListingCycleRowsCache = new Map();
 let customBuyerMomentRange = null;
 const CUSTOM_BUYER_MOMENT_ID = "custom-date-range";
-const DATA_ASSET_VERSION = "review-search-cancel-20260601-1";
+const DATA_ASSET_VERSION = "review-search-throttle-20260601-1";
 const BUYER_MOMENT_LANE_HEIGHT = 30;
 const LISTING_RENDER_LIMIT = 500;
 const REVIEW_LISTING_PREVIEW_CHUNKS = 1;
 const REVIEW_LISTING_RESULT_LIMIT = 5000;
 const REVIEW_LISTING_SEARCH_MIN_CHARS = 2;
+const REVIEW_LISTING_PROGRESS_RENDER_MS = 500;
 let listingRenderTimer = null;
 const reviewListingState = {
   rowChunks: new Map(),
@@ -32,7 +33,9 @@ const reviewListingState = {
   searchScanned: 0,
   searchComplete: false,
   searchLoading: false,
-  searchToken: 0
+  searchToken: 0,
+  searchAbortController: null,
+  lastProgressRenderAt: 0
 };
 
 const numericColumns = new Set([
@@ -538,7 +541,8 @@ async function fetchReviewListingRows(chunkIndex, options = {}) {
   if (options.cacheRows && reviewListingState.rowChunks.has(chunkIndex)) {
     return reviewListingState.rowChunks.get(chunkIndex);
   }
-  const response = await fetch(reviewListingAssetUrl(manifest.rowFiles[chunkIndex]));
+  const fetchOptions = options.signal ? { signal: options.signal } : undefined;
+  const response = await fetch(reviewListingAssetUrl(manifest.rowFiles[chunkIndex]), fetchOptions);
   if (!response.ok) throw new Error(`Review listing chunk ${chunkIndex} failed to load`);
   const rows = decodeReviewListingRows(await response.json(), chunkIndex, options);
   if (options.cacheRows) {
@@ -555,8 +559,15 @@ function shouldSearchReviewListings(query, production) {
   return Boolean(reviewListingManifest() && (production || query.length >= REVIEW_LISTING_SEARCH_MIN_CHARS));
 }
 
+function abortReviewListingSearchRequest() {
+  if (!reviewListingState.searchAbortController) return;
+  reviewListingState.searchAbortController.abort();
+  reviewListingState.searchAbortController = null;
+}
+
 function cancelReviewListingSearch() {
   if (!reviewListingState.searchLoading && !reviewListingState.searchKey && !reviewListingState.searchRows.length) return;
+  abortReviewListingSearchRequest();
   reviewListingState.searchToken += 1;
   reviewListingState.searchKey = "";
   reviewListingState.searchRows = [];
@@ -564,6 +575,7 @@ function cancelReviewListingSearch() {
   reviewListingState.searchScanned = 0;
   reviewListingState.searchComplete = false;
   reviewListingState.searchLoading = false;
+  reviewListingState.lastProgressRenderAt = 0;
 }
 
 function rowMatchesListingFilters(row, query, production) {
@@ -599,14 +611,18 @@ function startReviewListingSearch(query, production) {
   if (!manifest) return;
   const key = reviewListingFilterKey(query, production);
   if (reviewListingState.searchKey === key && (reviewListingState.searchLoading || reviewListingState.searchComplete)) return;
+  abortReviewListingSearchRequest();
+  const controller = new AbortController();
   const token = reviewListingState.searchToken + 1;
   reviewListingState.searchToken = token;
+  reviewListingState.searchAbortController = controller;
   reviewListingState.searchKey = key;
   reviewListingState.searchRows = [];
   reviewListingState.searchMatches = 0;
   reviewListingState.searchScanned = 0;
   reviewListingState.searchComplete = false;
   reviewListingState.searchLoading = true;
+  reviewListingState.lastProgressRenderAt = 0;
   (async () => {
     try {
       for (let index = 0; index < (manifest.rowFiles?.length || 0); index += 1) {
@@ -614,8 +630,9 @@ function startReviewListingSearch(query, production) {
         const cached = reviewListingState.rowChunks.has(index);
         const rows = cached
           ? reviewListingState.rowChunks.get(index)
-          : await fetchReviewListingRows(index, { cacheRows: false, trackRows: false });
+          : await fetchReviewListingRows(index, { cacheRows: false, trackRows: false, signal: controller.signal });
         if (reviewListingState.searchToken !== token) return;
+        const visibleRowsBefore = reviewListingState.searchRows.length;
         reviewListingState.searchScanned += rows.length;
         rows.forEach(row => {
           if (!rowMatchesListingFilters(row, query, production)) return;
@@ -625,16 +642,23 @@ function startReviewListingSearch(query, production) {
             reviewListingState.rowByCycleKey.set(row["Weekly Cycle Key"], row);
           }
         });
-        if (listingsViewIsActive()) {
+        const now = Date.now();
+        const firstVisibleRows = visibleRowsBefore === 0 && reviewListingState.searchRows.length > 0;
+        const shouldRenderProgress = firstVisibleRows || now - reviewListingState.lastProgressRenderAt >= REVIEW_LISTING_PROGRESS_RENDER_MS;
+        if (listingsViewIsActive() && shouldRenderProgress) {
+          reviewListingState.lastProgressRenderAt = now;
           renderListings();
           await new Promise(resolve => setTimeout(resolve, 0));
         }
       }
       reviewListingState.searchComplete = true;
     } catch (error) {
-      console.warn(error);
+      if (error?.name !== "AbortError") console.warn(error);
     } finally {
       if (reviewListingState.searchToken === token) {
+        if (reviewListingState.searchAbortController === controller) {
+          reviewListingState.searchAbortController = null;
+        }
         reviewListingState.searchLoading = false;
         if (listingsViewIsActive()) renderListings();
       }
