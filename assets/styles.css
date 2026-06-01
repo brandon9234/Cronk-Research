@@ -530,6 +530,36 @@ input[type="search"] {
   min-width: 165px;
 }
 
+.buyer-moment-filter-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 2px 0 12px;
+}
+
+.buyer-moment-filter-controls label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 6px 9px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.buyer-moment-filter-controls input {
+  margin: 0;
+}
+
+.no-signal {
+  color: var(--muted);
+  font-weight: 700;
+}
+
 .buyer-moment-calendar {
   margin: 12px 0;
   padding: 10px;
@@ -764,6 +794,9 @@ textarea {
   .buyer-moment-range-controls input[type="date"],
   .buyer-moment-range-controls button {
     width: 100%;
+  }
+  .buyer-moment-filter-controls label {
+    flex: 1 1 160px;
   }
   .buyer-moment-months,
   .buyer-moment-timeline-shell {

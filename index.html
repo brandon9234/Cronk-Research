@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Cronk Research</title>
-  <link rel="stylesheet" href="assets/styles.css?v=review-search-throttle-20260601-1">
+  <link rel="stylesheet" href="assets/styles.css?v=buyer-moment-decision-score-20260601-1">
   <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
 </head>
 <body>
@@ -367,6 +367,7 @@
                 <option value="">All sources</option>
               </select>
               <select id="buyer-moment-sort" aria-label="Buyer moment sort">
+                <option value="opportunity-desc">Opportunity score: high to low</option>
                 <option value="velocity-desc">Moment daily velocity: high to low</option>
                 <option value="sales-desc">Moment estimated sales: high to low</option>
                 <option value="reviews-desc">Moment reviews: high to low</option>
@@ -388,6 +389,14 @@
             </label>
             <button id="buyer-moment-apply-range" class="primary-button" type="button">Apply range</button>
             <button id="buyer-moment-clear-range" class="prompt-button" type="button">Clear range</button>
+          </div>
+          <div class="buyer-moment-filter-controls" aria-label="Buyer moment quick filters">
+            <label><input id="buyer-moment-filter-opportunity" type="checkbox"> High-opportunity</label>
+            <label><input id="buyer-moment-filter-holiday" type="checkbox"> Holiday</label>
+            <label><input id="buyer-moment-filter-work" type="checkbox"> Professional / work</label>
+            <label><input id="buyer-moment-filter-recipient" type="checkbox"> Recipient</label>
+            <label><input id="buyer-moment-filter-life" type="checkbox"> Life events</label>
+            <label><input id="buyer-moment-filter-local" type="checkbox"> Local review signal</label>
           </div>
           <div class="buyer-moment-calendar giant" aria-label="Buyer moment calendar">
             <div id="buyer-moment-months" class="buyer-moment-months"></div>
@@ -529,6 +538,6 @@
       </section>
     </main>
   </div>
-  <script src="assets/app.js?v=review-search-throttle-20260601-1"></script>
+  <script src="assets/app.js?v=buyer-moment-decision-score-20260601-1"></script>
 </body>
 </html>

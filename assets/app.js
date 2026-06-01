@@ -12,8 +12,17 @@ let buyerMomentTopListingRowsCache = null;
 let buyerMomentListingCycleRowsCache = new Map();
 let customBuyerMomentRange = null;
 const CUSTOM_BUYER_MOMENT_ID = "custom-date-range";
-const DATA_ASSET_VERSION = "review-search-throttle-20260601-1";
+const DATA_ASSET_VERSION = "buyer-moment-decision-score-20260601-1";
 const BUYER_MOMENT_LANE_HEIGHT = 30;
+const BUYER_MOMENT_HIGH_OPPORTUNITY_SCORE = 68;
+const BUYER_MOMENT_FILTER_IDS = [
+  ["opportunity", "buyer-moment-filter-opportunity"],
+  ["holiday", "buyer-moment-filter-holiday"],
+  ["work", "buyer-moment-filter-work"],
+  ["recipient", "buyer-moment-filter-recipient"],
+  ["life", "buyer-moment-filter-life"],
+  ["local", "buyer-moment-filter-local"]
+];
 const LISTING_RENDER_LIMIT = 500;
 const REVIEW_LISTING_PREVIEW_CHUNKS = 1;
 const REVIEW_LISTING_RESULT_LIMIT = 5000;
@@ -71,6 +80,9 @@ const numericColumns = new Set([
   "Moment Weeks", "Moment Weeks With Demand", "Matching Listings", "Listings With Velocity",
   "Top Listing Sales", "API Total Matches Sum", "Selected Listing Rows", "Unique Top Listing IDs",
   "Unique Top Shop IDs", "API Rank", "API Matches", "Shop Sold Count", "Shop Review Count",
+  "Buyer Moment Opportunity Score", "API Rank Score", "Review Velocity Score", "Engagement Score",
+  "Shop Strength Score", "Moment Fit Score", "Category Fit Score", "MyMaravia Build Fit",
+  "Avg Opportunity Score", "High Opportunity Listings", "Local Review Signal Listings",
   "Shop Avg Rating", "Favorites", "Local Review Rows", "Local 365D Reviews", "Local 90D Reviews",
   "Draft Listings", "My Daily Sales", "Current Market Daily Sales", "Current Market Share %",
   "Fix Conversion", "Saturated / Niche Down", "Active Listings", "My Category Daily Sales",
@@ -101,7 +113,8 @@ const wrappedColumns = new Set([
   "Conquest Status", "Trend Source", "Trend Confidence", "Top Competitor Tags",
   "Top Competitor Listing URL", "Top Competitor Production Tag", "Top Competitor Trend",
   "Cycle Confidence", "Weekly Trend", "Buyer Moment", "Moment Timeframe", "Moment Window", "Matched Cues",
-  "Moment Source", "Top Listing", "Top Shop", "Target Category", "My Listing",
+  "Moment Source", "Buyer Moment Tags", "Opportunity Band", "MyMaravia Build Read", "Build Fit Reason",
+  "Local Review Signal", "Top Opportunity Listing", "Top Opportunity Shop", "Top Listing", "Top Shop", "Target Category", "My Listing",
   "Competing Listing", "Competing Shop", "Competing Tags", "My Listing URL", "Competitor Listing URL",
   "Best Listing", "Top Competitor Row", "Repeated Match Cues", "Cue / Action",
   "Evidence", "Next Edit", "Market Control Read"
@@ -110,7 +123,7 @@ const wrappedColumns = new Set([
 const thumbnailColumns = new Set(["Thumbnail", "Listing Thumbnail", "Market Thumbnail", "Top Competitor Thumbnail", "My Thumbnail", "Competitor Thumbnail"]);
 const sourceLinkColumns = new Set(["Blank / Generic Sources"]);
 const companyColumns = new Set(["Shop", "Market Shop", "Top Shop"]);
-const badgeColumns = new Set(["Conquest Status", "Market State"]);
+const badgeColumns = new Set(["Conquest Status", "Market State", "Opportunity Band", "MyMaravia Build Read", "Local Review Signal"]);
 const realTagColumns = new Set(["Tags", "Actual Tags", "My Actual Tags"]);
 
 const plotConfig = { responsive: true, displayModeBar: false };
@@ -198,9 +211,22 @@ function productionLinkCell(value) {
   return `<button class="production-link${active}" type="button" data-production="${escapeHtml(tag)}">${escapeHtml(tag)}</button>`;
 }
 
+function hasLocalReviewSignal(row) {
+  const label = String(row["Local Review Signal"] || row["Cycle Confidence"] || "").toLowerCase();
+  if (label.includes("no local review signal")) return false;
+  return numericCell(row, "Review Corpus Count") > 0 ||
+    numericCell(row, "Local Review Rows") > 0 ||
+    numericCell(row, "Local 365D Reviews") > 0 ||
+    numericCell(row, "Local 90D Reviews") > 0 ||
+    numericCell(row, "Moment Review Count") > 0;
+}
+
 function listingCycleLinkCell(row) {
   const key = String(row["Weekly Cycle Key"] || "");
   if (!key || !row["Weekly Sales Graph"]) return "";
+  if (!hasLocalReviewSignal(row)) {
+    return `<span class="no-signal">No local review signal yet</span>`;
+  }
   const active = key === selectedListingCycleKey ? " active" : "";
   return `<button class="cycle-link${active}" type="button" data-cycle-key="${escapeHtml(key)}">Open graph</button>`;
 }
@@ -371,10 +397,10 @@ function statusBadge(value) {
 
 function diagnosticBadge(value) {
   const text = String(value ?? "Unknown");
-  const cls = /leader chase|active foothold|open attack/i.test(text)
-    ? "good"
-    : /fix|gap|saturat|draft|inactive|traffic/i.test(text)
-      ? "warn"
+  const cls = /no local review signal|fix|gap|saturat|draft|inactive|traffic|watchlist|low/i.test(text)
+    ? "warn"
+    : /leader chase|active foothold|open attack|top opportunity|high opportunity|prime|strong|local review signal/i.test(text)
+      ? "good"
       : "flat";
   return `<span class="badge ${cls}">${escapeHtml(text)}</span>`;
 }
@@ -1174,6 +1200,12 @@ function renderBuyerMomentListingCycle(cycleKey, target, summary) {
   const { row, rows } = result;
   const title = row["Product Title"] || "Buyer moment listing";
   summary.textContent = `${row.Shop || "Unknown shop"} · ${fmt(row["Review Corpus Count"], "Review Corpus Count") || "0"} reviews · ${row["Cycle Confidence"] || "Buyer moment estimate"} · ${row["Trend Source"] || ""}`;
+  const hasSignal = hasLocalReviewSignal(row) && rows.some(item => numericCell(item, "Review Count") > 0 || numericCell(item, "Estimated Weekly Sales") > 0);
+  if (!hasSignal) {
+    target.innerHTML = `<div class="empty">No local review signal yet for this listing.</div>`;
+    document.getElementById("listing-cycle-table").innerHTML = "";
+    return;
+  }
   Plotly.newPlot("listing-cycle-chart", [{
     type: "bar",
     name: "Estimated daily sales",
@@ -1487,6 +1519,9 @@ function standardBuyerMoment(row, fallback = {}) {
   const apiMatches = numericCell(row.stats || row, "API Total Matches Sum");
   const uniqueListings = numericCell(row.stats || row, "Unique Top Listing IDs");
   const uniqueShops = numericCell(row.stats || row, "Unique Top Shop IDs");
+  const opportunityScore = numericCell(row, "Buyer Moment Opportunity Score") || numericCell(row.stats || {}, "Buyer Moment Opportunity Score");
+  const highOpportunityListings = numericCell(row, "High Opportunity Listings") || numericCell(row.stats || {}, "High Opportunity Listings");
+  const localReviewSignalListings = numericCell(row, "Local Review Signal Listings") || numericCell(row.stats || {}, "Local Review Signal Listings");
   return {
     ...row,
     "Moment ID": id,
@@ -1502,6 +1537,13 @@ function standardBuyerMoment(row, fallback = {}) {
     "Unique Top Listing IDs": uniqueListings,
     "Unique Top Shop IDs": uniqueShops,
     "Matching Listings": selectedRows || uniqueListings || numericCell(row, "Matching Listings"),
+    "Buyer Moment Opportunity Score": opportunityScore,
+    "Opportunity Band": row["Opportunity Band"] || "",
+    "High Opportunity Listings": highOpportunityListings,
+    "Local Review Signal Listings": localReviewSignalListings,
+    "Top Opportunity Listing": row["Top Opportunity Listing"] || "",
+    "Top Opportunity Shop": row["Top Opportunity Shop"] || "",
+    "Buyer Moment Tags": row["Buyer Moment Tags"] || "",
     "Matched Cues": buyerMomentKeywordsFor(row).slice(0, 12).join(", "),
     "Timeline Start": timeline.start,
     "Timeline End": timeline.end,
@@ -1600,7 +1642,24 @@ function buyerMomentTopListingRows() {
       "Review Corpus Count": row["Review Corpus Count"] || "",
       "Review Corpus 90D": row["Review Corpus 90D"] || "",
       "Review Corpus 365D": row["Review Corpus 365D"] || "",
-      "Review Corpus Latest ISO": row["Review Corpus Latest ISO"] || row["Last Review ISO"] || row.local_latest_review || ""
+      "Review Corpus Latest ISO": row["Review Corpus Latest ISO"] || row["Last Review ISO"] || row.local_latest_review || "",
+      "Buyer Moment Opportunity Score": row["Buyer Moment Opportunity Score"] || "",
+      "API Rank Score": row["API Rank Score"] || "",
+      "Review Velocity Score": row["Review Velocity Score"] || "",
+      "Engagement Score": row["Engagement Score"] || "",
+      "Shop Strength Score": row["Shop Strength Score"] || "",
+      "Moment Fit Score": row["Moment Fit Score"] || "",
+      "Category Fit Score": row["Category Fit Score"] || "",
+      "MyMaravia Build Fit": row["MyMaravia Build Fit"] || "",
+      "MyMaravia Build Read": row["MyMaravia Build Read"] || "",
+      "Build Fit Reason": row["Build Fit Reason"] || "",
+      "Opportunity Band": row["Opportunity Band"] || "",
+      "Local Review Signal": row["Local Review Signal"] || "",
+      "Buyer Moment Tags": row["Buyer Moment Tags"] || "",
+      "Product Category": row["Product Category"] || "",
+      "Product Substrate Category": row["Product Substrate Category"] || "",
+      "Production Tag": row["Production Tag"] || "",
+      "Best Guess Tags": row["Best Guess Tags"] || ""
     };
   }).filter(row => row["Moment ID"]);
   return buyerMomentTopListingRowsCache;
@@ -2004,8 +2063,9 @@ function buyerMomentSummaries() {
 }
 
 function sortBuyerMomentRows(rows, forcedSort = null) {
-  const sort = forcedSort || document.getElementById("buyer-moment-sort")?.value || "velocity-desc";
+  const sort = forcedSort || document.getElementById("buyer-moment-sort")?.value || "opportunity-desc";
   const sortMap = {
+    "opportunity-desc": ["Buyer Moment Opportunity Score", "desc"],
     "velocity-desc": ["Moment Avg Daily Sales", "desc"],
     "sales-desc": ["Moment Estimated Sales", "desc"],
     "reviews-desc": ["Moment Review Count", "desc"],
@@ -2017,7 +2077,8 @@ function sortBuyerMomentRows(rows, forcedSort = null) {
     const delta = numericCell(a, column) - numericCell(b, column);
     const ordered = direction === "asc" ? delta : -delta;
     if (ordered) return ordered;
-    return numericCell(b, "Moment Estimated Sales") - numericCell(a, "Moment Estimated Sales") ||
+    return numericCell(b, "Buyer Moment Opportunity Score") - numericCell(a, "Buyer Moment Opportunity Score") ||
+      numericCell(b, "Moment Estimated Sales") - numericCell(a, "Moment Estimated Sales") ||
       numericCell(a, "Overall Rank") - numericCell(b, "Overall Rank") ||
       numericCell(a, "API Rank") - numericCell(b, "API Rank") ||
       String(a.Shop || "").localeCompare(String(b.Shop || "")) ||
@@ -2037,11 +2098,68 @@ function selectedBuyerMomentSummary(summaries) {
   return summaries.find(row => row["Moment ID"] === selectedBuyerMomentId) || summaries[0];
 }
 
+function activeBuyerMomentFilters() {
+  return BUYER_MOMENT_FILTER_IDS
+    .filter(([, id]) => document.getElementById(id)?.checked)
+    .map(([key]) => key);
+}
+
+function buyerMomentTagsFor(row) {
+  const tags = new Set(
+    String(row["Buyer Moment Tags"] || "")
+      .split(";")
+      .map(item => item.trim().toLowerCase())
+      .filter(Boolean)
+  );
+  const text = [
+    row["Buyer Moment"],
+    row["Parent Buyer Moment"],
+    row["Moment Source ID"],
+    row["Source Run"],
+    row.Keyword,
+    row["Product Title"],
+    row.Tags,
+    row["Product Category"],
+    row["Product Substrate Category"]
+  ].join(" ").toLowerCase();
+  if (/christmas|holiday|thanksgiving|halloween|easter|valentine|mother.?s day|father.?s day|graduation|back to school|boss day|admin day|nurses week|new year/.test(text)) {
+    tags.add("holiday");
+  }
+  if (/teacher|office|boss|admin|nurse|employee|coworker|manager|retirement|work|career|business|professional/.test(text)) {
+    tags.add("professional / work");
+  }
+  if (/mom|mother|dad|father|grandma|grandpa|wife|husband|boyfriend|girlfriend|teacher|boss|nurse|friend|employee|coworker|bride|groom/.test(text)) {
+    tags.add("recipient");
+  }
+  if (/baby|wedding|graduation|housewarming|new home|retirement|anniversary|birthday|memorial|sympathy|bereavement/.test(text)) {
+    tags.add("life event");
+  }
+  return tags;
+}
+
+function buyerMomentMatchesQuickFilter(row, filter) {
+  const tags = buyerMomentTagsFor(row);
+  if (filter === "opportunity") {
+    return numericCell(row, "Buyer Moment Opportunity Score") >= BUYER_MOMENT_HIGH_OPPORTUNITY_SCORE ||
+      numericCell(row, "High Opportunity Listings") > 0;
+  }
+  if (filter === "holiday") return tags.has("holiday");
+  if (filter === "work") return tags.has("professional / work");
+  if (filter === "recipient") return tags.has("recipient");
+  if (filter === "life") return tags.has("life event");
+  if (filter === "local") {
+    return hasLocalReviewSignal(row) || numericCell(row, "Local Review Signal Listings") > 0;
+  }
+  return true;
+}
+
 function filteredBuyerMomentSummaries(summaries) {
   const source = document.getElementById("buyer-moment-source-filter")?.value || "";
   const query = (document.getElementById("buyer-moment-calendar-search")?.value || "").trim().toLowerCase();
+  const filters = activeBuyerMomentFilters();
   return summaries.filter(row => {
     if (source && row["Source Run"] !== source) return false;
+    if (filters.some(filter => !buyerMomentMatchesQuickFilter(row, filter))) return false;
     if (!query) return true;
     return [
       row["Buyer Moment"],
@@ -2058,13 +2176,14 @@ function buyerMomentCategoryRows(rows) {
   rows.forEach(row => {
     const category = String(row["Product Substrate Category"] || row["Product Category"] || "Uncategorized");
     if (!groups.has(category)) {
-      groups.set(category, { category, rows: [], shops: new Set(), sales: 0, reviews: 0, maxWeeks: 0 });
+      groups.set(category, { category, rows: [], shops: new Set(), sales: 0, reviews: 0, score: 0, maxWeeks: 0 });
     }
     const group = groups.get(category);
     group.rows.push(row);
     if (row.Shop) group.shops.add(row.Shop);
     group.sales += numericCell(row, "Moment Estimated Sales");
     group.reviews += numericCell(row, "Moment Review Count");
+    group.score += numericCell(row, "Buyer Moment Opportunity Score");
     group.maxWeeks = Math.max(group.maxWeeks, numericCell(row, "Moment Weeks"));
   });
   return [...groups.values()].map(group => {
@@ -2074,6 +2193,7 @@ function buyerMomentCategoryRows(rows) {
       "Moment Estimated Sales": roundOne(group.sales),
       "Moment Avg Weekly Sales": roundOne(group.maxWeeks ? group.sales / group.maxWeeks : 0),
       "Moment Review Count": group.reviews,
+      "Avg Opportunity Score": roundOne(group.rows.length ? group.score / group.rows.length : 0),
       "Matching Listings": group.rows.length,
       "Listings With Velocity": group.rows.filter(row => numericCell(row, "Moment Estimated Sales") > 0).length,
       "Shop Count": group.shops.size,
@@ -2199,7 +2319,8 @@ function initBuyerMomentFilters() {
     ["buyer-moment-source-filter", "change"],
     ["buyer-moment-calendar-search", "input"],
     ["buyer-moment-sort", "change"],
-    ["buyer-moment-search", "input"]
+    ["buyer-moment-search", "input"],
+    ...BUYER_MOMENT_FILTER_IDS.map(([, id]) => [id, "change"])
   ].forEach(([id, eventName]) => {
     const element = document.getElementById(id);
     if (!element || element.dataset.bound === "true") return;
@@ -2223,6 +2344,7 @@ function initBuyerMomentFilters() {
 function renderBuyerMomentWeekChart(rows) {
   const target = document.getElementById("buyer-moment-week-chart");
   if (!target) return;
+  const hasSignal = rows.some(row => hasLocalReviewSignal(row));
   const byWeek = new Map();
   rows.forEach(row => {
     (row._momentWeeks || []).forEach(week => {
@@ -2243,8 +2365,9 @@ function renderBuyerMomentWeekChart(rows) {
     "Review Count": row["Review Count"],
     "Matching Listings": row.listingKeys.size
   }));
-  if (!data.length) {
-    target.innerHTML = `<div class="empty">No weekly review-sales data is available for this buyer moment window.</div>`;
+  const hasWeeklySignal = data.some(row => numericCell(row, "Review Count") > 0 || numericCell(row, "Estimated Weekly Sales") > 0);
+  if (!data.length || !hasSignal || !hasWeeklySignal) {
+    target.innerHTML = `<div class="empty">No local review signal yet for this buyer moment window.</div>`;
     document.getElementById("buyer-moment-week-table").innerHTML = "";
     return;
   }
@@ -2286,12 +2409,18 @@ function renderBuyerMoments() {
   }
 
   let rows = buyerMomentRows(selected["Moment ID"]);
+  const activeFilters = activeBuyerMomentFilters();
   const query = (document.getElementById("buyer-moment-search")?.value || "").trim().toLowerCase();
   if (query) {
     rows = rows.filter(row => Object.values(row).join(" ").toLowerCase().includes(query));
   }
+  if (activeFilters.length) {
+    rows = rows.filter(row => activeFilters.every(filter => buyerMomentMatchesQuickFilter(row, filter)));
+  }
   rows = sortBuyerMomentRows(rows);
   const observed = rows.filter(row => numericCell(row, "Moment Estimated Sales") > 0);
+  const highOpportunityRows = rows.filter(row => numericCell(row, "Buyer Moment Opportunity Score") >= BUYER_MOMENT_HIGH_OPPORTUNITY_SCORE);
+  const localSignalRows = rows.filter(row => hasLocalReviewSignal(row));
   const categoryRows = buyerMomentCategoryRows(rows);
   const totalTopListings = buyerMomentTopListingRows().length;
   const latestReview = lookupSnapshotMetric("Latest review captured_at") || dashboard.reviewCorpus?.latestReviewISO || "";
@@ -2300,30 +2429,38 @@ function renderBuyerMoments() {
     metric("Calendar moments", `${fmt(visibleSummaries.length, "Listing Count")} / ${fmt(summaries.length, "Listing Count")}`),
     metric("Selected top listings", fmt(rows.length, "Matching Listings")),
     metric("Catalog top listings", fmt(totalTopListings, "Listing Count")),
+    metric("High-opportunity rows", fmt(highOpportunityRows.length, "Listing Count")),
+    metric("Local review signal", fmt(localSignalRows.length, "Listing Count")),
     metric("Best-selling categories", fmt(categoryRows.length, "Listing Count")),
     metric("Moment est. sales", fmt(rows.reduce((sum, row) => sum + numericCell(row, "Moment Estimated Sales"), 0), "Moment Estimated Sales")),
     metric("Latest review", latestReview || "Unavailable")
   ].join("");
   document.getElementById("buyer-moment-count").textContent =
     `Showing ${fmt(rows.length, "Matching Listings")} ${selected["Buyer Moment"]} top listings for ${selected["Moment Timeframe"]}${activeSource ? ` · ${activeSource}` : ""}`;
+  const scoreText = numericCell(selected, "Buyer Moment Opportunity Score")
+    ? ` Top opportunity score: ${fmt(selected["Buyer Moment Opportunity Score"], "Buyer Moment Opportunity Score")}.`
+    : "";
   summaryTarget.innerHTML = selected["Moment ID"] === CUSTOM_BUYER_MOMENT_ID
     ? `<strong>Custom Date Range</strong> ranks categories and listings by review-derived daily sales velocity from ${escapeHtml(selected["Moment Window"])}.`
-    : `<strong>${escapeHtml(selected["Buyer Moment"])}</strong> spans ${escapeHtml(selected["Moment Timeframe"])}. Calendar clicks show the catalog/API top listings first, and review-derived weekly velocity appears when a listing is present in the tracked review cycle.`;
+    : `<strong>${escapeHtml(selected["Buyer Moment"])}</strong> spans ${escapeHtml(selected["Moment Timeframe"])}.${escapeHtml(scoreText)} Calendar clicks show the catalog/API top listings first, and review-derived weekly velocity appears when a listing is present in the tracked review cycle.`;
 
   renderBar("buyer-moment-rollup-chart", categoryRows, "Moment Estimated Sales", "Product Substrate Category", 20, "#0f766e");
   renderTable("buyer-moment-rollups", categoryRows, [
-    "Product Substrate Category", "Moment Estimated Sales", "Moment Avg Daily Sales", "Moment Avg Weekly Sales", "Moment Review Count",
+    "Product Substrate Category", "Avg Opportunity Score", "Moment Estimated Sales", "Moment Avg Daily Sales", "Moment Avg Weekly Sales", "Moment Review Count",
     "Matching Listings", "Listings With Velocity", "Shop Count", "Top Shop", "Top Listing", "Top Listing Sales"
   ], 30);
   renderBuyerMomentWeekChart(rows);
   renderTable("buyer-moment-listings", rows, [
-    "Thumbnail", "Moment Avg Daily Sales", "Moment Avg Weekly Sales", "Moment Estimated Sales", "Buyer Moment", "Parent Buyer Moment", "Source Run",
+    "Thumbnail", "Buyer Moment Opportunity Score", "Opportunity Band", "MyMaravia Build Fit", "MyMaravia Build Read",
+    "Moment Avg Daily Sales", "Moment Avg Weekly Sales", "Moment Estimated Sales", "Buyer Moment", "Parent Buyer Moment", "Source Run",
     "Keyword", "API Rank", "API Matches", "Moment Timeframe", "Moment Window",
     "Moment Review Count", "Moment Weeks With Demand", "Peak Moment Week", "Weekly Sales Graph",
     "Shop", "Shop Sold Count", "Shop Review Count", "Shop Avg Rating", "Views", "Favorites", "Price",
     "Est. Daily Sales", "Est. 30D Sales", "Product Title", "Tags", "Best Guess Tags", "Materials",
-    "Product Category", "Product Substrate Category", "Production Tag", "Matched Cues",
-    "Review Corpus Count", "Review Corpus 90D", "Review Corpus 365D", "Local Review Rows", "Moment Source", "Listing URL"
+    "Product Category", "Product Substrate Category", "Production Tag", "Buyer Moment Tags", "Build Fit Reason", "Matched Cues",
+    "Review Corpus Count", "Review Corpus 90D", "Review Corpus 365D", "Local Review Signal", "Local Review Rows",
+    "API Rank Score", "Review Velocity Score", "Engagement Score", "Shop Strength Score", "Moment Fit Score", "Category Fit Score",
+    "Moment Source", "Listing URL"
   ], 250);
 }
 
