@@ -14,7 +14,7 @@ let buyerMomentTopListingRowsCache = null;
 let buyerMomentListingCycleRowsCache = new Map();
 let customBuyerMomentRange = null;
 const CUSTOM_BUYER_MOMENT_ID = "custom-date-range";
-const DATA_ASSET_VERSION = "real-listing-thumbnails-20260601-3";
+const DATA_ASSET_VERSION = "freshness-actions-20260601-1";
 const BUYER_MOMENT_LANE_HEIGHT = 30;
 const BUYER_MOMENT_HIGH_OPPORTUNITY_SCORE = 68;
 const BUYER_MOMENT_BUILD_FIT_ORDER = [
@@ -416,7 +416,7 @@ function updateAllBottomScrollbars() {
 
 function statusBadge(value) {
   const text = String(value ?? "unknown");
-  const cls = /blocked|partial|error|fail|issue|unavailable/i.test(text)
+  const cls = /blocked|partial|error|fail|issue|unavailable|missing|stale/i.test(text)
     ? "bad"
     : /^ok$|success|manual update|seeded|complete/i.test(text)
       ? "good"
@@ -3068,11 +3068,14 @@ function marketSegmentCategories() {
     .map(row => row["Product Category"])
     .filter(Boolean)
     .sort((a, b) => {
-      if (a === "Wedding hangers") return -1;
-      if (b === "Wedding hangers") return 1;
       const rowA = marketSegmentCategoryRow(a);
       const rowB = marketSegmentCategoryRow(b);
-      return numericCell(rowB, "Market Daily Sales") - numericCell(rowA, "Market Daily Sales") ||
+      const openA = numericCell(rowA, "Needs Build") > 0 ? 1 : 0;
+      const openB = numericCell(rowB, "Needs Build") > 0 ? 1 : 0;
+      return openB - openA ||
+        numericCell(rowB, "Top Open Daily Sales") - numericCell(rowA, "Top Open Daily Sales") ||
+        numericCell(rowB, "Needs Build") - numericCell(rowA, "Needs Build") ||
+        numericCell(rowB, "Market Daily Sales") - numericCell(rowA, "Market Daily Sales") ||
         String(a).localeCompare(String(b));
     });
 }
@@ -3085,7 +3088,7 @@ function activeMarketSegment() {
   const categories = marketSegmentCategories();
   if (!categories.length) return "";
   if (!selectedMarketSegment || !categories.includes(selectedMarketSegment)) {
-    selectedMarketSegment = categories.includes("Wedding hangers") ? "Wedding hangers" : categories[0];
+    selectedMarketSegment = categories[0];
   }
   return selectedMarketSegment;
 }
@@ -4865,6 +4868,7 @@ function renderAll() {
   renderTable("category-rollup-table", dashboard.listing.categoryRollup, ["Product Substrate Category", "Total Est. Daily Sales", "Total Est. 30D Sales", "Review Corpus Count", "Review Corpus 90D", "Review Corpus 365D", "Review Corpus Listings", "Listing Count", "Shop Count"], 40);
   renderBar("demand-summary-chart", dashboard.listing.demandSummary || [], "Total Est. Daily Sales", "Demand Intent Cluster", 20, "#0f766e");
   renderTable("demand-summary-table", dashboard.listing.demandSummary, ["Demand Intent Cluster", "Total Est. Daily Sales", "Listing Count", "Review Count", "Review Corpus Count", "Review Corpus 90D", "Review Corpus Listings", "Avg Daily Sales / Listing", "Shop Count"], 50);
+  renderStatusTable("data-freshness-table", dashboard.operations.dataFreshness || [], ["Status", "Source", "Freshness Read", "Last Updated", "Data Through", "Record Count", "Decision Impact", "Refresh Step"], 40);
   renderTable("coverage-queue", dashboard.operations.coverageQueue, ["Shop", "eRank 7D Sales", "eRank 30D Sales", "Avg Daily Sales (30D)", "Has Tab", "Tab Status", "Review Ledger Rows", "Last Evidence Run", "Last Scrape Status", "Next Action"], 80);
   renderStatusTable("recent-runs", dashboard.automation.recentRuns, ["Status", "Run Timestamp", "Pipeline / Stage", "Automation Version", "Source / Context", "eRank Sales Date", "Counts / Metrics", "Blocker / Issue", "Next Action"], 60);
   renderTable("quality-table", dashboard.market.quality, ["Date", "Raw Rows", "Unique Shops", "Duplicate Shop-Date Pairs", "Raw Market Sales", "Deduped Market Sales", "Potential Inflation", "Likely Partial Final Day", "Source Files"], 120);
