@@ -14,7 +14,7 @@ let buyerMomentTopListingRowsCache = null;
 let buyerMomentListingCycleRowsCache = new Map();
 let customBuyerMomentRange = null;
 const CUSTOM_BUYER_MOMENT_ID = "custom-date-range";
-const DATA_ASSET_VERSION = "freshness-actions-20260601-1";
+const DATA_ASSET_VERSION = "next-actions-20260601-1";
 const BUYER_MOMENT_LANE_HEIGHT = 30;
 const BUYER_MOMENT_HIGH_OPPORTUNITY_SCORE = 68;
 const BUYER_MOMENT_BUILD_FIT_ORDER = [
@@ -115,7 +115,8 @@ const numericColumns = new Set([
   "Covered Competitor Daily", "Covered 30D", "Covered Share %",
   "Competitor Rows Covered", "Best Listing Daily",
   "Last Year Timeframe Estimated Sales", "Last Year Timeframe Avg Daily Sales",
-  "Last Year Timeframe Review Count", "Last Year Timeframe Weeks", "Last Year Timeframe Weeks With Demand"
+  "Last Year Timeframe Review Count", "Last Year Timeframe Weeks", "Last Year Timeframe Weeks With Demand",
+  "Action Score", "Expected Daily Sales"
 ]);
 
 const wrappedColumns = new Set([
@@ -135,13 +136,14 @@ const wrappedColumns = new Set([
   "Local Review Signal", "Build Fit Segment", "Top Opportunity Listing", "Top Opportunity Shop", "Top Listing", "Top Shop", "Target Category", "My Listing",
   "Competing Listing", "Competing Shop", "Competing Tags", "My Listing URL", "Competitor Listing URL",
   "Best Listing", "Top Competitor Row", "Repeated Match Cues", "Cue / Action",
-  "Evidence", "Next Edit", "Market Control Read", "Last Year Timeframe Window", "Last Year Timeframe Signal"
+  "Evidence", "Next Edit", "Market Control Read", "Last Year Timeframe Window", "Last Year Timeframe Signal",
+  "Action", "Product / Listing", "Source Signal", "Next Step"
 ]);
 
 const thumbnailColumns = new Set(["Thumbnail", "Listing Thumbnail", "Market Thumbnail", "Top Competitor Thumbnail", "My Thumbnail", "Competitor Thumbnail"]);
 const sourceLinkColumns = new Set(["Blank / Generic Sources"]);
 const companyColumns = new Set(["Shop", "Market Shop", "Top Shop"]);
-const badgeColumns = new Set(["Conquest Status", "Market State", "Opportunity Band", "MyMaravia Build Read", "Local Review Signal"]);
+const badgeColumns = new Set(["Conquest Status", "Market State", "Opportunity Band", "MyMaravia Build Read", "Local Review Signal", "Action Type", "Confidence"]);
 const realTagColumns = new Set(["Tags", "Actual Tags", "My Actual Tags"]);
 
 const plotConfig = { responsive: true, displayModeBar: false };
@@ -3801,6 +3803,19 @@ function renderOpportunity() {
   const matrix = opp.intentProductMatrix || [];
   const health = opp.health || [];
   const baseline = opp.cronkBaseline || {};
+  const nextActions = dashboard.nextActions?.queue || [];
+  const nextActionsSummary = document.getElementById("next-actions-summary");
+  if (nextActionsSummary) {
+    const top = nextActions[0];
+    nextActionsSummary.textContent = top
+      ? `${fmt(nextActions.length, "Listing Count")} ranked actions. Top move: ${top["Action Type"]} - ${top["Product / Listing"] || top.Action || "selected opportunity"}.`
+      : "No next-action rows are available in this snapshot.";
+  }
+  renderTable("next-actions", nextActions, [
+    "Priority", "Action Type", "Action", "Target Category", "Product / Listing",
+    "Action Score", "Expected Daily Sales", "Source Signal", "Confidence",
+    "Evidence", "Next Step", "Market Listing URL", "My Listing URL"
+  ], 40);
 
   const metricRows = [
     ["Top opportunity", queue[0]?.["Product Bet"] || "Unavailable"],
