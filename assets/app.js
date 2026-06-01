@@ -11,7 +11,7 @@ let buyerMomentCatalogCache = null;
 let buyerMomentTopListingRowsCache = null;
 let customBuyerMomentRange = null;
 const CUSTOM_BUYER_MOMENT_ID = "custom-date-range";
-const DATA_ASSET_VERSION = "buyer-review-final-20260601-1";
+const DATA_ASSET_VERSION = "review-listing-index-20260601-1";
 const BUYER_MOMENT_LANE_HEIGHT = 30;
 const LISTING_RENDER_LIMIT = 500;
 const REVIEW_LISTING_PREVIEW_CHUNKS = 1;
@@ -445,7 +445,22 @@ function renderMetrics() {
 }
 
 function listingSearchText(row) {
-  return Object.values(row).join(" ").toLowerCase();
+  if (row.__listingSearchText) return row.__listingSearchText;
+  const text = Object.keys(row)
+    .filter(key => !key.startsWith("__"))
+    .map(key => row[key])
+    .join(" ")
+    .toLowerCase();
+  Object.defineProperty(row, "__listingSearchText", {
+    value: text,
+    configurable: true,
+    writable: true
+  });
+  return text;
+}
+
+function listingsViewIsActive() {
+  return document.getElementById("listings")?.classList.contains("active");
 }
 
 function reviewListingManifest() {
@@ -506,6 +521,7 @@ function decodeReviewListingRows(payload, chunkIndex, options = {}) {
     row["Weekly Sales Graph"] = "Open graph";
     row["Weekly Cycle Key"] = `review:${chunkIndex}:${rowIndex}:${listingId}`;
     row["Evidence Confidence"] = row["Evidence Confidence"] || "Review-derived estimate";
+    row["Review Corpus Latest ISO"] = row["Review Corpus Latest ISO"] || row["Last Review ISO"] || "";
     const enriched = withDailySales(row);
     if (options.trackRows) {
       reviewListingState.rowByCycleKey.set(enriched["Weekly Cycle Key"], enriched);
@@ -561,7 +577,7 @@ function ensureReviewListingPreview() {
       console.warn(error);
     } finally {
       reviewListingState.previewLoading = false;
-      if (document.getElementById("listings")?.classList.contains("active")) renderListings();
+      if (listingsViewIsActive()) renderListings();
     }
   })();
 }
@@ -587,6 +603,7 @@ function startReviewListingSearch(query, production) {
         const rows = cached
           ? reviewListingState.rowChunks.get(index)
           : await fetchReviewListingRows(index, { cacheRows: false, trackRows: false });
+        if (reviewListingState.searchToken !== token) return;
         reviewListingState.searchScanned += rows.length;
         rows.forEach(row => {
           if (!rowMatchesListingFilters(row, query, production)) return;
@@ -596,7 +613,7 @@ function startReviewListingSearch(query, production) {
             reviewListingState.rowByCycleKey.set(row["Weekly Cycle Key"], row);
           }
         });
-        if (index % 2 === 1 && document.getElementById("listings")?.classList.contains("active")) {
+        if (listingsViewIsActive()) {
           renderListings();
           await new Promise(resolve => setTimeout(resolve, 0));
         }
@@ -607,7 +624,7 @@ function startReviewListingSearch(query, production) {
     } finally {
       if (reviewListingState.searchToken === token) {
         reviewListingState.searchLoading = false;
-        if (document.getElementById("listings")?.classList.contains("active")) renderListings();
+        if (listingsViewIsActive()) renderListings();
       }
     }
   })();
@@ -616,6 +633,7 @@ function startReviewListingSearch(query, production) {
 function reviewListingRowsForListings(query, production) {
   const manifest = reviewListingManifest();
   if (!manifest) return [];
+  if (!listingsViewIsActive()) return [];
   if (shouldSearchReviewListings(query, production)) {
     startReviewListingSearch(query, production);
     const key = reviewListingFilterKey(query, production);
@@ -644,6 +662,9 @@ function reviewListingStatusText(query, production) {
   }
   if (reviewListingState.previewLoaded) {
     return `Review index preview loaded from ${total} review-sourced listings.`;
+  }
+  if (!listingsViewIsActive()) {
+    return `Review index available with ${total} review-sourced listings.`;
   }
   return `Review index available with ${total} review-sourced listings; loading preview.`;
 }
@@ -3873,6 +3894,7 @@ function activateView(viewId) {
     section.classList.toggle("active", section.id === viewId);
   });
   window.dispatchEvent(new Event("resize"));
+  if (viewId === "listings") renderListings();
   requestAnimationFrame(updateAllBottomScrollbars);
 }
 
