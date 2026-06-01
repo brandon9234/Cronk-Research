@@ -8,7 +8,7 @@ let buyerMomentRowsCache = new Map();
 let buyerMomentSummariesCache = null;
 let customBuyerMomentRange = null;
 const CUSTOM_BUYER_MOMENT_ID = "custom-date-range";
-const DATA_ASSET_VERSION = "nameplate-product-split-20260601-1";
+const DATA_ASSET_VERSION = "buyer-moment-ui-20260601-1";
 
 const numericColumns = new Set([
   "7D Sales", "30D Sales", "Avg Daily Sales (30D)", "Active Listings", "Daily Sales",
@@ -228,6 +228,19 @@ function renderTable(targetId, rows, columns = null, limit = null) {
   }).join("");
   target.innerHTML = tableShell(header, body);
   syncBottomScrollbar(target);
+}
+
+function rawPreviewRows(key) {
+  const preview = dashboard?.rawPreviews?.[key];
+  if (Array.isArray(preview)) return preview;
+  return Array.isArray(preview?.rows) ? preview.rows : [];
+}
+
+function rawPreviewColumns(key) {
+  const preview = dashboard?.rawPreviews?.[key];
+  if (Array.isArray(preview?.columns)) return preview.columns;
+  const rows = rawPreviewRows(key);
+  return rows.length ? Object.keys(rows[0]) : [];
 }
 
 function tableShell(header, body) {
@@ -1555,6 +1568,7 @@ function renderBuyerMomentWeekChart(rows) {
 function renderBuyerMoments() {
   const summaryTarget = document.getElementById("buyer-moment-summary");
   if (!summaryTarget) return;
+  renderBuyerMomentImport();
   const summaries = buyerMomentSummaries();
   const selected = selectedBuyerMomentSummary(summaries);
   syncCustomRangeInputs();
@@ -1605,6 +1619,73 @@ function renderBuyerMoments() {
     "Product Category", "Product Substrate Category", "Production Tag", "Matched Cues",
     "Review Corpus Count", "Review Corpus 90D", "Review Corpus 365D", "Moment Source", "Listing URL"
   ], 250);
+}
+
+function lookupSnapshotMetric(label) {
+  const target = String(label).toLowerCase();
+  return rawPreviewRows("buyer_moment_snapshot").find(row => String(row.Metric || "").toLowerCase() === target)?.Value || "";
+}
+
+function renderBuyerMomentImport() {
+  const metricTarget = document.getElementById("buyer-moment-import-metrics");
+  const countTarget = document.getElementById("buyer-moment-import-count");
+  const summaryTarget = document.getElementById("buyer-moment-import-summary");
+  if (!metricTarget || !summaryTarget) return;
+
+  const summaryRows = rawPreviewRows("buyer_moment_summary");
+  const addedRows = rawPreviewRows("buyer_moment_added_shops");
+  const shopRows = rawPreviewRows("buyer_moment_shops");
+  const listingRows = rawPreviewRows("buyer_moment_top_listings");
+  if (!summaryRows.length && !listingRows.length && !shopRows.length) {
+    metricTarget.innerHTML = "";
+    summaryTarget.innerHTML = `<div class="empty">No API buyer moment import is loaded in this snapshot.</div>`;
+    if (countTarget) countTarget.textContent = "";
+    return;
+  }
+
+  const selectedRows = summaryRows.reduce((sum, row) => sum + numericCell(row, "Selected Listing Rows"), 0);
+  const uniqueListings = summaryRows.reduce((sum, row) => sum + numericCell(row, "Unique Top Listing IDs"), 0);
+  const uniqueShops = summaryRows.reduce((sum, row) => sum + numericCell(row, "Unique Top Shop IDs"), 0);
+  const latestReview = lookupSnapshotMetric("Latest review captured_at");
+  const totalReviews = lookupSnapshotMetric("Live browser review rows");
+  const shopsAdded = numericCell({ value: lookupSnapshotMetric("Gift moment shops added to queue") }, "value") +
+    numericCell({ value: lookupSnapshotMetric("Micro moment shops added to queue") }, "value");
+  metricTarget.innerHTML = [
+    metric("Buyer moment groups", fmt(summaryRows.length, "Listing Count")),
+    metric("API listing rows", fmt(selectedRows || listingRows.length, "Listing Count")),
+    metric("Unique shops found", fmt(uniqueShops || shopRows.length, "Shop Count")),
+    metric("Added to review queue", fmt(shopsAdded || addedRows.length, "Shop Count")),
+    metric("Review rows synced", fmt(totalReviews || dashboard.reviewStats?.totalReviews || 0, "Review Count")),
+    metric("Latest review capture", latestReview || dashboard.reviewStats?.latestCapture || "")
+  ].join("");
+
+  if (countTarget) {
+    countTarget.textContent = `Loaded ${fmt(summaryRows.length, "Listing Count")} buyer-moment groups, ${fmt(selectedRows || listingRows.length, "Listing Count")} selected API listing rows, and ${fmt(shopsAdded || addedRows.length, "Shop Count")} newly queued shops.`;
+  }
+
+  const summaryColumns = [
+    "Source Run", "Buyer Moment / Group", "Keywords", "API Total Matches Sum",
+    "Selected Listing Rows", "Unique Top Listing IDs", "Unique Top Shop IDs"
+  ];
+  summaryTarget.innerHTML = `
+    <div class="grid two">
+      <section>
+        <h3>Moment Group Summary</h3>
+        <div id="buyer-moment-import-summary-table"></div>
+      </section>
+      <section>
+        <h3>New Shops Added To Queue</h3>
+        <div id="buyer-moment-import-added-table"></div>
+      </section>
+    </div>
+    <section>
+      <h3>Top API Listings Preview</h3>
+      <div id="buyer-moment-import-listing-table"></div>
+    </section>
+  `;
+  renderTable("buyer-moment-import-summary-table", summaryRows, summaryColumns, 40);
+  renderTable("buyer-moment-import-added-table", addedRows, ["Source Run", "shop_name", "transaction_sold_count", "review_count", "indexed_state", "queue_status", "search_terms"], 40);
+  renderTable("buyer-moment-import-listing-table", listingRows, ["Source Run", "keyword_group", "keyword", "shop_name", "transaction_sold_count", "review_count", "title", "url"], 60);
 }
 
 function numericCell(row, column) {
@@ -3034,7 +3115,7 @@ function submitSheetQuestion() {
 function renderRaw() {
   const select = document.getElementById("raw-select");
   const key = select.value;
-  renderTable("raw-table", dashboard.rawPreviews[key] || []);
+  renderTable("raw-table", rawPreviewRows(key), rawPreviewColumns(key));
 }
 
 function activateView(viewId) {
@@ -3063,7 +3144,7 @@ function initRawSelect() {
   Object.keys(dashboard.rawPreviews || {}).forEach(key => {
     const option = document.createElement("option");
     option.value = key;
-    option.textContent = key;
+    option.textContent = key.replaceAll("_", " ");
     select.appendChild(option);
   });
   select.addEventListener("change", renderRaw);
