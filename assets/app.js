@@ -7,7 +7,7 @@ let buyerMomentRowsCache = new Map();
 let buyerMomentSummariesCache = null;
 let customBuyerMomentRange = null;
 const CUSTOM_BUYER_MOMENT_ID = "custom-date-range";
-const DATA_ASSET_VERSION = "buyer-moment-custom-range-20260601-1";
+const DATA_ASSET_VERSION = "daily-before-weekly-20260601-1";
 
 const numericColumns = new Set([
   "7D Sales", "30D Sales", "Avg Daily Sales (30D)", "Active Listings", "Daily Sales",
@@ -35,9 +35,10 @@ const numericColumns = new Set([
   "Review Corpus Months Covered", "Peak Review Month Count", "Seasonality Index",
   "eRank Avg Daily Sales (30D)", "eRank Total Sales",
   "Estimated Monthly Sales", "Estimated Sales / Active Listing", "Reviews / Active Listing",
-  "Sales Per Review Used", "Observed Days", "Estimated Weekly Sales", "Recent Weekly Sales",
-  "Prior Weekly Sales", "Peak Weekly Sales", "Cycle Weeks Covered",
-  "Moment Estimated Sales", "Moment Avg Weekly Sales", "Moment Review Count",
+  "Sales Per Review Used", "Observed Days", "Estimated Daily Sales", "Estimated Weekly Sales",
+  "Recent Daily Sales", "Recent Weekly Sales", "Prior Daily Sales", "Prior Weekly Sales",
+  "Peak Daily Sales", "Peak Weekly Sales", "Cycle Weeks Covered",
+  "Moment Estimated Sales", "Moment Avg Daily Sales", "Moment Avg Weekly Sales", "Moment Review Count",
   "Moment Weeks", "Moment Weeks With Demand", "Matching Listings", "Listings With Velocity",
   "Top Listing Sales"
   , "Draft Listings", "My Daily Sales", "Current Market Daily Sales", "Current Market Share %",
@@ -713,7 +714,7 @@ function getListingRows() {
     });
     byKey.set(key, merged);
   });
-  return Array.from(byKey.values());
+  return Array.from(byKey.values()).map(withDailySales);
 }
 
 function listingCycleMap() {
@@ -730,14 +731,14 @@ function fullListingCycleRows(cycle) {
   for (let cursor = new Date(start); cursor <= end; cursor.setUTCDate(cursor.getUTCDate() + 7)) {
     const week = cursor.toISOString().slice(0, 10);
     const point = byWeek.get(week) || [week, 0, 0];
-    rows.push({
+    rows.push(withDailySales({
       "Week Start": week,
       "Review Count": Number(point[1] || 0),
       "Estimated Weekly Sales": Number(point[2] || 0),
       "Sales Per Review Used": cycle.salesPerReview,
       "Trend Source": cycle.source,
       "Trend Confidence": cycle.confidence
-    });
+    }));
   }
   return rows;
 }
@@ -751,7 +752,7 @@ function renderListingCycle(cycleKey = selectedListingCycleKey) {
   selectedListingCycleKey = cycleKey || "";
   const cycle = listingCycleMap().get(selectedListingCycleKey);
   if (!cycle) {
-    target.innerHTML = `<div class="empty">No listing weekly sales cycle is selected.</div>`;
+    target.innerHTML = `<div class="empty">No listing sales cycle is selected.</div>`;
     summary.textContent = "";
     document.getElementById("listing-cycle-table").innerHTML = "";
     return;
@@ -761,20 +762,20 @@ function renderListingCycle(cycleKey = selectedListingCycleKey) {
   summary.textContent = `${cycle.shop || "Unknown shop"} · ${fmt(cycle.reviewCount, "Review Corpus Count")} reviews · ${cycle.confidence || "Estimated"} · ${cycle.source || ""}`;
   Plotly.newPlot("listing-cycle-chart", [{
     type: "bar",
-    name: "Estimated weekly sales",
+    name: "Estimated daily sales",
     x: rows.map(row => row["Week Start"]),
-    y: rows.map(row => row["Estimated Weekly Sales"]),
-    customdata: rows.map(row => [row["Review Count"], row["Sales Per Review Used"], row["Trend Confidence"]]),
+    y: rows.map(row => row["Estimated Daily Sales"]),
+    customdata: rows.map(row => [row["Estimated Weekly Sales"], row["Review Count"], row["Sales Per Review Used"], row["Trend Confidence"]]),
     marker: { color: "#1f5fbf" },
-    hovertemplate: "%{x}<br>Estimated weekly sales: %{y:,.1f}<br>Reviews: %{customdata[0]:,.0f}<br>Sales/review: %{customdata[1]:,.2f}<br>%{customdata[2]}<extra></extra>"
+    hovertemplate: "%{x}<br>Estimated daily sales: %{y:,.1f}<br>Estimated weekly sales: %{customdata[0]:,.1f}<br>Reviews: %{customdata[1]:,.0f}<br>Sales/review: %{customdata[2]:,.2f}<br>%{customdata[3]}<extra></extra>"
   }], {
     title: { text: title, font: { size: 14 } },
     margin: { l: 58, r: 18, t: 38, b: 44 },
-    yaxis: { title: "Estimated weekly sales" },
+    yaxis: { title: "Estimated daily sales" },
     paper_bgcolor: "white",
     plot_bgcolor: "white"
   }, plotConfig);
-  renderTable("listing-cycle-table", [...rows].reverse(), ["Week Start", "Estimated Weekly Sales", "Review Count", "Sales Per Review Used", "Trend Confidence", "Trend Source"], 52);
+  renderTable("listing-cycle-table", [...rows].reverse(), ["Week Start", "Estimated Daily Sales", "Estimated Weekly Sales", "Review Count", "Sales Per Review Used", "Trend Confidence", "Trend Source"], 52);
 }
 
 function openListingCycle(cycleKey, options = {}) {
@@ -1094,6 +1095,30 @@ function roundOne(value) {
   return Number((value || 0).toFixed(1));
 }
 
+function dailyFromWeekly(value) {
+  return roundOne(numericCell({ value }, "value") / 7);
+}
+
+function withDailySales(row) {
+  const next = { ...row };
+  if (next["Estimated Weekly Sales"] !== undefined && next["Estimated Weekly Sales"] !== "") {
+    next["Estimated Daily Sales"] = dailyFromWeekly(next["Estimated Weekly Sales"]);
+  }
+  if (next["Recent Weekly Sales"] !== undefined && next["Recent Weekly Sales"] !== "") {
+    next["Recent Daily Sales"] = dailyFromWeekly(next["Recent Weekly Sales"]);
+  }
+  if (next["Prior Weekly Sales"] !== undefined && next["Prior Weekly Sales"] !== "") {
+    next["Prior Daily Sales"] = dailyFromWeekly(next["Prior Weekly Sales"]);
+  }
+  if (next["Peak Weekly Sales"] !== undefined && next["Peak Weekly Sales"] !== "") {
+    next["Peak Daily Sales"] = dailyFromWeekly(next["Peak Weekly Sales"]);
+  }
+  if (next["Moment Avg Weekly Sales"] !== undefined && next["Moment Avg Weekly Sales"] !== "") {
+    next["Moment Avg Daily Sales"] = dailyFromWeekly(next["Moment Avg Weekly Sales"]);
+  }
+  return next;
+}
+
 function listingRowKey(row) {
   return `${row.Shop || ""}|${row["Listing URL"] || row["Product Title"] || ""}`;
 }
@@ -1116,7 +1141,7 @@ function momentRowsForRange(range, label = "Custom Date Range", timeframe = "") 
       const delta = numericCell(week, "Estimated Weekly Sales") - numericCell(winner, "Estimated Weekly Sales");
       return delta > 0 ? week : winner;
     }, null);
-    return {
+    return withDailySales({
       ...row,
       "Buyer Moment": label,
       "Moment Timeframe": timeframe || formatMomentWindow(range),
@@ -1131,7 +1156,7 @@ function momentRowsForRange(range, label = "Custom Date Range", timeframe = "") 
       "Moment Source": cycle?.source || "No listing weekly review cycle matched",
       _momentWeeks: weeks,
       _momentKey: listingRowKey(row)
-    };
+    });
   }).filter(Boolean);
 }
 
@@ -1196,7 +1221,7 @@ function buyerMomentRows(momentId) {
       const delta = numericCell(week, "Estimated Weekly Sales") - numericCell(winner, "Estimated Weekly Sales");
       return delta > 0 ? week : winner;
     }, null);
-    return {
+    return withDailySales({
       ...row,
       "Buyer Moment": definition.label,
       "Moment Timeframe": formatDefinitionWindow(definition),
@@ -1211,7 +1236,7 @@ function buyerMomentRows(momentId) {
       "Moment Source": cycle?.source || "No listing weekly review cycle matched",
       _momentWeeks: weeks,
       _momentKey: listingRowKey(row)
-    };
+    });
   }).filter(Boolean);
   buyerMomentRowsCache.set(momentId, rows);
   return rows;
@@ -1222,7 +1247,7 @@ function summarizeMomentRows(id, label, timeframe, windowLabel, rows, extra = {}
   const totalSales = rows.reduce((sum, row) => sum + numericCell(row, "Moment Estimated Sales"), 0);
   const reviewCount = rows.reduce((sum, row) => sum + numericCell(row, "Moment Review Count"), 0);
   const top = sortBuyerMomentRows(rows, "velocity-desc")[0] || {};
-  return {
+  return withDailySales({
     "Moment ID": id,
     "Buyer Moment": label,
     "Moment Timeframe": timeframe,
@@ -1235,7 +1260,7 @@ function summarizeMomentRows(id, label, timeframe, windowLabel, rows, extra = {}
     "Top Shop": top.Shop || "",
     "Top Listing": top["Product Title"] || "",
     ...extra
-  };
+  });
 }
 
 function customBuyerMomentSummary() {
@@ -1272,7 +1297,7 @@ function buyerMomentSummaries() {
 function sortBuyerMomentRows(rows, forcedSort = null) {
   const sort = forcedSort || document.getElementById("buyer-moment-sort")?.value || "velocity-desc";
   const sortMap = {
-    "velocity-desc": ["Moment Avg Weekly Sales", "desc"],
+    "velocity-desc": ["Moment Avg Daily Sales", "desc"],
     "sales-desc": ["Moment Estimated Sales", "desc"],
     "reviews-desc": ["Moment Review Count", "desc"],
     "daily-desc": ["Est. Daily Sales", "desc"],
@@ -1318,7 +1343,7 @@ function buyerMomentCategoryRows(rows) {
   });
   return [...groups.values()].map(group => {
     const top = sortBuyerMomentRows(group.rows, "sales-desc")[0] || {};
-    return {
+    return withDailySales({
       "Product Substrate Category": group.category,
       "Moment Estimated Sales": roundOne(group.sales),
       "Moment Avg Weekly Sales": roundOne(group.maxWeeks ? group.sales / group.maxWeeks : 0),
@@ -1329,7 +1354,7 @@ function buyerMomentCategoryRows(rows) {
       "Top Shop": top.Shop || "",
       "Top Listing": top["Product Title"] || "",
       "Top Listing Sales": numericCell(top, "Moment Estimated Sales")
-    };
+    });
   }).sort((a, b) =>
     numericCell(b, "Moment Estimated Sales") - numericCell(a, "Moment Estimated Sales") ||
     numericCell(b, "Matching Listings") - numericCell(a, "Matching Listings") ||
@@ -1474,7 +1499,7 @@ function renderBuyerMomentWeekChart(rows) {
       if (sales > 0) item.listingKeys.add(row._momentKey);
     });
   });
-  const data = [...byWeek.values()].sort((a, b) => String(a["Week Start"]).localeCompare(String(b["Week Start"]))).map(row => ({
+  const data = [...byWeek.values()].sort((a, b) => String(a["Week Start"]).localeCompare(String(b["Week Start"]))).map(row => withDailySales({
     "Week Start": row["Week Start"],
     "Estimated Weekly Sales": roundOne(row["Estimated Weekly Sales"]),
     "Review Count": row["Review Count"],
@@ -1488,17 +1513,17 @@ function renderBuyerMomentWeekChart(rows) {
   Plotly.newPlot("buyer-moment-week-chart", [{
     type: "bar",
     x: data.map(row => row["Week Start"]),
-    y: data.map(row => row["Estimated Weekly Sales"]),
-    customdata: data.map(row => [row["Review Count"], row["Matching Listings"]]),
+    y: data.map(row => row["Estimated Daily Sales"]),
+    customdata: data.map(row => [row["Estimated Weekly Sales"], row["Review Count"], row["Matching Listings"]]),
     marker: { color: "#0f766e" },
-    hovertemplate: "%{x}<br>Estimated weekly sales: %{y:,.1f}<br>Reviews: %{customdata[0]:,.0f}<br>Listings with velocity: %{customdata[1]:,.0f}<extra></extra>"
+    hovertemplate: "%{x}<br>Estimated daily sales: %{y:,.1f}<br>Estimated weekly sales: %{customdata[0]:,.1f}<br>Reviews: %{customdata[1]:,.0f}<br>Listings with velocity: %{customdata[2]:,.0f}<extra></extra>"
   }], {
     margin: { l: 58, r: 18, t: 8, b: 44 },
-    yaxis: { title: "Estimated weekly sales" },
+    yaxis: { title: "Estimated daily sales" },
     paper_bgcolor: "white",
     plot_bgcolor: "white"
   }, plotConfig);
-  renderTable("buyer-moment-week-table", data, ["Week Start", "Estimated Weekly Sales", "Review Count", "Matching Listings"], 12);
+  renderTable("buyer-moment-week-table", data, ["Week Start", "Estimated Daily Sales", "Estimated Weekly Sales", "Review Count", "Matching Listings"], 12);
 }
 
 function renderBuyerMoments() {
@@ -1538,17 +1563,17 @@ function renderBuyerMoments() {
   document.getElementById("buyer-moment-count").textContent =
     `Showing ${fmt(rows.length, "Matching Listings")} ${selected["Buyer Moment"]} listings for ${selected["Moment Timeframe"]}`;
   summaryTarget.innerHTML = selected["Moment ID"] === CUSTOM_BUYER_MOMENT_ID
-    ? `<strong>Custom Date Range</strong> ranks categories and listings by review-derived weekly sales velocity from ${escapeHtml(selected["Moment Window"])}.`
-    : `<strong>${escapeHtml(selected["Buyer Moment"])}</strong> spans ${escapeHtml(selected["Moment Timeframe"])} and is ranked by review-derived weekly sales velocity from ${escapeHtml(selected["Moment Window"])} in the available review corpus.`;
+    ? `<strong>Custom Date Range</strong> ranks categories and listings by review-derived daily sales velocity from ${escapeHtml(selected["Moment Window"])}.`
+    : `<strong>${escapeHtml(selected["Buyer Moment"])}</strong> spans ${escapeHtml(selected["Moment Timeframe"])} and is ranked by review-derived daily sales velocity from ${escapeHtml(selected["Moment Window"])} in the available review corpus.`;
 
   renderBar("buyer-moment-rollup-chart", categoryRows, "Moment Estimated Sales", "Product Substrate Category", 20, "#0f766e");
   renderTable("buyer-moment-rollups", categoryRows, [
-    "Product Substrate Category", "Moment Estimated Sales", "Moment Avg Weekly Sales", "Moment Review Count",
+    "Product Substrate Category", "Moment Estimated Sales", "Moment Avg Daily Sales", "Moment Avg Weekly Sales", "Moment Review Count",
     "Matching Listings", "Listings With Velocity", "Shop Count", "Top Shop", "Top Listing", "Top Listing Sales"
   ], 30);
   renderBuyerMomentWeekChart(rows);
   renderTable("buyer-moment-listings", rows, [
-    "Thumbnail", "Moment Avg Weekly Sales", "Moment Estimated Sales", "Buyer Moment", "Moment Timeframe", "Moment Window",
+    "Thumbnail", "Moment Avg Daily Sales", "Moment Avg Weekly Sales", "Moment Estimated Sales", "Buyer Moment", "Moment Timeframe", "Moment Window",
     "Moment Review Count", "Moment Weeks With Demand", "Peak Moment Week", "Weekly Sales Graph",
     "Shop", "Est. Daily Sales", "Est. 30D Sales", "Product Title", "Tags", "Best Guess Tags",
     "Product Category", "Product Substrate Category", "Production Tag", "Matched Cues",
@@ -1926,22 +1951,23 @@ function renderCompanyProfile() {
 
   const weeklyRows = (dashboard.reviewCorpus?.shopWeeklySales || [])
     .filter(row => companyName(row.Shop) === company)
-    .sort((a, b) => String(a["Week Start"] || "").localeCompare(String(b["Week Start"] || "")));
+    .sort((a, b) => String(a["Week Start"] || "").localeCompare(String(b["Week Start"] || "")))
+    .map(withDailySales);
   if (weeklyRows.length) {
     Plotly.newPlot("company-review-cycle-chart", [{
       type: "bar",
       x: weeklyRows.map(row => row["Week Start"]),
-      y: weeklyRows.map(row => row["Estimated Weekly Sales"]),
-      customdata: weeklyRows.map(row => [row["Review Count"], row["Sales Per Review Used"], row["Trend Confidence"]]),
+      y: weeklyRows.map(row => row["Estimated Daily Sales"]),
+      customdata: weeklyRows.map(row => [row["Estimated Weekly Sales"], row["Review Count"], row["Sales Per Review Used"], row["Trend Confidence"]]),
       marker: { color: "#0f766e" },
-      hovertemplate: "%{x}<br>Estimated weekly sales: %{y:,.1f}<br>Reviews: %{customdata[0]:,.0f}<br>Sales/review: %{customdata[1]:,.2f}<br>%{customdata[2]}<extra></extra>"
+      hovertemplate: "%{x}<br>Estimated daily sales: %{y:,.1f}<br>Estimated weekly sales: %{customdata[0]:,.1f}<br>Reviews: %{customdata[1]:,.0f}<br>Sales/review: %{customdata[2]:,.2f}<br>%{customdata[3]}<extra></extra>"
     }], {
       margin: { l: 48, r: 16, t: 8, b: 44 },
-      yaxis: { title: "Estimated weekly sales" },
+      yaxis: { title: "Estimated daily sales" },
       paper_bgcolor: "white",
       plot_bgcolor: "white"
     }, plotConfig);
-    renderTable("company-review-cycle", [...weeklyRows].reverse(), ["Week Start", "Estimated Weekly Sales", "Review Count", "Sales Per Review Used", "Trend Confidence", "Trend Source"], 52);
+    renderTable("company-review-cycle", [...weeklyRows].reverse(), ["Week Start", "Estimated Daily Sales", "Estimated Weekly Sales", "Review Count", "Sales Per Review Used", "Trend Confidence", "Trend Source"], 52);
   } else {
     document.getElementById("company-review-cycle-chart").innerHTML = `<div class="empty">No weekly review-derived sales rows are available for this company.</div>`;
     document.getElementById("company-review-cycle").innerHTML = "";
@@ -1973,7 +1999,7 @@ function renderCompanyProfile() {
   if (clearProduction) clearProduction.hidden = !selectedCompanyProduction;
 
   renderTable("company-listings", visibleListings, [
-    "Overall Rank", "Thumbnail", "Weekly Sales Graph", "Recent Weekly Sales", "Weekly Trend", "Peak Sales Week", "Peak Weekly Sales",
+    "Overall Rank", "Thumbnail", "Weekly Sales Graph", "Recent Daily Sales", "Recent Weekly Sales", "Weekly Trend", "Peak Sales Week", "Peak Daily Sales", "Peak Weekly Sales",
     "Est. Daily Sales", "Est. 30D Sales", "Product Title", "Tags", "Tags Source", "Best Guess Tags",
     "Product Category", "Product Substrate Category", "Original Broad Category", "Production Tag",
     "Customization Tag", "Tag Confidence", "Tag Evidence", "Evidence Confidence", "Last Review ISO",
@@ -2159,8 +2185,8 @@ function renderMyMaravia() {
     "Build Recommendation", "Market Listing URL"
   ], 250);
 
-  renderTable("mymaravia-listings", my.myListings || [], [
-    "Thumbnail", "Weekly Sales Graph", "Recent Weekly Sales", "Weekly Trend", "State", "Product Category", "Est. Daily Sales", "Est. 30D Sales", "Product Title", "Tags", "Tags Source", "Best Guess Tags",
+  renderTable("mymaravia-listings", (my.myListings || []).map(withDailySales), [
+    "Thumbnail", "Weekly Sales Graph", "Recent Daily Sales", "Recent Weekly Sales", "Weekly Trend", "State", "Product Category", "Est. Daily Sales", "Est. 30D Sales", "Product Title", "Tags", "Tags Source", "Best Guess Tags",
     "Recent 7D Sales", "Recent 30D Sales", "Recent 90D Sales", "Recent 180D Sales",
     "Recent Reviews", "Recent Avg Rating", "Review Corpus Count", "Review Corpus 90D", "Sales Rate Window Days",
     "Views", "Favorites", "Tags Count", "Listing URL"
@@ -2184,7 +2210,7 @@ function renderListings() {
   document.getElementById("listing-count").textContent =
     rows.length === allRows.length ? `Showing all ${total} listings` : `Showing ${count} of ${total} listings`;
   renderTable("top-listings", rows, [
-    "Overall Rank", "Thumbnail", "Weekly Sales Graph", "Recent Weekly Sales", "Weekly Trend", "Peak Sales Week", "Peak Weekly Sales",
+    "Overall Rank", "Thumbnail", "Weekly Sales Graph", "Recent Daily Sales", "Recent Weekly Sales", "Weekly Trend", "Peak Sales Week", "Peak Daily Sales", "Peak Weekly Sales",
     "Shop", "Est. Daily Sales", "Est. 30D Sales", "Blank / Generic Sources", "Product Title", "Tags", "Tags Source", "Best Guess Tags", "Product Category", "Product Substrate Category",
     "Production Tag", "Customization Tag", "Tag Confidence", "Tag Evidence",
     "Review Corpus Count", "Review Corpus 90D", "Review Corpus 365D",
