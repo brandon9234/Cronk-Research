@@ -14,7 +14,7 @@ let buyerMomentTopListingRowsCache = null;
 let buyerMomentListingCycleRowsCache = new Map();
 let customBuyerMomentRange = null;
 const CUSTOM_BUYER_MOMENT_ID = "custom-date-range";
-const DATA_ASSET_VERSION = "next-actions-20260601-1";
+const DATA_ASSET_VERSION = "next-action-filters-20260601-1";
 const BUYER_MOMENT_LANE_HEIGHT = 30;
 const BUYER_MOMENT_HIGH_OPPORTUNITY_SCORE = 68;
 const BUYER_MOMENT_BUILD_FIT_ORDER = [
@@ -3795,6 +3795,57 @@ function openCompanyProfile(company) {
   activateView("company");
 }
 
+function initNextActionFilters() {
+  ["next-action-preset-filter", "next-action-type-filter", "next-action-search"].forEach(id => {
+    const element = document.getElementById(id);
+    if (!element || element.dataset.bound === "true") return;
+    element.addEventListener("input", renderOpportunity);
+    element.addEventListener("change", renderOpportunity);
+    element.dataset.bound = "true";
+  });
+}
+
+function nextActionPresetMatches(row, preset) {
+  if (!preset) return true;
+  const type = String(row["Action Type"] || "");
+  const text = Object.values(row).join(" ").toLowerCase();
+  if (preset === "nameplates") return /name\s*plates?|nameplates?|desk sign|office sign|medical desk|teacher desk|led desk/.test(text);
+  if (preset === "build") return type === "Build" || type === "Launch";
+  if (preset === "fix") return type === "Fix";
+  if (preset === "scale") return type === "Scale";
+  if (preset === "seasonal") return type === "Seasonal";
+  return true;
+}
+
+function filteredNextActions(rows) {
+  const preset = document.getElementById("next-action-preset-filter")?.value || "";
+  const type = document.getElementById("next-action-type-filter")?.value || "";
+  const query = (document.getElementById("next-action-search")?.value || "").trim().toLowerCase();
+  return rows.filter(row => {
+    if (type && row["Action Type"] !== type) return false;
+    if (!nextActionPresetMatches(row, preset)) return false;
+    if (query && !Object.values(row).join(" ").toLowerCase().includes(query)) return false;
+    return true;
+  });
+}
+
+function renderNextActionRecipe(row, visibleCount, totalCount) {
+  const target = document.getElementById("next-action-recipe");
+  if (!target) return;
+  if (!row) {
+    target.innerHTML = `<strong>No matching action.</strong> Clear filters or search a broader category.`;
+    return;
+  }
+  const type = escapeHtml(row["Action Type"] || "Action");
+  const product = escapeHtml(row["Product / Listing"] || row.Action || "Selected row");
+  const category = escapeHtml(row["Target Category"] || "Uncategorized");
+  const score = escapeHtml(fmt(row["Action Score"], "Action Score") || "");
+  const daily = escapeHtml(fmt(row["Expected Daily Sales"], "Expected Daily Sales") || "");
+  const evidence = escapeHtml(row.Evidence || "No evidence note available.");
+  const nextStep = escapeHtml(row["Next Step"] || "Review the source row and decide the listing move.");
+  target.innerHTML = `<strong>${type}: ${product}</strong><br>${category} · score ${score} · ${daily} expected daily sales · showing ${fmt(visibleCount, "Listing Count")} of ${fmt(totalCount, "Listing Count")} actions.<br><strong>Evidence:</strong> ${evidence}<br><strong>Next step:</strong> ${nextStep}`;
+}
+
 function renderOpportunity() {
   const opp = dashboard.opportunity || {};
   const metrics = opp.metrics || {};
@@ -3803,15 +3854,18 @@ function renderOpportunity() {
   const matrix = opp.intentProductMatrix || [];
   const health = opp.health || [];
   const baseline = opp.cronkBaseline || {};
+  initNextActionFilters();
   const nextActions = dashboard.nextActions?.queue || [];
+  const visibleNextActions = filteredNextActions(nextActions);
   const nextActionsSummary = document.getElementById("next-actions-summary");
   if (nextActionsSummary) {
-    const top = nextActions[0];
+    const top = visibleNextActions[0];
     nextActionsSummary.textContent = top
-      ? `${fmt(nextActions.length, "Listing Count")} ranked actions. Top move: ${top["Action Type"]} - ${top["Product / Listing"] || top.Action || "selected opportunity"}.`
+      ? `${fmt(visibleNextActions.length, "Listing Count")} visible of ${fmt(nextActions.length, "Listing Count")} ranked actions. Top move: ${top["Action Type"]} - ${top["Product / Listing"] || top.Action || "selected opportunity"}.`
       : "No next-action rows are available in this snapshot.";
   }
-  renderTable("next-actions", nextActions, [
+  renderNextActionRecipe(visibleNextActions[0], visibleNextActions.length, nextActions.length);
+  renderTable("next-actions", visibleNextActions, [
     "Priority", "Action Type", "Action", "Target Category", "Product / Listing",
     "Action Score", "Expected Daily Sales", "Source Signal", "Confidence",
     "Evidence", "Next Step", "Market Listing URL", "My Listing URL"
