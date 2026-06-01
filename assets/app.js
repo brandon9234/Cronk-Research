@@ -3,12 +3,13 @@ let selectedCompany = "";
 let selectedCompanyProduction = "";
 let selectedListingCycleKey = "";
 let selectedBuyerMomentId = "";
+let selectedImportBuyerMomentId = "";
 let selectedMarketSegment = "";
 let buyerMomentRowsCache = new Map();
 let buyerMomentSummariesCache = null;
 let customBuyerMomentRange = null;
 const CUSTOM_BUYER_MOMENT_ID = "custom-date-range";
-const DATA_ASSET_VERSION = "buyer-moment-ui-20260601-1";
+const DATA_ASSET_VERSION = "buyer-moment-timeline-20260601-1";
 
 const numericColumns = new Set([
   "7D Sales", "30D Sales", "Avg Daily Sales (30D)", "Active Listings", "Daily Sales",
@@ -1626,12 +1627,159 @@ function lookupSnapshotMetric(label) {
   return rawPreviewRows("buyer_moment_snapshot").find(row => String(row.Metric || "").toLowerCase() === target)?.Value || "";
 }
 
+const importBuyerMomentWindows = {
+  admin_day: ["04-01", "04-30"],
+  anniversary: ["01-01", "12-31"],
+  back_to_school: ["07-15", "09-10"],
+  baby_kids_family_and_coming_of_age: ["01-01", "12-31"],
+  birthday: ["01-01", "12-31"],
+  boss: ["10-01", "10-20"],
+  christmas_holiday: ["11-10", "12-31"],
+  dashboard_lane: ["01-01", "12-31"],
+  easter: ["03-01", "04-20"],
+  fathers_day: ["06-01", "06-30"],
+  gift_format_and_shopping_problem: ["01-01", "12-31"],
+  graduation: ["04-15", "06-20"],
+  halloween: ["09-15", "10-31"],
+  home_hosting_decor_and_lifestyle: ["03-01", "12-31"],
+  housewarming: ["03-01", "10-31"],
+  mothers_day: ["04-15", "05-25"],
+  new_baby: ["01-01", "12-31"],
+  new_home: ["03-01", "10-31"],
+  new_parent: ["01-01", "12-31"],
+  pet: ["01-01", "12-31"],
+  pet_memorial: ["01-01", "12-31"],
+  relationship_recipient_and_identity: ["01-01", "12-31"],
+  retirement: ["01-01", "12-31"],
+  school_college_sports_and_youth_activity: ["04-15", "09-10"],
+  seasonal_holiday: ["01-01", "12-31"],
+  support_loss_health_and_life_transition: ["01-01", "12-31"],
+  sympathy: ["01-01", "12-31"],
+  teacher_appreciation: ["04-15", "05-20"],
+  thanksgiving: ["10-20", "11-30"],
+  valentines_day: ["01-20", "02-20"],
+  wedding_romance_and_couple: ["01-01", "12-31"],
+  wedding_season: ["04-01", "10-31"],
+  work_career_professional_and_business: ["01-01", "12-31"]
+};
+
+const importBuyerMomentLabels = {
+  admin_day: "Admin Day",
+  back_to_school: "Back To School",
+  baby_kids_family_and_coming_of_age: "Baby / Kids / Coming Of Age",
+  boss: "Boss",
+  christmas_holiday: "Christmas / Holiday",
+  dashboard_lane: "Dashboard Lane",
+  fathers_day: "Father's Day",
+  gift_format_and_shopping_problem: "Gift Format / Shopping Problem",
+  home_hosting_decor_and_lifestyle: "Home / Hosting / Decor",
+  mothers_day: "Mother's Day",
+  new_baby: "New Baby",
+  new_home: "New Home",
+  new_parent: "New Parent",
+  pet_memorial: "Pet Memorial",
+  relationship_recipient_and_identity: "Relationship / Recipient / Identity",
+  school_college_sports_and_youth_activity: "School / College / Youth Activity",
+  seasonal_holiday: "Seasonal / Holiday",
+  support_loss_health_and_life_transition: "Support / Loss / Life Transition",
+  teacher_appreciation: "Teacher Appreciation",
+  valentines_day: "Valentine's Day",
+  wedding_romance_and_couple: "Wedding / Romance / Couple",
+  wedding_season: "Wedding Season",
+  work_career_professional_and_business: "Work / Career / Business"
+};
+
+function importMomentLabel(id) {
+  if (importBuyerMomentLabels[id]) return importBuyerMomentLabels[id];
+  return String(id || "")
+    .split("_")
+    .filter(Boolean)
+    .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function importMomentWindow(id) {
+  const [windowStart, windowEnd] = importBuyerMomentWindows[id] || ["01-01", "12-31"];
+  return { windowStart, windowEnd };
+}
+
+function buyerMomentImportSummaries() {
+  return rawPreviewRows("buyer_moment_summary").map(row => {
+    const id = String(row["Buyer Moment / Group"] || "").trim();
+    const definition = importMomentWindow(id);
+    const timeline = buyerMomentTimelineRange(definition);
+    return {
+      ...row,
+      "Moment ID": id,
+      "Buyer Moment": importMomentLabel(id),
+      "Moment Timeframe": formatDefinitionWindow(definition),
+      "Matching Listings": numericCell(row, "Selected Listing Rows"),
+      "Unique Shops": numericCell(row, "Unique Top Shop IDs"),
+      "Timeline Start": timeline.start,
+      "Timeline End": timeline.end,
+      "Timeline Duration": timeline.end - timeline.start,
+      ...timeline
+    };
+  }).filter(row => row["Moment ID"]).sort(buyerMomentChronology);
+}
+
+function layoutImportBuyerMomentTimeline(summaries) {
+  const items = summaries.map(row => ({ ...row })).sort((a, b) =>
+    numericCell(a, "Timeline Start") - numericCell(b, "Timeline Start") ||
+    numericCell(b, "Timeline Duration") - numericCell(a, "Timeline Duration") ||
+    String(a["Buyer Moment"]).localeCompare(String(b["Buyer Moment"]))
+  );
+  const laneEnds = [];
+  items.forEach(item => {
+    let lane = laneEnds.findIndex(end => item.start >= end + 2);
+    if (lane < 0) {
+      lane = laneEnds.length;
+      laneEnds.push(0);
+    }
+    item.lane = lane;
+    laneEnds[lane] = item.end;
+  });
+  return { items, laneCount: laneEnds.length };
+}
+
+function renderBuyerMomentImportTimeline(summaries) {
+  const monthTarget = document.getElementById("buyer-moment-import-months");
+  const timelineTarget = document.getElementById("buyer-moment-import-timeline");
+  if (!monthTarget || !timelineTarget) return;
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  monthTarget.innerHTML = months.map(month => `<div>${month}</div>`).join("");
+  const { items, laneCount } = layoutImportBuyerMomentTimeline(summaries);
+  const colors = ["#0f766e", "#1f5fbf", "#8a5a00", "#9f1239", "#6d28d9", "#0e7490"];
+  timelineTarget.style.height = `${Math.max(1, laneCount) * 38}px`;
+  timelineTarget.innerHTML = items.map((item, index) => {
+    const active = item["Moment ID"] === selectedImportBuyerMomentId ? " active" : "";
+    const compact = item.width < 11 ? " compact" : "";
+    const color = colors[index % colors.length];
+    const style = [
+      `left:${item.left}%`,
+      `width:${item.width}%`,
+      `top:${item.lane * 38}px`,
+      `--moment-color:${color}`
+    ].join(";");
+    const title = `${item["Buyer Moment"]}: ${item["Moment Timeframe"]}, ${fmt(item["Matching Listings"], "Matching Listings")} API listing rows, ${fmt(item["Unique Shops"], "Shop Count")} shops`;
+    return `<button class="buyer-moment-button${active}${compact}" type="button" data-import-moment-id="${escapeHtml(item["Moment ID"])}" style="${style}" title="${escapeHtml(title)}"><span>${escapeHtml(item["Buyer Moment"])}</span><strong>${escapeHtml(fmt(item["Matching Listings"], "Matching Listings"))}</strong></button>`;
+  }).join("");
+  timelineTarget.querySelectorAll(".buyer-moment-button").forEach(button => {
+    button.addEventListener("click", () => {
+      selectedImportBuyerMomentId = button.dataset.importMomentId || "";
+      renderBuyerMomentImport();
+    });
+  });
+}
+
 function renderBuyerMomentImport() {
   const metricTarget = document.getElementById("buyer-moment-import-metrics");
   const countTarget = document.getElementById("buyer-moment-import-count");
   const summaryTarget = document.getElementById("buyer-moment-import-summary");
+  const activeTarget = document.getElementById("buyer-moment-import-active");
   if (!metricTarget || !summaryTarget) return;
 
+  const importSummaries = buyerMomentImportSummaries();
   const summaryRows = rawPreviewRows("buyer_moment_summary");
   const addedRows = rawPreviewRows("buyer_moment_added_shops");
   const shopRows = rawPreviewRows("buyer_moment_shops");
@@ -1642,6 +1790,12 @@ function renderBuyerMomentImport() {
     if (countTarget) countTarget.textContent = "";
     return;
   }
+
+  if (!selectedImportBuyerMomentId || !importSummaries.some(row => row["Moment ID"] === selectedImportBuyerMomentId)) {
+    selectedImportBuyerMomentId = importSummaries[0]?.["Moment ID"] || "";
+  }
+  const selected = importSummaries.find(row => row["Moment ID"] === selectedImportBuyerMomentId) || importSummaries[0] || {};
+  renderBuyerMomentImportTimeline(importSummaries);
 
   const selectedRows = summaryRows.reduce((sum, row) => sum + numericCell(row, "Selected Listing Rows"), 0);
   const uniqueListings = summaryRows.reduce((sum, row) => sum + numericCell(row, "Unique Top Listing IDs"), 0);
@@ -1662,11 +1816,18 @@ function renderBuyerMomentImport() {
   if (countTarget) {
     countTarget.textContent = `Loaded ${fmt(summaryRows.length, "Listing Count")} buyer-moment groups, ${fmt(selectedRows || listingRows.length, "Listing Count")} selected API listing rows, and ${fmt(shopsAdded || addedRows.length, "Shop Count")} newly queued shops.`;
   }
+  if (activeTarget) {
+    activeTarget.innerHTML = `<strong>${escapeHtml(selected["Buyer Moment"] || "Buyer moment")}</strong> shows ${escapeHtml(fmt(selected["Matching Listings"], "Matching Listings"))} selected API listing rows, ${escapeHtml(fmt(selected["Unique Shops"], "Shop Count"))} unique shops, and ${escapeHtml(selected["Moment Timeframe"] || "year-round")} timing in the market map.`;
+  }
 
   const summaryColumns = [
     "Source Run", "Buyer Moment / Group", "Keywords", "API Total Matches Sum",
     "Selected Listing Rows", "Unique Top Listing IDs", "Unique Top Shop IDs"
   ];
+  const activeListingRows = listingRows.filter(row => row.keyword_group === selectedImportBuyerMomentId);
+  const activeAddedRows = addedRows.filter(row =>
+    String(row.matched_moments || "").split(";").map(value => value.trim()).includes(selectedImportBuyerMomentId)
+  );
   summaryTarget.innerHTML = `
     <div class="grid two">
       <section>
@@ -1684,8 +1845,8 @@ function renderBuyerMomentImport() {
     </section>
   `;
   renderTable("buyer-moment-import-summary-table", summaryRows, summaryColumns, 40);
-  renderTable("buyer-moment-import-added-table", addedRows, ["Source Run", "shop_name", "transaction_sold_count", "review_count", "indexed_state", "queue_status", "search_terms"], 40);
-  renderTable("buyer-moment-import-listing-table", listingRows, ["Source Run", "keyword_group", "keyword", "shop_name", "transaction_sold_count", "review_count", "title", "url"], 60);
+  renderTable("buyer-moment-import-added-table", activeAddedRows.length ? activeAddedRows : addedRows, ["Source Run", "shop_name", "transaction_sold_count", "review_count", "indexed_state", "queue_status", "matched_moments", "matched_keywords"], 40);
+  renderTable("buyer-moment-import-listing-table", activeListingRows.length ? activeListingRows : listingRows, ["Source Run", "keyword_group", "keyword", "shop_name", "shop_transaction_sold_count", "shop_review_count", "title", "url"], 60);
 }
 
 function numericCell(row, column) {
