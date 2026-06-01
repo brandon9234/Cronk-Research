@@ -9,9 +9,10 @@ let buyerMomentRowsCache = new Map();
 let buyerMomentSummariesCache = null;
 let buyerMomentCatalogCache = null;
 let buyerMomentTopListingRowsCache = null;
+let buyerMomentListingCycleRowsCache = new Map();
 let customBuyerMomentRange = null;
 const CUSTOM_BUYER_MOMENT_ID = "custom-date-range";
-const DATA_ASSET_VERSION = "review-listing-index-20260601-1";
+const DATA_ASSET_VERSION = "buyer-moment-enriched-20260601-1";
 const BUYER_MOMENT_LANE_HEIGHT = 30;
 const LISTING_RENDER_LIMIT = 500;
 const REVIEW_LISTING_PREVIEW_CHUNKS = 1;
@@ -1037,6 +1038,7 @@ function parseReviewListingCycleKey(cycleKey) {
 }
 
 function reviewListingCycleWeeks(encoded, manifest, row) {
+  if (!manifest?.weekStart) return [];
   const counts = new Map(
     String(encoded || "")
       .split(";")
@@ -1064,6 +1066,11 @@ function reviewListingCycleWeeks(encoded, manifest, row) {
     }));
   }
   return rows;
+}
+
+function buyerMomentListingCycleWeeks(row) {
+  const manifest = dashboard.buyerMoments?.listingCycleMeta || dashboard.reviewCorpus?.listingCycleMeta || {};
+  return reviewListingCycleWeeks(row["Weekly Review Counts"], manifest, row);
 }
 
 async function loadReviewListingCycle(cycleKey) {
@@ -1120,6 +1127,35 @@ function renderReviewListingCycle(cycleKey, target, summary) {
     });
 }
 
+function renderBuyerMomentListingCycle(cycleKey, target, summary) {
+  const result = buyerMomentListingCycleRowsCache.get(cycleKey);
+  if (!result) {
+    target.innerHTML = `<div class="empty">No buyer-moment listing cycle is available.</div>`;
+    summary.textContent = "";
+    document.getElementById("listing-cycle-table").innerHTML = "";
+    return;
+  }
+  const { row, rows } = result;
+  const title = row["Product Title"] || "Buyer moment listing";
+  summary.textContent = `${row.Shop || "Unknown shop"} · ${fmt(row["Review Corpus Count"], "Review Corpus Count") || "0"} reviews · ${row["Cycle Confidence"] || "Buyer moment estimate"} · ${row["Trend Source"] || ""}`;
+  Plotly.newPlot("listing-cycle-chart", [{
+    type: "bar",
+    name: "Estimated daily sales",
+    x: rows.map(item => item["Week Start"]),
+    y: rows.map(item => item["Estimated Daily Sales"]),
+    customdata: rows.map(item => [item["Estimated Weekly Sales"], item["Review Count"], item["Sales Per Review Used"], item["Trend Confidence"]]),
+    marker: { color: "#0f766e" },
+    hovertemplate: "%{x}<br>Estimated daily sales: %{y:,.1f}<br>Estimated weekly sales: %{customdata[0]:,.1f}<br>Reviews: %{customdata[1]:,.0f}<br>Sales/review: %{customdata[2]:,.2f}<br>%{customdata[3]}<extra></extra>"
+  }], {
+    title: { text: title, font: { size: 14 } },
+    margin: { l: 58, r: 18, t: 38, b: 44 },
+    yaxis: { title: "Estimated daily sales" },
+    paper_bgcolor: "white",
+    plot_bgcolor: "white"
+  }, plotConfig);
+  renderTable("listing-cycle-table", [...rows].reverse(), ["Week Start", "Estimated Daily Sales", "Estimated Weekly Sales", "Review Count", "Sales Per Review Used", "Trend Confidence", "Trend Source"], 52);
+}
+
 function renderListingCycle(cycleKey = selectedListingCycleKey) {
   const target = document.getElementById("listing-cycle-chart");
   const summary = document.getElementById("listing-cycle-summary");
@@ -1127,6 +1163,10 @@ function renderListingCycle(cycleKey = selectedListingCycleKey) {
   const cycles = dashboard.reviewCorpus?.listingCycles || [];
   if (!cycleKey && cycles.length) cycleKey = String(cycles[0].key || "");
   selectedListingCycleKey = cycleKey || "";
+  if (String(selectedListingCycleKey).startsWith("buyer:")) {
+    renderBuyerMomentListingCycle(selectedListingCycleKey, target, summary);
+    return;
+  }
   if (String(selectedListingCycleKey).startsWith("review:")) {
     renderReviewListingCycle(selectedListingCycleKey, target, summary);
     return;
@@ -1507,12 +1547,24 @@ function buyerMomentTopListingRows() {
       "Has Variations": row.has_variations,
       "Product Title": title,
       "Listing URL": url,
+      "Thumbnail": row.Thumbnail || row.thumbnail || "",
       "Tags": row.tags || row.Tags || "",
       "Materials": row.materials || row.Materials || "",
       "Local Review Rows": row.local_review_rows_total || "",
       "Local 365D Reviews": row.local_review_rows_365 || "",
       "Local 90D Reviews": row.local_review_rows_90 || "",
-      "Local Latest Review": row.local_latest_review || ""
+      "Local Latest Review": row.local_latest_review || "",
+      "Weekly Sales Graph": row["Weekly Sales Graph"] || "",
+      "Weekly Cycle Key": row["Weekly Cycle Key"] || "",
+      "Weekly Review Counts": row["Weekly Review Counts"] || "",
+      "Cycle Weeks Covered": row["Cycle Weeks Covered"] || "",
+      "Cycle Confidence": row["Cycle Confidence"] || "",
+      "Sales Per Review Used": row["Sales Per Review Used"] || "",
+      "Trend Source": row["Trend Source"] || "",
+      "Review Corpus Count": row["Review Corpus Count"] || "",
+      "Review Corpus 90D": row["Review Corpus 90D"] || "",
+      "Review Corpus 365D": row["Review Corpus 365D"] || "",
+      "Review Corpus Latest ISO": row["Review Corpus Latest ISO"] || row["Last Review ISO"] || row.local_latest_review || ""
     };
   }).filter(row => row["Moment ID"]);
   return buyerMomentTopListingRowsCache;
@@ -1682,6 +1734,17 @@ function listingRowKey(row) {
   return `${row.Shop || ""}|${row["Listing URL"] || row["Product Title"] || ""}`;
 }
 
+function mergeListingValues(base, override) {
+  const merged = { ...(base || {}), ...(override || {}) };
+  Object.entries(base || {}).forEach(([column, value]) => {
+    if (value === null || value === undefined || value === "") return;
+    if (merged[column] === null || merged[column] === undefined || merged[column] === "") {
+      merged[column] = value;
+    }
+  });
+  return merged;
+}
+
 function momentRowsForRange(range, label = "Custom Date Range", timeframe = "") {
   if (!range?.start || !range?.end) return [];
   const cycles = listingCycleMap();
@@ -1769,11 +1832,15 @@ function buyerMomentRows(momentId) {
     const cycles = listingCycleMap();
     const rows = catalogRows.map(row => {
       const linked = lookup.get(String(row["Listing URL"] || "").trim()) || {};
-      const cycleKey = String(linked["Weekly Cycle Key"] || row["Weekly Cycle Key"] || "");
+      const merged = mergeListingValues(linked, row);
+      const cycleKey = String(linked["Weekly Cycle Key"] || "");
+      const embeddedCycleKey = String(row["Weekly Cycle Key"] || "");
+      const graphCycleKey = cycleKey || embeddedCycleKey;
       const cycle = cycles.get(cycleKey);
-      const weeks = cycle && range
-        ? fullListingCycleRows(cycle).filter(week => weekOverlapsMomentWindow(week["Week Start"], range))
-        : [];
+      const allWeeks = cycle ? fullListingCycleRows(cycle) : buyerMomentListingCycleWeeks(merged);
+      const weeks = range
+        ? allWeeks.filter(week => weekOverlapsMomentWindow(week["Week Start"], range))
+        : allWeeks;
       const estimatedSales = weeks.reduce((sum, week) => sum + numericCell(week, "Estimated Weekly Sales"), 0);
       const reviewCount = weeks.reduce((sum, week) => sum + numericCell(week, "Review Count"), 0);
       const weeksWithDemand = weeks.filter(week => numericCell(week, "Estimated Weekly Sales") > 0).length;
@@ -1782,10 +1849,10 @@ function buyerMomentRows(momentId) {
         const delta = numericCell(week, "Estimated Weekly Sales") - numericCell(winner, "Estimated Weekly Sales");
         return delta > 0 ? week : winner;
       }, null);
-      return withDailySales({
-        ...row,
-        ...linked,
-        ...row,
+      const result = withDailySales({
+        ...merged,
+        "Weekly Sales Graph": graphCycleKey ? "Open graph" : "",
+        "Weekly Cycle Key": graphCycleKey,
         "Buyer Moment": summary?.["Buyer Moment"] || row["Buyer Moment"],
         "Moment Timeframe": summary?.["Moment Timeframe"] || "",
         "Moment Window": range ? formatMomentWindow(range) : summary?.["Moment Timeframe"] || "",
@@ -1795,10 +1862,14 @@ function buyerMomentRows(momentId) {
         "Moment Weeks": weeks.length,
         "Moment Weeks With Demand": weeksWithDemand,
         "Peak Moment Week": peak?.["Week Start"] || "",
-        "Moment Source": cycle?.source || row["Source Run"] || "Buyer moment API listing",
+        "Moment Source": cycle?.source || row["Trend Source"] || row["Source Run"] || "Buyer moment API listing",
         _momentWeeks: weeks,
-        _momentKey: listingRowKey({ ...linked, ...row })
+        _momentKey: listingRowKey(merged)
       });
+      if (graphCycleKey && allWeeks.length) {
+        buyerMomentListingCycleRowsCache.set(graphCycleKey, { row: result, rows: allWeeks });
+      }
+      return result;
     });
     buyerMomentRowsCache.set(momentId, rows);
     return rows;
