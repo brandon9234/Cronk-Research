@@ -14,7 +14,7 @@ let buyerMomentTopListingRowsCache = null;
 let buyerMomentListingCycleRowsCache = new Map();
 let customBuyerMomentRange = null;
 const CUSTOM_BUYER_MOMENT_ID = "custom-date-range";
-const DATA_ASSET_VERSION = "taxonomy-finish-20260601-1";
+const DATA_ASSET_VERSION = "next-action-share-recipes-20260601-1";
 const BUYER_MOMENT_LANE_HEIGHT = 30;
 const BUYER_MOMENT_HIGH_OPPORTUNITY_SCORE = 68;
 const BUYER_MOMENT_BUILD_FIT_ORDER = [
@@ -118,6 +118,43 @@ const numericColumns = new Set([
   "Last Year Timeframe Review Count", "Last Year Timeframe Weeks", "Last Year Timeframe Weeks With Demand",
   "Action Score", "Expected Daily Sales"
 ]);
+
+const defaultDailySalesSortColumns = [
+  "Expected Daily Sales",
+  "Last Year Timeframe Avg Daily Sales",
+  "Moment Avg Daily Sales",
+  "Estimated Daily Sales",
+  "Market Daily Sales",
+  "Segment Daily Sales",
+  "Category Est. Daily Sales",
+  "Total Est. Daily Sales",
+  "Est. Daily Sales",
+  "Recent Daily Sales",
+  "Top Open Daily Sales",
+  "Best Listing Daily",
+  "Covered Competitor Daily",
+  "Leader Gap Daily",
+  "Top Competitor Daily Sales",
+  "Competing Daily Sales",
+  "My Category Daily Sales",
+  "My Daily Sales",
+  "Tracked Est. Daily Sales",
+  "Current Market Daily Sales",
+  "Current Avg Daily Sales",
+  "Avg Daily Sales (30D)",
+  "Recent Avg Daily Sales",
+  "Latest Complete Daily Sales",
+  "Recent Matching-Shop Avg Daily Sales",
+  "Daily Sales"
+];
+
+const defaultWeeklySalesSortColumns = [
+  "Estimated Weekly Sales",
+  "Recent Weekly Sales",
+  "Prior Weekly Sales",
+  "Peak Weekly Sales",
+  "Moment Avg Weekly Sales"
+];
 
 const wrappedColumns = new Set([
   "Product Title", "Tags", "Actual Tags", "My Actual Tags", "Best Guess Tags", "Tags Source", "Tags Captured At", "Matched Product Categories", "Source / Context", "Counts / Metrics",
@@ -272,10 +309,43 @@ function visibleColumnsForRows(rows, columns) {
   return hasVisibleRealTags ? cols.filter(col => col !== "Best Guess Tags") : cols;
 }
 
-function renderTable(targetId, rows, columns = null, limit = null) {
+function hasMetricValue(rows, column) {
+  return rows.some(row => {
+    const value = row[column];
+    if (value === null || value === undefined || value === "") return false;
+    return Number.isFinite(Number(String(value).replace(/[$,%]/g, "").replace(/,/g, "")));
+  });
+}
+
+function defaultSalesSortColumn(rows, columns) {
+  const cols = new Set(columns || Object.keys(rows[0] || {}));
+  const dailyColumn = defaultDailySalesSortColumns.find(column => cols.has(column) && hasMetricValue(rows, column));
+  if (dailyColumn) return dailyColumn;
+  return defaultWeeklySalesSortColumns.find(column => cols.has(column) && hasMetricValue(rows, column)) || "";
+}
+
+function sortRowsForDefaultSales(rows, columns, options = {}) {
+  if (options.preserveOrder) return rows;
+  const column = options.sortColumn || defaultSalesSortColumn(rows, columns);
+  if (!column) return rows;
+  return rows.slice().sort((a, b) => {
+    const delta = numericCell(b, column) - numericCell(a, column);
+    if (delta) return delta;
+    return numericCell(a, "Priority") - numericCell(b, "Priority") ||
+      numericCell(a, "Overall Rank") - numericCell(b, "Overall Rank") ||
+      numericCell(a, "Launch Priority") - numericCell(b, "Launch Priority") ||
+      String(a.Shop || a["Market Shop"] || "").localeCompare(String(b.Shop || b["Market Shop"] || "")) ||
+      String(a["Product Title"] || a["Market Long Tail"] || a["Product / Listing"] || "").localeCompare(String(b["Product Title"] || b["Market Long Tail"] || b["Product / Listing"] || ""));
+  });
+}
+
+function renderTable(targetId, rows, columns = null, limit = null, options = {}) {
   const target = document.getElementById(targetId);
   if (!target) return;
-  const data = limit ? rows.slice(0, limit) : rows;
+  const baseRows = Array.isArray(rows) ? rows : [];
+  const requestedCols = columns || Object.keys(baseRows[0] || {});
+  const sortedRows = sortRowsForDefaultSales(baseRows, requestedCols, options);
+  const data = limit ? sortedRows.slice(0, limit) : sortedRows;
   if (!data || data.length === 0) {
     target.innerHTML = `<div class="empty">No rows available in this snapshot.</div>`;
     return;
@@ -466,9 +536,10 @@ function renderStatusTable(targetId, rows, columns, limit) {
   target.innerHTML = `<div class="table-wrap"><table><thead><tr>${header}</tr></thead><tbody>${body}</tbody></table></div>`;
 }
 
-function renderTrendTable(targetId, rows, columns, limit) {
-  const mapped = rows.map(row => ({ ...row, Trend: trendBadge(row.Trend) }));
-  const cols = columns || Object.keys(mapped[0] || {});
+function renderTrendTable(targetId, rows, columns, limit, options = {}) {
+  const baseRows = Array.isArray(rows) ? rows : [];
+  const cols = columns || Object.keys(baseRows[0] || {});
+  const mapped = sortRowsForDefaultSales(baseRows, cols, options).map(row => ({ ...row, Trend: trendBadge(row.Trend) }));
   const target = document.getElementById(targetId);
   if (!mapped.length) {
     target.innerHTML = `<div class="empty">No rows available in this snapshot.</div>`;
@@ -1815,30 +1886,54 @@ function listingTimeframePresetDefinition(preset) {
   return LISTING_TIMEFRAME_PRESETS[preset] || null;
 }
 
-function isValidMonthDay(value) {
+function listingMonthDayParts(value) {
   const match = String(value || "").trim().match(/^(\d{2})-(\d{2})$/);
-  if (!match) return false;
+  if (!match) return null;
   const month = Number(match[1]);
   const day = Number(match[2]);
-  const date = new Date(Date.UTC(2025, month - 1, day));
-  return date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
+  if (month < 1 || month > 12 || day < 1) return null;
+  const maxDay = new Date(Date.UTC(2025, month, 0)).getUTCDate();
+  const normalizedDay = Math.min(day, maxDay);
+  return {
+    month,
+    day: normalizedDay,
+    normalized: `${String(month).padStart(2, "0")}-${String(normalizedDay).padStart(2, "0")}`
+  };
+}
+
+function isValidMonthDay(value) {
+  const parts = listingMonthDayParts(value);
+  return Boolean(parts && parts.normalized === String(value || "").trim());
+}
+
+function normalizedMonthDay(value) {
+  return listingMonthDayParts(value)?.normalized || "";
 }
 
 function monthDayToIso(monthDay, year) {
-  if (!isValidMonthDay(monthDay)) return "";
-  return `${year}-${monthDay}`;
+  const normalized = normalizedMonthDay(monthDay);
+  return normalized ? `${year}-${normalized}` : "";
 }
 
 function selectedListingTimeframeWindow() {
   const preset = selectedListingTimeframePreset || document.getElementById("listing-timeframe-preset")?.value || "";
   if (!preset) return null;
   const definition = listingTimeframePresetDefinition(preset);
-  if (!definition || !isValidMonthDay(definition.start) || !isValidMonthDay(definition.end)) return null;
+  if (!definition) return null;
+  const startMonthDay = normalizedMonthDay(definition.start);
+  const endMonthDay = normalizedMonthDay(definition.end);
+  if (!startMonthDay || !endMonthDay) {
+    return {
+      invalid: true,
+      label: definition.label || "Custom range",
+      display: "Enter valid MM-DD dates"
+    };
+  }
   const targetYear = listingReferenceDate().getUTCFullYear() - 1;
-  const endYear = definition.end < definition.start ? targetYear + 1 : targetYear;
+  const endYear = endMonthDay < startMonthDay ? targetYear + 1 : targetYear;
   const range = {
-    start: monthDayToIso(definition.start, targetYear),
-    end: monthDayToIso(definition.end, endYear)
+    start: monthDayToIso(startMonthDay, targetYear),
+    end: monthDayToIso(endMonthDay, endYear)
   };
   return {
     ...range,
@@ -2008,6 +2103,14 @@ function listingTimeframeMetricRow(row, window) {
     ? `${source || "Local review cycle"}`
     : "Local weekly cycle shows no demand";
   return next;
+}
+
+function listingHasTimeframeSignal(row) {
+  const signal = String(row["Last Year Timeframe Signal"] || "");
+  if (signal.startsWith("Loading")) return true;
+  return numericCell(row, "Last Year Timeframe Estimated Sales") > 0 ||
+    numericCell(row, "Last Year Timeframe Review Count") > 0 ||
+    numericCell(row, "Last Year Timeframe Weeks With Demand") > 0;
 }
 
 function listingRowKey(row) {
@@ -2248,7 +2351,7 @@ function buyerMomentSummaries() {
 }
 
 function sortBuyerMomentRows(rows, forcedSort = null) {
-  const sort = forcedSort || document.getElementById("buyer-moment-sort")?.value || "opportunity-desc";
+  const sort = forcedSort || document.getElementById("buyer-moment-sort")?.value || "velocity-desc";
   const sortMap = {
     "opportunity-desc": ["Buyer Moment Opportunity Score", "desc"],
     "velocity-desc": ["Moment Avg Daily Sales", "desc"],
@@ -3357,7 +3460,7 @@ function renderMarketControl() {
 }
 
 function sortListingRows(rows) {
-  const sort = document.getElementById("listing-sort").value;
+  const sort = document.getElementById("listing-sort").value || "daily-desc";
   const sortMap = {
     "daily-desc": ["Est. Daily Sales", "desc"],
     "daily-asc": ["Est. Daily Sales", "asc"],
@@ -3795,14 +3898,112 @@ function openCompanyProfile(company) {
   activateView("company");
 }
 
+function updateViewUrl(viewId) {
+  if (!window.history?.replaceState) return;
+  const url = new URL(window.location.href);
+  if (viewId) url.searchParams.set("view", viewId);
+  window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+}
+
+function initialDashboardView() {
+  const viewId = new URLSearchParams(window.location.search).get("view") || "";
+  const view = document.getElementById(viewId);
+  return view?.classList.contains("view") ? viewId : "";
+}
+
+function nextActionFilterState() {
+  return {
+    preset: document.getElementById("next-action-preset-filter")?.value || "",
+    type: document.getElementById("next-action-type-filter")?.value || "",
+    search: (document.getElementById("next-action-search")?.value || "").trim()
+  };
+}
+
+function setNextActionShareStatus(text) {
+  const target = document.getElementById("next-action-link-status");
+  if (target) target.textContent = text || "";
+}
+
+function setSelectIfOption(id, value) {
+  const select = document.getElementById(id);
+  if (!select || !value) return;
+  if ([...select.options].some(option => option.value === value)) {
+    select.value = value;
+  }
+}
+
+function applyNextActionUrlState() {
+  const params = new URLSearchParams(window.location.search);
+  setSelectIfOption("next-action-preset-filter", params.get("naPreset") || "");
+  setSelectIfOption("next-action-type-filter", params.get("naType") || "");
+  const search = params.get("naSearch");
+  const input = document.getElementById("next-action-search");
+  if (input && search !== null) input.value = search;
+}
+
+function nextActionShareUrl(state = nextActionFilterState()) {
+  const url = new URL(window.location.href);
+  url.searchParams.set("view", "opportunity");
+  state.preset ? url.searchParams.set("naPreset", state.preset) : url.searchParams.delete("naPreset");
+  state.type ? url.searchParams.set("naType", state.type) : url.searchParams.delete("naType");
+  state.search ? url.searchParams.set("naSearch", state.search) : url.searchParams.delete("naSearch");
+  return url;
+}
+
+function updateNextActionUrl() {
+  if (!window.history?.replaceState) return;
+  const url = nextActionShareUrl();
+  window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+}
+
+async function copyNextActionViewLink() {
+  const url = nextActionShareUrl().toString();
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(url);
+    setNextActionShareStatus("View link copied.");
+  } else {
+    setNextActionShareStatus(url);
+  }
+}
+
+function resetNextActionView() {
+  const preset = document.getElementById("next-action-preset-filter");
+  const type = document.getElementById("next-action-type-filter");
+  const search = document.getElementById("next-action-search");
+  if (preset) preset.value = "";
+  if (type) type.value = "";
+  if (search) search.value = "";
+  setNextActionShareStatus("");
+  updateNextActionUrl();
+  renderOpportunity();
+}
+
+function handleNextActionFilterChange() {
+  setNextActionShareStatus("");
+  updateNextActionUrl();
+  renderOpportunity();
+}
+
 function initNextActionFilters() {
   ["next-action-preset-filter", "next-action-type-filter", "next-action-search"].forEach(id => {
     const element = document.getElementById(id);
     if (!element || element.dataset.bound === "true") return;
-    element.addEventListener("input", renderOpportunity);
-    element.addEventListener("change", renderOpportunity);
+    element.addEventListener("input", handleNextActionFilterChange);
+    element.addEventListener("change", handleNextActionFilterChange);
     element.dataset.bound = "true";
   });
+  const copy = document.getElementById("next-action-copy-link");
+  if (copy && copy.dataset.bound !== "true") {
+    copy.addEventListener("click", () => {
+      copyNextActionViewLink().catch(() => setNextActionShareStatus("Copy failed."));
+    });
+    copy.dataset.bound = "true";
+  }
+  const reset = document.getElementById("next-action-reset-view");
+  if (reset && reset.dataset.bound !== "true") {
+    reset.addEventListener("click", resetNextActionView);
+    reset.dataset.bound = "true";
+  }
 }
 
 function nextActionPresetMatches(row, preset) {
@@ -3829,6 +4030,86 @@ function filteredNextActions(rows) {
   });
 }
 
+function uniqueRecipeItems(items, limit = 6) {
+  const seen = new Set();
+  const result = [];
+  items.forEach(item => {
+    const text = String(item || "").replace(/\s+/g, " ").trim();
+    const key = text.toLowerCase();
+    if (!text || seen.has(key)) return;
+    seen.add(key);
+    result.push(text);
+  });
+  return result.slice(0, limit);
+}
+
+function actionTitlePhrases(row) {
+  const title = row["Product / Listing"] || row.Action || "";
+  const chunks = String(title)
+    .split(/\s*(?:,|\||;)\s*/)
+    .map(part => part.replace(/\s+/g, " ").trim())
+    .filter(part => part.length > 2);
+  return uniqueRecipeItems(chunks.length ? chunks : [title, row["Target Category"]], 4);
+}
+
+function actionTagIdeas(row) {
+  const category = String(row["Target Category"] || "").trim();
+  const phrases = actionTitlePhrases(row);
+  const title = `${row["Product / Listing"] || ""} ${category}`.toLowerCase();
+  const extras = [];
+  if (/pet|dog|collar/.test(title)) extras.push("pet name plate", "dog collar tag", "engraved pet gift");
+  if (/nameplate|desk sign|office/.test(title)) extras.push("desk nameplate", "office name sign", "custom desk sign");
+  if (/wedding|bride|bridal/.test(title)) extras.push("wedding party gift", "bridesmaid gift", "custom wedding");
+  if (/teacher|classroom|school/.test(title)) extras.push("teacher gift", "classroom decor", "personalized teacher");
+  if (/night light|led|acrylic|light/.test(title)) extras.push("custom night light", "acrylic photo gift", "personalized light");
+  return uniqueRecipeItems([
+    category,
+    ...phrases,
+    ...extras,
+    "personalized gift",
+    "custom engraved",
+    "made to order"
+  ].map(item => item.slice(0, 28)), 8);
+}
+
+function actionThumbnailAngle(row) {
+  const text = `${row["Product / Listing"] || ""} ${row["Target Category"] || ""}`.toLowerCase();
+  if (/pet|dog|collar/.test(text)) return "Show the collar or plate installed, with the pet name and phone line readable in the first crop.";
+  if (/nameplate|desk sign|office/.test(text)) return "Lead with the finished name or role plate on a desk, angled enough to show material edge and base.";
+  if (/wedding|bride|bridal/.test(text)) return "Use a clean wedding-context flat lay with the personalization readable before any lifestyle props.";
+  if (/night light|led|acrylic|light/.test(text)) return "Show the lit acrylic or night-light effect first, then a second angle that proves the personalization path.";
+  if (/sign|plaque|plate/.test(text)) return "Make the finished personalized surface the whole first frame, with substrate and mounting detail visible.";
+  return "Lead with the finished personalized product, crop tight enough that the custom text is readable at thumbnail size.";
+}
+
+function actionPersonalizationField(row) {
+  const text = `${row["Product / Listing"] || ""} ${row["Target Category"] || ""}`.toLowerCase();
+  if (/pet|dog|collar/.test(text)) return "Pet name, phone number, collar color or plate finish, and optional icon.";
+  if (/nameplate|desk sign|office/.test(text)) return "Name, title or role, logo line, font choice, base/light color, and proof preference.";
+  if (/wedding|bride|bridal/.test(text)) return "Name, date, role, hanger/item color, font choice, and quantity notes.";
+  if (/photo|portrait|statuette|cutout/.test(text)) return "Uploaded photo, crop preference, name/date text, and proof approval.";
+  if (/night light|led|acrylic|light/.test(text)) return "Name/text, light/base color, motif, font, and proof preference.";
+  return "Name/text, date or role if relevant, color/finish, font choice, and proof preference.";
+}
+
+function actionPriceNote(row) {
+  const daily = fmt(row["Expected Daily Sales"], "Expected Daily Sales");
+  const score = fmt(row["Action Score"], "Action Score");
+  return `Use the linked market leader as the live price anchor; this row is ranked at score ${score || "n/a"} with ${daily || "n/a"} expected daily sales.`;
+}
+
+function actionBlankNote(row) {
+  const type = String(row["Action Type"] || "");
+  if (type === "Build" || type === "Launch") return "Blank slate: do not copy the source listing verbatim; borrow the buyer promise, then write fresh title, tags, and personalization copy.";
+  if (type === "Fix") return "Audit blanks first: title lead, tag coverage, thumbnail proof, variation clarity, and personalization instructions.";
+  if (type === "Scale") return "Keep the working listing, then fill weak or generic fields before widening the product family.";
+  return "Check source listing details before acting; the next-action row carries public-safe summary evidence only.";
+}
+
+function recipeList(items) {
+  return `<ul class="action-recipe-list">${items.map(item => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`;
+}
+
 function renderNextActionRecipe(row, visibleCount, totalCount) {
   const target = document.getElementById("next-action-recipe");
   if (!target) return;
@@ -3841,9 +4122,44 @@ function renderNextActionRecipe(row, visibleCount, totalCount) {
   const category = escapeHtml(row["Target Category"] || "Uncategorized");
   const score = escapeHtml(fmt(row["Action Score"], "Action Score") || "");
   const daily = escapeHtml(fmt(row["Expected Daily Sales"], "Expected Daily Sales") || "");
-  const evidence = escapeHtml(row.Evidence || "No evidence note available.");
-  const nextStep = escapeHtml(row["Next Step"] || "Review the source row and decide the listing move.");
-  target.innerHTML = `<strong>${type}: ${product}</strong><br>${category} · score ${score} · ${daily} expected daily sales · showing ${fmt(visibleCount, "Listing Count")} of ${fmt(totalCount, "Listing Count")} actions.<br><strong>Evidence:</strong> ${evidence}<br><strong>Next step:</strong> ${nextStep}`;
+  const evidence = row.Evidence || "No evidence note available.";
+  const nextStep = row["Next Step"] || "Review the source row and decide the listing move.";
+  const links = [
+    row["Market Listing URL"] ? `<a class="link-button" href="${escapeHtml(row["Market Listing URL"])}" target="_blank" rel="noreferrer">Market source</a>` : "",
+    row["My Listing URL"] ? `<a class="link-button" href="${escapeHtml(row["My Listing URL"])}" target="_blank" rel="noreferrer">My listing</a>` : ""
+  ].filter(Boolean).join("");
+  const titlePhrases = actionTitlePhrases(row);
+  const tagIdeas = actionTagIdeas(row);
+  const sourceNotes = uniqueRecipeItems([
+    `${row["Source Signal"] || "Source signal"} · ${row.Confidence || "confidence pending"}`,
+    row.Evidence || "No evidence note available.",
+    row["Market Listing URL"] ? "Market source link is available for live price, title, and thumbnail validation." : "",
+    row["My Listing URL"] ? "Existing MyMaravia listing is attached for comparison." : "No MyMaravia listing is attached yet."
+  ], 4);
+  target.innerHTML = `
+    <div class="action-recipe">
+      <div class="action-recipe-head">
+        <div>
+          <div class="action-recipe-title">
+            <strong>${type}: ${product}</strong>
+            <span class="badge good">Priority ${escapeHtml(fmt(row.Priority, "Priority") || "")}</span>
+          </div>
+          <div class="action-recipe-meta">${category} · score ${score} · ${daily} expected daily sales · showing ${fmt(visibleCount, "Listing Count")} of ${fmt(totalCount, "Listing Count")} actions.</div>
+        </div>
+        <div class="action-recipe-links">${links}</div>
+      </div>
+      <div class="action-recipe-grid">
+        <div class="action-recipe-block"><h3>Title Phrases</h3>${recipeList(titlePhrases)}</div>
+        <div class="action-recipe-block"><h3>Thumbnail Angle</h3>${recipeList([actionThumbnailAngle(row)])}</div>
+        <div class="action-recipe-block"><h3>Tags To Test</h3>${recipeList(tagIdeas)}</div>
+        <div class="action-recipe-block"><h3>Price</h3>${recipeList([actionPriceNote(row)])}</div>
+        <div class="action-recipe-block"><h3>Personalization</h3>${recipeList([actionPersonalizationField(row)])}</div>
+        <div class="action-recipe-block"><h3>Source Notes</h3>${recipeList(sourceNotes)}</div>
+        <div class="action-recipe-block"><h3>Blank Notes</h3>${recipeList([actionBlankNote(row)])}</div>
+        <div class="action-recipe-block"><h3>Next Step</h3>${recipeList([nextStep])}</div>
+        <div class="action-recipe-block"><h3>Evidence</h3>${recipeList([evidence])}</div>
+      </div>
+    </div>`;
 }
 
 function renderOpportunity() {
@@ -4048,8 +4364,16 @@ function renderListings() {
   }
   const reviewRows = reviewListingRowsForListings(query, production, selectedListingSubstrate);
   rows = rows.concat(reviewRows);
-  if (timeframeWindow) {
-    rows = rows.map(row => listingTimeframeMetricRow(row, timeframeWindow));
+  let timeframeStatus = "";
+  const hasValidTimeframe = timeframeWindow && !timeframeWindow.invalid;
+  if (timeframeWindow?.invalid) {
+    rows = [];
+    timeframeStatus = `Custom timeframe is invalid: ${timeframeWindow.display}.`;
+  } else if (hasValidTimeframe) {
+    rows = rows
+      .map(row => listingTimeframeMetricRow(row, timeframeWindow))
+      .filter(listingHasTimeframeSignal);
+    timeframeStatus = `Last-year timeframe: ${timeframeWindow.display}. Showing only listings with sales/review signal in that range.`;
   }
   rows = sortListingRows(rows);
   const count = fmt(rows.length, "Listing Count");
@@ -4057,12 +4381,11 @@ function renderListings() {
   const total = fmt(totalCount, "Listing Count");
   const shown = Math.min(rows.length, LISTING_RENDER_LIMIT);
   const status = reviewListingStatusText(query, production, selectedListingSubstrate);
-  const timeframeStatus = timeframeWindow ? `Last-year timeframe: ${timeframeWindow.display}.` : "";
   const baseText = rows.length === totalCount
     ? `Showing first ${fmt(shown, "Listing Count")} of ${total} listings`
     : `Showing first ${fmt(shown, "Listing Count")} of ${count} visible/matching listings from ${total} total`;
   document.getElementById("listing-count").textContent = [baseText, timeframeStatus, status].filter(Boolean).join(" ");
-  const timeframeColumns = timeframeWindow ? [
+  const timeframeColumns = hasValidTimeframe ? [
     "Last Year Timeframe Window", "Last Year Timeframe Estimated Sales", "Last Year Timeframe Avg Daily Sales",
     "Last Year Timeframe Review Count", "Last Year Timeframe Weeks With Demand", "Last Year Timeframe Signal"
   ] : [];
@@ -4077,72 +4400,6 @@ function renderListings() {
   renderListingCycle(selectedListingCycleKey);
 }
 
-const askStopWords = new Set([
-  "about", "across", "after", "again", "against", "all", "also", "and", "answer",
-  "are", "best", "between", "bring", "can", "category", "categories", "compare",
-  "daily", "data", "day", "days", "does", "est", "estimated", "everything", "find",
-  "for", "from", "give", "has", "have", "highest", "into", "list", "listing",
-  "listings", "lowest", "make", "market", "most", "much", "need", "needs", "now",
-  "ordered", "product", "products", "question", "sales", "sheet", "shop", "shops",
-  "show", "sort", "than", "that", "the", "their", "there", "these", "thing",
-  "things", "this", "top", "total", "what", "where", "which", "with", "within"
-]);
-
-function renderAskScope() {
-  const rows = getListingRows();
-  const shops = new Set(rows.map(row => row.Shop).filter(Boolean)).size;
-  const categories = new Set(rows.map(row => comparisonCategory(row)).filter(Boolean)).size;
-  const openLongTails = (dashboard.myMaravia?.longTailQueue || []).filter(row => row.Status === "Needs build").length;
-  const corpusReviews = dashboard.reviewCorpus?.totalReviews || 0;
-  const text = `${fmt(rows.length, "Listing Count")} listings, ${fmt(shops, "Shop Count")} shops, ${fmt(categories, "Listing Count")} categories, ${fmt(openLongTails, "Listing Count")} open MyMaravia long tails, ${fmt(corpusReviews, "Review Corpus Count")} review-corpus records.`;
-  const scope = document.getElementById("ask-scope");
-  if (scope) scope.textContent = text;
-}
-
-function normalizeQuestion(question) {
-  return String(question || "").toLowerCase();
-}
-
-function askTokens(question) {
-  return normalizeQuestion(question)
-    .replace(/[^a-z0-9\s-]/g, " ")
-    .split(/\s+/)
-    .map(token => token.trim())
-    .filter(token => token.length > 2 && !askStopWords.has(token) && !/^\d+(d|-day|day)?$/.test(token));
-}
-
-function rowText(row) {
-  return Object.values(row || {}).join(" ").toLowerCase();
-}
-
-function filterRowsByTokens(rows, tokens) {
-  if (!tokens.length) return rows;
-  const strict = rows.filter(row => {
-    const text = rowText(row);
-    return tokens.every(token => text.includes(token));
-  });
-  if (strict.length) return strict;
-  const loose = rows.filter(row => {
-    const text = rowText(row);
-    return tokens.some(token => text.includes(token));
-  });
-  return loose.length ? loose : rows;
-}
-
-function applyQuestionScope(rows, question) {
-  const q = normalizeQuestion(question);
-  let scoped = rows;
-  if (/mymaravia|my shop|my listings|mine\b/.test(q)) {
-    scoped = rows.filter(row => /mymaravia/i.test(String(row.Shop || row.Source || "")));
-  }
-  const tokens = askTokens(question).filter(token => !["mymaravia", "coverage", "gaps", "gap"].includes(token));
-  return filterRowsByTokens(scoped, tokens);
-}
-
-function askMetric(question) {
-  return /30|thirty|month|monthly/.test(normalizeQuestion(question)) ? "Est. 30D Sales" : "Est. Daily Sales";
-}
-
 function sortRowsByMetric(rows, metric) {
   return rows.slice().sort((a, b) => {
     const delta = numericCell(a, metric) - numericCell(b, metric);
@@ -4151,415 +4408,6 @@ function sortRowsByMetric(rows, metric) {
       String(a.Shop || "").localeCompare(String(b.Shop || "")) ||
       String(a["Product Title"] || "").localeCompare(String(b["Product Title"] || ""));
   });
-}
-
-function aggregateListings(rows, groupKey) {
-  const groups = new Map();
-  rows.forEach(row => {
-    const name = String(row[groupKey] || "Uncategorized");
-    if (!groups.has(name)) {
-      groups.set(name, { name, rows: [], shops: new Set(), daily: 0, thirty: 0 });
-    }
-    const group = groups.get(name);
-    group.rows.push(row);
-    if (row.Shop) group.shops.add(row.Shop);
-    group.daily += numericCell(row, "Est. Daily Sales");
-    group.thirty += numericCell(row, "Est. 30D Sales");
-  });
-  return [...groups.values()].map(group => {
-    const top = sortRowsByMetric(group.rows, "Est. Daily Sales")[0] || {};
-    return {
-      [groupKey]: group.name,
-      "Est. Daily Sales": Number(group.daily.toFixed(1)),
-      "Est. 30D Sales": Number(group.thirty.toFixed(1)),
-      "Listing Count": group.rows.length,
-      "Shop Count": group.shops.size,
-      "Top Shop": top.Shop || "",
-      "Top Listing": top["Product Title"] || ""
-    };
-  });
-}
-
-function result(title, summary, bullets = [], rows = [], columns = null, limit = 25) {
-  return { title, summary, bullets, rows, columns, limit };
-}
-
-function sourceStatus(row) {
-  const text = String(row["Blank / Generic Sources"] || "").trim();
-  if (!text) return "Not researched";
-  if (/^cannot buy/i.test(text)) return "No blank found";
-  if (/^not researched/i.test(text)) return "Not researched";
-  if (/https?:\/\//i.test(text)) return "Links available";
-  return "Note";
-}
-
-function answerCategoryQuestion(question) {
-  const allRows = getListingRows();
-  const rows = applyQuestionScope(allRows, question);
-  const metric = askMetric(question);
-  const groups = aggregateListings(rows, "Product Substrate Category")
-    .sort((a, b) => numericCell(b, metric) - numericCell(a, metric));
-  const leader = groups[0];
-  if (!leader) {
-    return result("No matching category data", "I could not find category rows for that question.");
-  }
-  return result(
-    "Category answer",
-    `${leader["Product Substrate Category"]} leads this scope with ${fmt(leader[metric], metric)} ${metric.toLowerCase()} across ${fmt(leader["Listing Count"], "Listing Count")} listings and ${fmt(leader["Shop Count"], "Shop Count")} shops.`,
-    [
-      `Scoped rows: ${fmt(rows.length, "Listing Count")} of ${fmt(allRows.length, "Listing Count")} available listings.`,
-      `Sorting by ${metric}.`
-    ],
-    groups,
-    ["Product Substrate Category", "Est. Daily Sales", "Est. 30D Sales", "Listing Count", "Shop Count", "Top Shop", "Top Listing"]
-  );
-}
-
-function answerShopQuestion(question) {
-  const allRows = getListingRows();
-  const rows = applyQuestionScope(allRows, question);
-  const metric = askMetric(question);
-  const groups = aggregateListings(rows, "Shop")
-    .sort((a, b) => numericCell(b, metric) - numericCell(a, metric));
-  const leader = groups[0];
-  if (!leader) {
-    return result("No matching shop data", "I could not find shop rows for that question.");
-  }
-  return result(
-    "Shop answer",
-    `${leader.Shop} leads this scope with ${fmt(leader[metric], metric)} ${metric.toLowerCase()} across ${fmt(leader["Listing Count"], "Listing Count")} listings.`,
-    [
-      `Scoped rows: ${fmt(rows.length, "Listing Count")} of ${fmt(allRows.length, "Listing Count")} available listings.`,
-      `Sorting by ${metric}.`
-    ],
-    groups,
-    ["Shop", "Est. Daily Sales", "Est. 30D Sales", "Listing Count", "Top Listing"]
-  );
-}
-
-function answerListingQuestion(question) {
-  const allRows = getListingRows();
-  const rows = sortRowsByMetric(applyQuestionScope(allRows, question), askMetric(question));
-  const metric = askMetric(question);
-  const leader = rows[0];
-  if (!leader) {
-    return result("No matching listings", "I could not find listing rows for that question.");
-  }
-  return result(
-    "Listing answer",
-    `${leader.Shop || "Unknown shop"} has the strongest matching listing by ${metric.toLowerCase()}: ${leader["Product Title"] || "Untitled listing"} at ${fmt(leader[metric], metric)}.`,
-    [
-      `Scoped rows: ${fmt(rows.length, "Listing Count")} of ${fmt(allRows.length, "Listing Count")} available listings.`,
-      `Use the table for the evidence trail and source links.`
-    ],
-    rows,
-    ["Overall Rank", "Thumbnail", "Shop", "Est. Daily Sales", "Est. 30D Sales", "Product Title", "Best Guess Tags", "Product Substrate Category", "Production Tag", "Listing URL"]
-  );
-}
-
-function answerSourceQuestion(question) {
-  const allRows = getListingRows();
-  const rows = sortRowsByMetric(applyQuestionScope(allRows, question), askMetric(question));
-  const withStatus = rows.map(row => ({ ...row, "Source Status": sourceStatus(row) }));
-  const linked = withStatus.filter(row => row["Source Status"] === "Links available").length;
-  const noBlank = withStatus.filter(row => row["Source Status"] === "No blank found").length;
-  const notResearched = withStatus.filter(row => row["Source Status"] === "Not researched").length;
-  return result(
-    "Blank and generic source answer",
-    `${fmt(linked, "Listing Count")} of ${fmt(withStatus.length, "Listing Count")} scoped listings have blank or generic source links. ${fmt(noBlank, "Listing Count")} are marked as no blank found and ${fmt(notResearched, "Listing Count")} are still unresearched.`,
-    [
-      `Scoped rows: ${fmt(rows.length, "Listing Count")} of ${fmt(allRows.length, "Listing Count")} available listings.`,
-      `Rows are sorted by ${askMetric(question)}.`
-    ],
-    withStatus,
-    ["Source Status", "Shop", "Est. Daily Sales", "Est. 30D Sales", "Blank / Generic Sources", "Product Title", "Best Guess Tags", "Product Substrate Category", "Listing URL"]
-  );
-}
-
-function answerMyMaraviaQuestion(question) {
-  const q = normalizeQuestion(question);
-  const my = dashboard.myMaravia || {};
-  const metrics = my.metrics || {};
-  const wantsCurrent = /current|already|have|my listings|what do i have/.test(q) && !/gap|missing|need|build/.test(q);
-  if (wantsCurrent) {
-    const rows = sortRowsByMetric(filterRowsByTokens(my.myListings || [], askTokens(question)), "Est. Daily Sales");
-    return result(
-      "MyMaravia current listings",
-      `MyMaravia has ${fmt(metrics["MyMaravia Listings"], "MyMaravia Listings") || fmt(rows.length, "Listing Count")} current listings across ${fmt(metrics["Current Product Categories"], "Current Product Categories") || "the visible"} categories.`,
-      [`Rows are sorted by estimated daily sales.`],
-      rows,
-      ["Thumbnail", "Product Category", "Est. Daily Sales", "Product Title", "Best Guess Tags", "Recent 180D Sales", "Recent Reviews", "Recent Avg Rating", "Views", "Favorites", "Listing URL"],
-      50
-    );
-  }
-
-  const queue = filterRowsByTokens(my.longTailQueue || [], askTokens(question).filter(token => !["mymaravia", "missing", "coverage", "build", "built", "gaps", "gap"].includes(token)));
-  const needs = queue
-    .filter(row => row.Status === "Needs build")
-    .sort((a, b) => numericCell(b, "Market Daily Sales") - numericCell(a, "Market Daily Sales"));
-  const top = needs[0];
-  const summary = top
-    ? `The largest MyMaravia coverage gap in this scope is ${top["Market Long Tail"] || top["Product Category"]} at ${fmt(top["Market Daily Sales"], "Market Daily Sales")} market daily sales.`
-    : `I do not see open MyMaravia coverage gaps in this scope.`;
-  return result(
-    "MyMaravia coverage answer",
-    summary,
-    [
-      `Coverage: ${metrics["Coverage %"] == null ? "unavailable" : fmt(metrics["Coverage %"], "Coverage %")}.`,
-      `Open long tails in scope: ${fmt(needs.length, "Listing Count")}.`
-    ],
-    needs,
-    ["Status", "Product Category", "Market Daily Sales", "Market 30D Sales", "Market Long Tail", "Market Shop", "Matching MyMaravia Listing", "Build Recommendation", "Market Listing URL"],
-    50
-  );
-}
-
-function answerOpportunityQuestion(question) {
-  const rows = filterRowsByTokens(dashboard.opportunity?.opportunityQueue || [], askTokens(question))
-    .sort((a, b) => numericCell(b, "Opportunity Score") - numericCell(a, "Opportunity Score"));
-  const leader = rows[0];
-  if (!leader) {
-    return result("No opportunity rows", "The opportunity queue is not available in this snapshot.");
-  }
-  return result(
-    "Opportunity answer",
-    `${leader["Product Bet"]} is the strongest matching opportunity with an opportunity score of ${fmt(leader["Opportunity Score"], "Opportunity Score")} and ${fmt(leader["Market Daily Sales"], "Market Daily Sales")} market daily sales.`,
-    [
-      leader["Why It Matters"] || "The score blends demand, Cronk Research fit, evidence, momentum, and saturation.",
-      `Rows are sorted by opportunity score.`
-    ],
-    rows,
-    ["Launch Priority", "Product Bet", "Buyer Intent", "Opportunity Score", "Market Daily Sales", "Demand Score", "Cronk Research Fit", "Evidence Score", "Saturation Penalty", "Why It Matters"],
-    25
-  );
-}
-
-function answerTrendQuestion(question) {
-  const q = normalizeQuestion(question);
-  const direction = /down|fall|dropping|declin/.test(q) ? "Down" : /up|moving|rising|grow/.test(q) ? "Up" : "";
-  let rows = dashboard.comparison?.shopTrends || [];
-  if (direction) rows = rows.filter(row => row.Trend === direction);
-  rows = filterRowsByTokens(rows, askTokens(question).filter(token => !["moving", "trend", "trends", "movement"].includes(token)))
-    .sort((a, b) => Math.abs(numericCell(b, "Delta")) - Math.abs(numericCell(a, "Delta")));
-  const leader = rows[0];
-  if (!leader) {
-    return result("No trend rows", "The shop movement rows are not available in this snapshot.");
-  }
-  return result(
-    "Movement answer",
-    `${leader.Shop} is the strongest matching movement row: ${leader.Trend || "Flat"} by ${fmt(leader.Delta, "Delta")} daily sales (${fmt(leader["Delta %"], "Delta %")}).`,
-    [`Rows use the recent vs prior shop trend snapshot.`],
-    rows,
-    ["Shop", "Trend", "Recent Avg Daily Sales", "Prior Avg Daily Sales", "Delta", "Delta %", "Latest Complete Date", "Latest Complete Daily Sales", "Days Used"],
-    40
-  );
-}
-
-function answerReviewQuestion(question) {
-  const corpus = dashboard.reviewCorpus || {};
-  const q = normalizeQuestion(question);
-  if (/how many|total|all|being used|use all|used/.test(q) && !/listing|product|category|substrate|led|nameplate|shop|company|seller|competitor/.test(q)) {
-    const shopRows = (corpus.shopRollup || [])
-      .slice()
-      .sort((a, b) => numericCell(b, "Review Corpus Count") - numericCell(a, "Review Corpus Count"));
-    return result(
-      "Review corpus answer",
-      `${fmt(corpus.totalReviews, "Review Corpus Count")} full-corpus review records are used in the backend aggregate calculations.`,
-      [
-        `${fmt(corpus.uniqueShops, "Shop Count")} shops and ${fmt(corpus.uniqueListingUrls, "Listing Count")} listing URLs are represented.`,
-        `${fmt(corpus.matchedCurrentListingReviews, "Review Corpus Count")} reviews match current dashboard listing URLs; ${fmt(corpus.unmatchedReviewRecords, "Review Corpus Count")} unmatched records still feed overall/shop corpus rollups.`,
-        `Latest corpus review date: ${corpus.latestReviewISO || "unavailable"}.`
-      ],
-      shopRows,
-      ["Shop", "Review Corpus Count", "Review Corpus 90D", "Review Corpus 365D", "Review Corpus Avg Rating", "Review Corpus Latest ISO", "Review Corpus Listings"],
-      60
-    );
-  }
-  if (/shop|company|seller|competitor/.test(q)) {
-    const shopRows = filterRowsByTokens(corpus.shopRollup || [], askTokens(question))
-      .sort((a, b) => numericCell(b, "Review Corpus Count") - numericCell(a, "Review Corpus Count"));
-    const leader = shopRows[0];
-    return result(
-      "Review corpus answer",
-      `The UI now uses ${fmt(corpus.totalReviews, "Review Corpus Count")} full-corpus review records for aggregate calculations. ${leader ? `${leader.Shop} has the largest matching corpus count at ${fmt(leader["Review Corpus Count"], "Review Corpus Count")} reviews.` : "No matching shop rollup rows were found."}`,
-      [
-        `${fmt(corpus.uniqueShops, "Shop Count")} shops and ${fmt(corpus.uniqueListingUrls, "Listing Count")} listing URLs are represented in the review corpus.`,
-        `${fmt(corpus.matchedCurrentListingReviews, "Review Corpus Count")} reviews match current dashboard listing URLs; unmatched records still feed overall/shop corpus rollups.`,
-        `Review text and buyer names are not shipped to the public UI.`
-      ],
-      shopRows,
-      ["Shop", "Review Corpus Count", "Review Corpus 90D", "Review Corpus 365D", "Review Corpus Avg Rating", "Review Corpus Latest ISO", "Review Corpus Listings"],
-      60
-    );
-  }
-
-  const rows = sortRowsByMetric(applyQuestionScope(getListingRows(), question), "Review Corpus Count")
-    .filter(row => numericCell(row, "Review Corpus Count") || numericCell(row, "Recent Reviews") || row["Recent Avg Rating"]);
-  const totalScopedCorpus = rows.reduce((sum, row) => sum + numericCell(row, "Review Corpus Count"), 0);
-  const leader = rows[0];
-  if (!rows.length) {
-    return result(
-      "Review corpus answer",
-      `The UI now uses ${fmt(corpus.totalReviews, "Review Corpus Count")} full-corpus review records, but none of the current listing rows match this specific question.`,
-      [
-        `${fmt(corpus.uniqueShops, "Shop Count")} shops and ${fmt(corpus.uniqueListingUrls, "Listing Count")} listing URLs are represented in the review corpus.`,
-        `Raw review text, buyer names, and photos are not published.`
-      ]
-    );
-  }
-  return result(
-    "Review corpus answer",
-    `${fmt(totalScopedCorpus, "Review Corpus Count")} full-corpus reviews match this listing scope. ${leader.Shop || "The leading row"} has the highest matching listing at ${fmt(leader["Review Corpus Count"], "Review Corpus Count")} corpus reviews.`,
-    [
-      `${fmt(corpus.totalReviews, "Review Corpus Count")} total review records are used in the backend aggregates.`,
-      `${fmt(corpus.matchedCurrentListingReviews, "Review Corpus Count")} records match current dashboard listing URLs.`,
-      `Rows are sorted by full-corpus review count.`
-    ],
-    rows,
-    ["Shop", "Product Category", "Product Substrate Category", "Product Title", "Best Guess Tags", "Review Corpus Count", "Review Corpus 90D", "Review Corpus 365D", "Review Corpus Avg Rating", "Review Corpus Latest ISO", "Recent Reviews", "Recent Avg Rating", "Est. Daily Sales", "Listing URL"],
-    50
-  );
-}
-
-function answerSeasonalityQuestion(question) {
-  const corpus = dashboard.reviewCorpus || {};
-  const q = normalizeQuestion(question);
-  let rows = (corpus.seasonalityCandidates || []).slice();
-  const tokens = askTokens(question).filter(token => ![
-    "cycle", "cyclical", "season", "seasonal", "seasonality", "year", "full", "history", "data", "shop", "shops"
-  ].includes(token));
-  if (tokens.length) {
-    const scoped = filterRowsByTokens(rows, tokens);
-    if (scoped.length) rows = scoped;
-  }
-  rows.sort((a, b) =>
-    numericCell(b, "eRank 30D Sales") - numericCell(a, "eRank 30D Sales") ||
-    numericCell(b, "Review Corpus 365D") - numericCell(a, "Review Corpus 365D")
-  );
-  const leader = rows[0];
-  const monthlyRows = leader
-    ? (corpus.shopMonthly || []).filter(row => companyName(row.Shop) === companyName(leader.Shop))
-    : [];
-  return result(
-    "Review cycle answer",
-    leader
-      ? `${leader.Shop} is the biggest full-year cycle-check candidate in scope: ${fmt(leader["eRank 30D Sales"], "eRank 30D Sales")} current eRank 30-day sales, ${fmt(leader["Review Corpus 365D"], "Review Corpus 365D")} reviews in the latest 365 days, and ${fmt(leader["Review Corpus Months Covered"], "Review Corpus Months Covered")} months covered.`
-      : "No full-year review-cycle candidates matched that scope.",
-    [
-      `${fmt(corpus.totalReviews, "Review Corpus Count")} total SQL review records are available, from ${corpus.earliestReviewISO || "unknown"} through ${corpus.latestReviewISO || "unknown"}.`,
-      `${fmt((corpus.seasonalityCandidates || []).length, "Shop Count")} shops have full-year review coverage by the dashboard's criteria.`,
-      leader && monthlyRows.length ? `${leader.Shop} peak review month is ${leader["Peak Review Month"] || "unavailable"} with ${fmt(leader["Peak Review Month Count"], "Review Corpus Count")} reviews.` : ""
-    ],
-    rows,
-    [
-      "Shop", "eRank 30D Sales", "eRank 7D Sales", "Review Corpus 365D", "Review Corpus 90D",
-      "Review Corpus Count", "Review Corpus Earliest ISO", "Review Corpus Latest ISO",
-      "Review Corpus Months Covered", "Peak Review Month", "Peak Review Month Count", "Seasonality Index",
-      "Active Listings"
-    ],
-    50
-  );
-}
-
-function answerVariationQuestion() {
-  return result(
-    "Styles and variations",
-    "The sheet-facing dashboard does not currently expose customer ordered styles, options, or personalization fields. Those values are stored in the private Etsy SQL transaction raw_json, not in this public snapshot.",
-    [
-      "For MyMaravia orders, Etsy transaction JSON can include SKU, Styles, Base Option, Single Coaster or Set, and Personalization.",
-      "Competitor public review scraping generally cannot see the buyer's ordered variation unless Etsy renders it publicly."
-    ],
-    dashboard.myMaravia?.myListings || [],
-    ["Thumbnail", "Product Category", "Product Title", "Best Guess Tags", "Est. Daily Sales", "Recent 180D Sales", "Listing URL"],
-    25
-  );
-}
-
-function answerBuyerMomentQuestion(question) {
-  const scoring = dashboard.buyerMoments?.opportunityScoring || {};
-  const threshold = numericCell(scoring, "highOpportunityThreshold") || BUYER_MOMENT_HIGH_OPPORTUNITY_SCORE;
-  const q = normalizeQuestion(question);
-  const tokens = askTokens(question).filter(token => ![
-    "buyer", "moment", "moments", "opportunity", "opportunities", "high", "best",
-    "build", "gift", "micro", "local", "review", "signal"
-  ].includes(token));
-  let rows = filterRowsByTokens(buyerMomentCatalog(), tokens);
-  if (/high|opportun|best|build|next/.test(q)) {
-    rows = rows.filter(row =>
-      numericCell(row, "Buyer Moment Opportunity Score") >= threshold ||
-      numericCell(row, "High Opportunity Listings") > 0
-    );
-  }
-  if (/local|review|signal/.test(q)) {
-    rows = rows.filter(row => numericCell(row, "Local Review Signal Listings") > 0);
-  }
-  rows = rows.sort((a, b) =>
-    numericCell(b, "Buyer Moment Opportunity Score") - numericCell(a, "Buyer Moment Opportunity Score") ||
-    numericCell(b, "High Opportunity Listings") - numericCell(a, "High Opportunity Listings") ||
-    numericCell(b, "Local Review Signal Listings") - numericCell(a, "Local Review Signal Listings") ||
-    String(a["Buyer Moment"]).localeCompare(String(b["Buyer Moment"]))
-  );
-  const leader = rows[0];
-  if (!leader) {
-    return result("Buyer moment answer", "No buyer-moment opportunity rows matched that question.");
-  }
-  return result(
-    "Buyer moment answer",
-    `${leader["Buyer Moment"]} is the strongest matching buyer moment at ${fmt(leader["Buyer Moment Opportunity Score"], "Buyer Moment Opportunity Score")} opportunity score, with ${fmt(leader["High Opportunity Listings"], "Listing Count")} high-opportunity listings.`,
-    [
-      `${fmt(scoring.listingMatches || 0, "Listing Count")} buyer-moment listing matches are scored; ${fmt(scoring.highOpportunityListingMatches || 0, "Listing Count")} clear the ${fmt(threshold, "Buyer Moment Opportunity Score")} high-opportunity threshold.`,
-      `${fmt(scoring.listingMatchesWithLocalReviewSignal || 0, "Listing Count")} scored rows have local review signal.`,
-      scoring.source || "Score blends rank, review velocity, engagement, shop strength, moment fit, category fit, and MyMaravia build fit."
-    ],
-    rows,
-    [
-      "Buyer Moment", "Parent Buyer Moment", "Source Run", "Moment Timeframe",
-      "Buyer Moment Opportunity Score", "Opportunity Band", "High Opportunity Listings",
-      "Local Review Signal Listings", "Top Opportunity Shop", "Top Opportunity Listing", "Buyer Moment Tags"
-    ],
-    40
-  );
-}
-
-function answerSheetQuestion(question) {
-  const q = normalizeQuestion(question);
-  if (!q.trim()) {
-    return result("Ask the sheet", "Type a question about listings, shops, categories, buyer moments, sales, coverage, blanks, or opportunities.");
-  }
-  if (/variation|style|option|personalization|customer ordered|ordered/.test(q)) return answerVariationQuestion(question);
-  if (/buyer\s*moment|gift moment|micro moment|moment opportun|seasonal moment|high-opportunity/.test(q)) return answerBuyerMomentQuestion(question);
-  if (/mymaravia|my shop|my listings|coverage|gap|missing|need.*build|build queue/.test(q)) return answerMyMaraviaQuestion(question);
-  if (/opportun|launch|priority|next|should.*build|best bet/.test(q)) return answerOpportunityQuestion(question);
-  if (/blank|generic|source|supplier|local stock|buy blank/.test(q)) return answerSourceQuestion(question);
-  if (/cycle|cyclical|season|seasonal|seasonality|year back|full year|annual/.test(q)) return answerSeasonalityQuestion(question);
-  if (/trend|moving|movement|momentum|rising|declin|dropping|falling/.test(q)) return answerTrendQuestion(question);
-  if (/review|rating|stars/.test(q)) return answerReviewQuestion(question);
-  if (/shop|seller|competitor/.test(q)) return answerShopQuestion(question);
-  if (/categor|substrate|rollup|family|cluster/.test(q)) return answerCategoryQuestion(question);
-  return answerListingQuestion(question);
-}
-
-function renderAskResult(answer) {
-  const target = document.getElementById("sheet-answer");
-  const table = document.getElementById("sheet-answer-table");
-  if (!target || !table) return;
-  const bullets = (answer.bullets || []).filter(Boolean);
-  target.innerHTML = `
-    <h3>${escapeHtml(answer.title)}</h3>
-    <p>${escapeHtml(answer.summary)}</p>
-    ${bullets.length ? `<ul>${bullets.map(item => `<li>${escapeHtml(item)}</li>`).join("")}</ul>` : ""}
-  `;
-  if (answer.rows && answer.rows.length) {
-    renderTable("sheet-answer-table", answer.rows, answer.columns, answer.limit || 25);
-  } else {
-    table.innerHTML = "";
-  }
-}
-
-function submitSheetQuestion() {
-  const input = document.getElementById("sheet-question");
-  const question = input?.value || "";
-  renderAskResult(answerSheetQuestion(question));
 }
 
 function renderRaw() {
@@ -4579,6 +4427,7 @@ function activateView(viewId) {
   });
   window.dispatchEvent(new Event("resize"));
   if (viewId === "listings") renderListings();
+  updateViewUrl(viewId);
   requestAnimationFrame(updateAllBottomScrollbars);
 }
 
@@ -4877,33 +4726,6 @@ function initCompanyProfile() {
   renderCompanyProfile();
 }
 
-function initAsk() {
-  const input = document.getElementById("sheet-question");
-  const submit = document.getElementById("sheet-question-submit");
-  if (!input || !submit) return;
-  if (submit && submit.dataset.bound !== "true") {
-    submit.addEventListener("click", submitSheetQuestion);
-    submit.dataset.bound = "true";
-  }
-  if (input && input.dataset.bound !== "true") {
-    input.addEventListener("keydown", event => {
-      if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
-        submitSheetQuestion();
-      }
-    });
-    input.dataset.bound = "true";
-  }
-  document.querySelectorAll(".ask-actions .prompt-button[data-question]").forEach(button => {
-    if (button.dataset.bound === "true") return;
-    button.addEventListener("click", () => {
-      const question = button.dataset.question || "";
-      if (input) input.value = question;
-      renderAskResult(answerSheetQuestion(question));
-    });
-    button.dataset.bound = "true";
-  });
-}
-
 function renderAll() {
   document.getElementById("snapshot-note").innerHTML =
     `${escapeHtml(dashboard.meta.source)} Generated ${escapeHtml(dashboard.meta.generatedAt)} from cache modified ${escapeHtml(dashboard.meta.sourceWorkbookModifiedAt)}.`;
@@ -4931,8 +4753,6 @@ function renderAll() {
   renderListings();
   initBuyerMomentFilters();
   renderBuyerMoments();
-  renderAskScope();
-  initAsk();
   renderBar("category-rollup-chart", dashboard.listing.categoryRollup || [], "Total Est. Daily Sales", "Product Substrate Category", 15, "#1f5fbf");
   renderTable("category-rollup-table", dashboard.listing.categoryRollup, ["Product Substrate Category", "Total Est. Daily Sales", "Total Est. 30D Sales", "Review Corpus Count", "Review Corpus 90D", "Review Corpus 365D", "Review Corpus Listings", "Listing Count", "Shop Count"], 40);
   renderBar("demand-summary-chart", dashboard.listing.demandSummary || [], "Total Est. Daily Sales", "Demand Intent Cluster", 20, "#0f766e");
@@ -4949,7 +4769,10 @@ async function boot() {
   setupTabs();
   const response = await fetch(`assets/data.json?v=${DATA_ASSET_VERSION}`);
   dashboard = await response.json();
+  applyNextActionUrlState();
   renderAll();
+  const initialView = initialDashboardView();
+  if (initialView && initialView !== "opportunity") activateView(initialView);
   document.getElementById("top-shop-metric").addEventListener("change", renderTopShops);
   document.getElementById("listing-search").addEventListener("input", scheduleRenderListings);
   document.getElementById("production-filter").addEventListener("change", renderListings);

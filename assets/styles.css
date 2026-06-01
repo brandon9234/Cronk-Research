@@ -430,6 +430,61 @@ th.thumbnail-cell {
   background: #fbfcfe;
 }
 
+.action-recipe-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.action-recipe-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.action-recipe-meta {
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.action-recipe-links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.action-recipe-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px 18px;
+}
+
+.action-recipe-block {
+  min-width: 0;
+}
+
+.action-recipe-block h3 {
+  margin: 0 0 5px;
+  font-size: 12px;
+  line-height: 1.25;
+  color: var(--muted);
+  font-weight: 760;
+}
+
+.action-recipe-list {
+  margin: 0;
+  padding-left: 17px;
+  line-height: 1.45;
+}
+
+.action-recipe-list li + li {
+  margin-top: 3px;
+}
+
 select,
 input[type="search"] {
   border: 1px solid var(--line);
@@ -504,6 +559,16 @@ input[type="search"] {
 
 .listing-controls select {
   min-width: 210px;
+}
+
+.listing-controls .link-button {
+  min-height: 34px;
+}
+
+.next-action-share-status {
+  flex: 1 0 100%;
+  min-height: 20px;
+  text-align: right;
 }
 
 .listing-timeframe-controls {
@@ -729,43 +794,6 @@ input[type="search"] {
   box-shadow: 0 0 0 2px rgba(15, 118, 110, 0.18);
 }
 
-.ask-layout {
-  display: grid;
-  grid-template-columns: minmax(320px, 0.9fr) minmax(0, 1.1fr);
-  gap: 14px;
-  align-items: stretch;
-  margin-bottom: 14px;
-}
-
-.ask-entry,
-.ask-answer {
-  min-height: 180px;
-}
-
-.ask-entry {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-textarea {
-  width: 100%;
-  min-height: 142px;
-  resize: vertical;
-  border: 1px solid var(--line);
-  border-radius: 7px;
-  padding: 10px 11px;
-  color: var(--text);
-  font: inherit;
-  line-height: 1.45;
-}
-
-.ask-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
 .primary-button,
 .prompt-button {
   min-height: 34px;
@@ -790,31 +818,6 @@ textarea {
 .prompt-button:hover,
 .primary-button:hover {
   filter: brightness(0.96);
-}
-
-.ask-answer {
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 12px;
-  background: #fbfcfe;
-}
-
-.ask-answer h3 {
-  margin: 0 0 8px;
-  font-size: 16px;
-  line-height: 1.25;
-}
-
-.ask-answer p {
-  color: #263247;
-  line-height: 1.5;
-}
-
-.ask-answer ul {
-  margin: 10px 0 0;
-  padding-left: 18px;
-  color: #263247;
-  line-height: 1.45;
 }
 
 .empty {
@@ -858,6 +861,23 @@ textarea {
   .listing-controls select {
     width: 100%;
   }
+  .listing-controls .link-button {
+    width: 100%;
+    margin-top: 8px;
+  }
+  .next-action-share-status {
+    text-align: left;
+  }
+  .action-recipe-head {
+    display: block;
+  }
+  .action-recipe-links {
+    justify-content: flex-start;
+    margin-top: 8px;
+  }
+  .action-recipe-grid {
+    grid-template-columns: 1fr;
+  }
   .listing-timeframe-controls {
     display: grid;
     grid-template-columns: 1fr;
@@ -883,11 +903,5 @@ textarea {
   .buyer-moment-months,
   .buyer-moment-timeline-shell {
     min-width: 840px;
-  }
-  .ask-layout {
-    grid-template-columns: 1fr;
-  }
-  .ask-actions button {
-    width: 100%;
   }
 }

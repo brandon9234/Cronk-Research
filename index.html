@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Cronk Research</title>
-  <link rel="stylesheet" href="assets/styles.css?v=taxonomy-finish-20260601-1">
+  <link rel="stylesheet" href="assets/styles.css?v=next-action-share-recipes-20260601-1">
   <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
 </head>
 <body>
@@ -26,7 +26,6 @@
       <button class="tab" data-view="company">Company</button>
       <button class="tab" data-view="buyer-moments">Buyer Moments</button>
       <button class="tab" data-view="listings">Listings</button>
-      <button class="tab" data-view="ask">Ask</button>
       <button class="tab" data-view="operations">Operations</button>
       <button class="tab" data-view="raw">Raw Preview</button>
     </nav>
@@ -58,6 +57,9 @@
                 <option value="Launch">Launch</option>
               </select>
               <input id="next-action-search" type="search" placeholder="Find category, listing, cue">
+              <button id="next-action-copy-link" class="link-button" type="button">Copy link</button>
+              <button id="next-action-reset-view" class="link-button" type="button">Reset</button>
+              <p id="next-action-link-status" class="subtle next-action-share-status"></p>
             </div>
           </div>
           <div id="next-action-recipe" class="callout"></div>
@@ -284,7 +286,7 @@
                 <option value="">All production methods</option>
               </select>
               <select id="comparison-sort" aria-label="Comparison sort">
-                <option value="">Default order</option>
+                <option value="">Default: est. daily sales high to low</option>
                 <option value="daily-desc">Est. daily sales: high to low</option>
                 <option value="daily-asc">Est. daily sales: low to high</option>
                 <option value="thirty-desc">Est. 30-day sales: high to low</option>
@@ -396,8 +398,8 @@
                 <option value="">All sources</option>
               </select>
               <select id="buyer-moment-sort" aria-label="Buyer moment sort">
-                <option value="opportunity-desc">Opportunity score: high to low</option>
                 <option value="velocity-desc">Moment daily velocity: high to low</option>
+                <option value="opportunity-desc">Opportunity score: high to low</option>
                 <option value="sales-desc">Moment estimated sales: high to low</option>
                 <option value="reviews-desc">Moment reviews: high to low</option>
                 <option value="daily-desc">Current daily sales: high to low</option>
@@ -480,7 +482,7 @@
                   <option value="">All product substrates</option>
                 </select>
                 <select id="listing-sort" aria-label="Listing sort">
-                  <option value="">Default order</option>
+                  <option value="">Default: est. daily sales high to low</option>
                   <option value="daily-desc">Est. daily sales: high to low</option>
                   <option value="daily-asc">Est. daily sales: low to high</option>
                   <option value="thirty-desc">Est. 30-day sales: high to low</option>
@@ -577,35 +579,6 @@
         </section>
       </section>
 
-      <section id="ask" class="view">
-        <section class="panel">
-          <div class="panel-head">
-            <div>
-              <h2>Ask The Sheet</h2>
-              <p id="ask-scope" class="subtle"></p>
-            </div>
-          </div>
-          <div class="ask-layout">
-            <div class="ask-entry">
-              <textarea id="sheet-question" placeholder="Ask about listings, shops, categories, buyer moments, gaps, reviews, or opportunities"></textarea>
-              <div class="ask-actions">
-                <button id="sheet-question-submit" class="primary-button" type="button">Answer</button>
-                <button class="prompt-button" type="button" data-question="What should I build next for MyMaravia?">Build gaps</button>
-                <button class="prompt-button" type="button" data-question="Which category has the highest daily sales?">Top category</button>
-                <button class="prompt-button" type="button" data-question="Which buyer moments are the highest opportunity?">Buyer moments</button>
-                <button class="prompt-button" type="button" data-question="Which shops are moving up?">Moving up</button>
-                <button class="prompt-button" type="button" data-question="How many reviews are being used?">Review corpus</button>
-              </div>
-            </div>
-            <div id="sheet-answer" class="ask-answer">
-              <h3>Ready</h3>
-              <p>Ask a focused market question and the answer will use the current dashboard snapshot.</p>
-            </div>
-          </div>
-          <div id="sheet-answer-table"></div>
-        </section>
-      </section>
-
       <section id="raw" class="view">
         <section class="panel">
           <div class="panel-head with-control">
@@ -617,6 +590,6 @@
       </section>
     </main>
   </div>
-  <script src="assets/app.js?v=taxonomy-finish-20260601-1"></script>
+  <script src="assets/app.js?v=next-action-share-recipes-20260601-1"></script>
 </body>
 </html>
