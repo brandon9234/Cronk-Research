@@ -12,7 +12,7 @@ let buyerMomentTopListingRowsCache = null;
 let buyerMomentListingCycleRowsCache = new Map();
 let customBuyerMomentRange = null;
 const CUSTOM_BUYER_MOMENT_ID = "custom-date-range";
-const DATA_ASSET_VERSION = "buyer-moment-enriched-20260601-1";
+const DATA_ASSET_VERSION = "review-search-cancel-20260601-1";
 const BUYER_MOMENT_LANE_HEIGHT = 30;
 const LISTING_RENDER_LIMIT = 500;
 const REVIEW_LISTING_PREVIEW_CHUNKS = 1;
@@ -555,6 +555,17 @@ function shouldSearchReviewListings(query, production) {
   return Boolean(reviewListingManifest() && (production || query.length >= REVIEW_LISTING_SEARCH_MIN_CHARS));
 }
 
+function cancelReviewListingSearch() {
+  if (!reviewListingState.searchLoading && !reviewListingState.searchKey && !reviewListingState.searchRows.length) return;
+  reviewListingState.searchToken += 1;
+  reviewListingState.searchKey = "";
+  reviewListingState.searchRows = [];
+  reviewListingState.searchMatches = 0;
+  reviewListingState.searchScanned = 0;
+  reviewListingState.searchComplete = false;
+  reviewListingState.searchLoading = false;
+}
+
 function rowMatchesListingFilters(row, query, production) {
   if (production && row["Production Tag"] !== production) return false;
   if (query && !listingSearchText(row).includes(query)) return false;
@@ -640,6 +651,7 @@ function reviewListingRowsForListings(query, production) {
     const key = reviewListingFilterKey(query, production);
     return reviewListingState.searchKey === key ? reviewListingState.searchRows : [];
   }
+  cancelReviewListingSearch();
   ensureReviewListingPreview();
   if (!query) return reviewListingState.previewRows;
   return reviewListingState.previewRows.filter(row => rowMatchesListingFilters(row, query, production));
