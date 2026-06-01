@@ -12,7 +12,7 @@ let buyerMomentTopListingRowsCache = null;
 let buyerMomentListingCycleRowsCache = new Map();
 let customBuyerMomentRange = null;
 const CUSTOM_BUYER_MOMENT_ID = "custom-date-range";
-const DATA_ASSET_VERSION = "buyer-moment-decision-score-20260601-1";
+const DATA_ASSET_VERSION = "listing-thumbnail-fallback-20260601-1";
 const BUYER_MOMENT_LANE_HEIGHT = 30;
 const BUYER_MOMENT_HIGH_OPPORTUNITY_SCORE = 68;
 const BUYER_MOMENT_FILTER_IDS = [
@@ -155,9 +155,19 @@ function linkCell(value) {
   return `<a href="${escapeHtml(text)}" target="_blank" rel="noreferrer">${label}</a>`;
 }
 
-function thumbnailCell(row, column) {
-  const src = String(row[column] ?? "");
-  if (!/^https?:\/\//i.test(src)) return "";
+function thumbnailTitle(row, column) {
+  const isCompetitorThumb = column === "Top Competitor Thumbnail" || column === "Competitor Thumbnail";
+  const isMarketThumb = column === "Market Thumbnail";
+  return String(
+    isCompetitorThumb
+      ? row["Competing Listing"] || row["Top Competitor"] || "Top competitor thumbnail"
+      : isMarketThumb
+        ? row["Market Long Tail"] || "Market listing thumbnail"
+        : row["My Listing"] || row["Product Title"] || "Listing thumbnail"
+  );
+}
+
+function listingThumbnailHref(row, column, src) {
   const isCompetitorThumb = column === "Top Competitor Thumbnail" || column === "Competitor Thumbnail";
   const isMarketThumb = column === "Market Thumbnail";
   const href = String(
@@ -167,14 +177,63 @@ function thumbnailCell(row, column) {
         ? row["Market Listing URL"] || row["Listing URL"] || src
         : row["My Listing URL"] || row["Listing URL"] || src
   );
-  const title = String(
-    isCompetitorThumb
-      ? row["Competing Listing"] || row["Top Competitor"] || "Top competitor thumbnail"
-      : isMarketThumb
-        ? row["Market Long Tail"] || "Market listing thumbnail"
-        : row["My Listing"] || row["Product Title"] || "Listing thumbnail"
-  );
-  return `<a class="listing-thumb-link" href="${escapeHtml(href)}" target="_blank" rel="noreferrer"><img class="listing-thumb" src="${escapeHtml(src)}" alt="${escapeHtml(title)}" loading="lazy"></a>`;
+  return /^https?:\/\//i.test(href) ? href : src;
+}
+
+function rowThumbnailSeed(row, column) {
+  return [
+    column,
+    row["Listing URL"],
+    row["Product Title"],
+    row.Shop,
+    row["Product Category"],
+    row["Product Substrate Category"]
+  ].filter(Boolean).join("|");
+}
+
+function hashString(value) {
+  let hash = 0;
+  const text = String(value || "Cronk Research");
+  for (let index = 0; index < text.length; index += 1) {
+    hash = ((hash << 5) - hash + text.charCodeAt(index)) | 0;
+  }
+  return Math.abs(hash);
+}
+
+function fallbackThumbnailDataUrl(row, column) {
+  const key = `__fallbackThumbnail_${column.replace(/\W+/g, "")}`;
+  if (row[key]) return row[key];
+  const palettes = [
+    ["#244c66", "#e7f1f4"],
+    ["#0f766e", "#e8f2f0"],
+    ["#7c3f20", "#f7eee7"],
+    ["#5b4b8a", "#f0ecf7"],
+    ["#6b6f22", "#f4f5e7"],
+    ["#8a3b55", "#f8eaf0"]
+  ];
+  const title = thumbnailTitle(row, column);
+  const category = String(row["Product Substrate Category"] || row["Product Category"] || row.Shop || "Listing").trim();
+  const words = title.replace(/[^a-z0-9\s]/gi, " ").split(/\s+/).filter(Boolean);
+  const initials = (words.slice(0, 2).map(word => word[0]).join("") || "CR").toUpperCase();
+  const [ink, paper] = palettes[hashString(rowThumbnailSeed(row, column)) % palettes.length];
+  const label = category.length > 24 ? `${category.slice(0, 23)}...` : category;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="170" height="135" viewBox="0 0 170 135" role="img" aria-label="${escapeHtml(title)} thumbnail"><rect width="170" height="135" rx="12" fill="${paper}"/><rect x="14" y="14" width="142" height="77" rx="10" fill="#fff" opacity="0.88"/><circle cx="85" cy="52" r="27" fill="${ink}" opacity="0.92"/><text x="85" y="61" text-anchor="middle" font-family="Arial, sans-serif" font-size="25" font-weight="700" fill="#fff">${escapeHtml(initials.slice(0, 3))}</text><text x="85" y="112" text-anchor="middle" font-family="Arial, sans-serif" font-size="13" font-weight="700" fill="${ink}">${escapeHtml(label || "Listing")}</text></svg>`;
+  const value = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+  Object.defineProperty(row, key, {
+    value,
+    configurable: true
+  });
+  return value;
+}
+
+function thumbnailCell(row, column) {
+  const rawSrc = String(row[column] ?? "").trim();
+  const hasImageUrl = /^https?:\/\//i.test(rawSrc) || /^data:image\//i.test(rawSrc);
+  const src = hasImageUrl ? rawSrc : fallbackThumbnailDataUrl(row, column);
+  const href = listingThumbnailHref(row, column, src);
+  const title = thumbnailTitle(row, column);
+  const cls = /^https?:\/\//i.test(rawSrc) ? "listing-thumb" : "listing-thumb fallback-thumb";
+  return `<a class="listing-thumb-link" href="${escapeHtml(href)}" target="_blank" rel="noreferrer"><img class="${cls}" src="${escapeHtml(src)}" alt="${escapeHtml(title)}" loading="lazy"></a>`;
 }
 
 function sourceLinksCell(value) {
