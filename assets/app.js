@@ -2,6 +2,8 @@ let dashboard;
 let selectedCompany = "";
 let selectedCompanyProduction = "";
 let selectedListingCycleKey = "";
+let selectedListingSubstrate = "";
+let selectedListingTimeframePreset = "";
 let selectedBuyerMomentId = "";
 let selectedImportBuyerMomentId = "";
 let selectedMarketSegment = "";
@@ -12,7 +14,7 @@ let buyerMomentTopListingRowsCache = null;
 let buyerMomentListingCycleRowsCache = new Map();
 let customBuyerMomentRange = null;
 const CUSTOM_BUYER_MOMENT_ID = "custom-date-range";
-const DATA_ASSET_VERSION = "real-listing-thumbnails-20260601-2";
+const DATA_ASSET_VERSION = "listing-substrate-timeframe-filter-20260601-1";
 const BUYER_MOMENT_LANE_HEIGHT = 30;
 const BUYER_MOMENT_HIGH_OPPORTUNITY_SCORE = 68;
 const BUYER_MOMENT_BUILD_FIT_ORDER = [
@@ -35,10 +37,17 @@ const REVIEW_LISTING_PREVIEW_CHUNKS = 1;
 const REVIEW_LISTING_RESULT_LIMIT = 5000;
 const REVIEW_LISTING_SEARCH_MIN_CHARS = 2;
 const REVIEW_LISTING_PROGRESS_RENDER_MS = 500;
+const LISTING_TIMEFRAME_CUSTOM_ID = "custom";
+const LISTING_TIMEFRAME_PRESETS = {
+  "mothers-day": { label: "Mother's Day season", start: "04-15", end: "05-25" },
+  "graduation": { label: "Graduation season", start: "04-15", end: "06-15" },
+  "christmas": { label: "Christmas season", start: "11-01", end: "12-31" }
+};
 let listingRenderTimer = null;
 const reviewListingState = {
   rowChunks: new Map(),
   cycleChunks: new Map(),
+  cycleChunkLoading: new Map(),
   rowByCycleKey: new Map(),
   previewRows: [],
   previewLoaded: false,
@@ -104,7 +113,9 @@ const numericColumns = new Set([
   "Competing Daily Sales", "Competing 30D Sales", "Competitor Market Share %",
   "Segment Daily Sales", "Segment 30D Sales", "Segment Share %",
   "Covered Competitor Daily", "Covered 30D", "Covered Share %",
-  "Competitor Rows Covered", "Best Listing Daily"
+  "Competitor Rows Covered", "Best Listing Daily",
+  "Last Year Timeframe Estimated Sales", "Last Year Timeframe Avg Daily Sales",
+  "Last Year Timeframe Review Count", "Last Year Timeframe Weeks", "Last Year Timeframe Weeks With Demand"
 ]);
 
 const wrappedColumns = new Set([
@@ -124,7 +135,7 @@ const wrappedColumns = new Set([
   "Local Review Signal", "Build Fit Segment", "Top Opportunity Listing", "Top Opportunity Shop", "Top Listing", "Top Shop", "Target Category", "My Listing",
   "Competing Listing", "Competing Shop", "Competing Tags", "My Listing URL", "Competitor Listing URL",
   "Best Listing", "Top Competitor Row", "Repeated Match Cues", "Cue / Action",
-  "Evidence", "Next Edit", "Market Control Read"
+  "Evidence", "Next Edit", "Market Control Read", "Last Year Timeframe Window", "Last Year Timeframe Signal"
 ]);
 
 const thumbnailColumns = new Set(["Thumbnail", "Listing Thumbnail", "Market Thumbnail", "Top Competitor Thumbnail", "My Thumbnail", "Competitor Thumbnail"]);
@@ -595,12 +606,12 @@ async function fetchReviewListingRows(chunkIndex, options = {}) {
   return rows;
 }
 
-function reviewListingFilterKey(query, production) {
-  return `${query || ""}\n${production || ""}`;
+function reviewListingFilterKey(query, production, substrate) {
+  return `${query || ""}\n${production || ""}\n${substrate || ""}`;
 }
 
-function shouldSearchReviewListings(query, production) {
-  return Boolean(reviewListingManifest() && (production || query.length >= REVIEW_LISTING_SEARCH_MIN_CHARS));
+function shouldSearchReviewListings(query, production, substrate) {
+  return Boolean(reviewListingManifest() && (production || substrate || query.length >= REVIEW_LISTING_SEARCH_MIN_CHARS));
 }
 
 function abortReviewListingSearchRequest() {
@@ -622,8 +633,9 @@ function cancelReviewListingSearch() {
   reviewListingState.lastProgressRenderAt = 0;
 }
 
-function rowMatchesListingFilters(row, query, production) {
+function rowMatchesListingFilters(row, query, production, substrate) {
   if (production && row["Production Tag"] !== production) return false;
+  if (substrate && String(row["Product Substrate Category"] || row["Product Category"] || "") !== substrate) return false;
   if (query && !listingSearchText(row).includes(query)) return false;
   return true;
 }
@@ -650,10 +662,10 @@ function ensureReviewListingPreview() {
   })();
 }
 
-function startReviewListingSearch(query, production) {
+function startReviewListingSearch(query, production, substrate) {
   const manifest = reviewListingManifest();
   if (!manifest) return;
-  const key = reviewListingFilterKey(query, production);
+  const key = reviewListingFilterKey(query, production, substrate);
   if (reviewListingState.searchKey === key && (reviewListingState.searchLoading || reviewListingState.searchComplete)) return;
   abortReviewListingSearchRequest();
   const controller = new AbortController();
@@ -679,7 +691,7 @@ function startReviewListingSearch(query, production) {
         const visibleRowsBefore = reviewListingState.searchRows.length;
         reviewListingState.searchScanned += rows.length;
         rows.forEach(row => {
-          if (!rowMatchesListingFilters(row, query, production)) return;
+          if (!rowMatchesListingFilters(row, query, production, substrate)) return;
           reviewListingState.searchMatches += 1;
           if (reviewListingState.searchRows.length < REVIEW_LISTING_RESULT_LIMIT) {
             reviewListingState.searchRows.push(row);
@@ -710,27 +722,27 @@ function startReviewListingSearch(query, production) {
   })();
 }
 
-function reviewListingRowsForListings(query, production) {
+function reviewListingRowsForListings(query, production, substrate) {
   const manifest = reviewListingManifest();
   if (!manifest) return [];
   if (!listingsViewIsActive()) return [];
-  if (shouldSearchReviewListings(query, production)) {
-    startReviewListingSearch(query, production);
-    const key = reviewListingFilterKey(query, production);
+  if (shouldSearchReviewListings(query, production, substrate)) {
+    startReviewListingSearch(query, production, substrate);
+    const key = reviewListingFilterKey(query, production, substrate);
     return reviewListingState.searchKey === key ? reviewListingState.searchRows : [];
   }
   cancelReviewListingSearch();
   ensureReviewListingPreview();
   if (!query) return reviewListingState.previewRows;
-  return reviewListingState.previewRows.filter(row => rowMatchesListingFilters(row, query, production));
+  return reviewListingState.previewRows.filter(row => rowMatchesListingFilters(row, query, production, substrate));
 }
 
-function reviewListingStatusText(query, production) {
+function reviewListingStatusText(query, production, substrate) {
   const manifest = reviewListingManifest();
   if (!manifest) return "";
   const total = fmt(reviewListingTotal(), "Listing Count");
-  if (shouldSearchReviewListings(query, production)) {
-    const key = reviewListingFilterKey(query, production);
+  if (shouldSearchReviewListings(query, production, substrate)) {
+    const key = reviewListingFilterKey(query, production, substrate);
     if (reviewListingState.searchKey !== key) return `Review index queued across ${total} listings.`;
     const matches = fmt(reviewListingState.searchMatches, "Listing Count");
     if (reviewListingState.searchComplete) {
@@ -1163,15 +1175,51 @@ async function loadReviewListingCycle(cycleKey) {
   const manifest = reviewListingManifest();
   const parsed = parseReviewListingCycleKey(cycleKey);
   if (!manifest || !parsed || !manifest.cycleFiles?.[parsed.chunkIndex]) return null;
-  if (!reviewListingState.cycleChunks.has(parsed.chunkIndex)) {
-    const response = await fetch(reviewListingAssetUrl(manifest.cycleFiles[parsed.chunkIndex]));
-    if (!response.ok) throw new Error(`Review cycle chunk ${parsed.chunkIndex} failed to load`);
-    reviewListingState.cycleChunks.set(parsed.chunkIndex, await response.json());
-  }
+  await ensureReviewCycleChunk(parsed.chunkIndex);
   const payload = reviewListingState.cycleChunks.get(parsed.chunkIndex);
   const encoded = payload.rows?.[parsed.rowIndex]?.[0] || "";
   const row = reviewListingState.rowByCycleKey.get(cycleKey) || {};
   return { row, rows: reviewListingCycleWeeks(encoded, manifest, row) };
+}
+
+function ensureReviewCycleChunk(chunkIndex) {
+  const manifest = reviewListingManifest();
+  if (!manifest?.cycleFiles?.[chunkIndex]) return Promise.resolve(null);
+  if (reviewListingState.cycleChunks.has(chunkIndex)) {
+    return Promise.resolve(reviewListingState.cycleChunks.get(chunkIndex));
+  }
+  if (reviewListingState.cycleChunkLoading.has(chunkIndex)) {
+    return reviewListingState.cycleChunkLoading.get(chunkIndex);
+  }
+  const promise = fetch(reviewListingAssetUrl(manifest.cycleFiles[chunkIndex]))
+    .then(response => {
+      if (!response.ok) throw new Error(`Review cycle chunk ${chunkIndex} failed to load`);
+      return response.json();
+    })
+    .then(payload => {
+      reviewListingState.cycleChunks.set(chunkIndex, payload);
+      return payload;
+    })
+    .finally(() => {
+      reviewListingState.cycleChunkLoading.delete(chunkIndex);
+      if (listingsViewIsActive()) renderListings();
+    });
+  reviewListingState.cycleChunkLoading.set(chunkIndex, promise);
+  return promise;
+}
+
+function reviewListingWeeksFromLoadedCycle(row) {
+  const cycleKey = String(row["Weekly Cycle Key"] || "");
+  const parsed = parseReviewListingCycleKey(cycleKey);
+  const manifest = reviewListingManifest();
+  if (!parsed || !manifest) return { loading: false, weeks: [] };
+  const payload = reviewListingState.cycleChunks.get(parsed.chunkIndex);
+  if (!payload) {
+    ensureReviewCycleChunk(parsed.chunkIndex).catch(error => console.warn(error));
+    return { loading: true, weeks: [] };
+  }
+  const encoded = payload.rows?.[parsed.rowIndex]?.[0] || "";
+  return { loading: false, weeks: reviewListingCycleWeeks(encoded, manifest, row) };
 }
 
 function renderReviewListingCycle(cycleKey, target, summary) {
@@ -1733,6 +1781,70 @@ function formatMomentWindow(range) {
   return `${formatDateLabel(range.start)} - ${formatDateLabel(range.end)}`;
 }
 
+function monthDayFromDate(date) {
+  return `${String(date.getUTCMonth() + 1).padStart(2, "0")}-${String(date.getUTCDate()).padStart(2, "0")}`;
+}
+
+function listingReferenceDate() {
+  const generated = String(dashboard?.meta?.generatedAt || "").slice(0, 10);
+  return parseIsoDate(generated) || new Date();
+}
+
+function last30ListingTimeframePreset() {
+  const reference = listingReferenceDate();
+  const start = new Date(Date.UTC(2025, reference.getUTCMonth(), reference.getUTCDate()));
+  start.setUTCDate(start.getUTCDate() - 29);
+  return {
+    label: "Last 30 days",
+    start: monthDayFromDate(start),
+    end: monthDayFromDate(reference)
+  };
+}
+
+function listingTimeframePresetDefinition(preset) {
+  if (preset === "last-30") return last30ListingTimeframePreset();
+  if (preset === LISTING_TIMEFRAME_CUSTOM_ID) {
+    return {
+      label: "Custom range",
+      start: document.getElementById("listing-timeframe-start")?.value || "",
+      end: document.getElementById("listing-timeframe-end")?.value || ""
+    };
+  }
+  return LISTING_TIMEFRAME_PRESETS[preset] || null;
+}
+
+function isValidMonthDay(value) {
+  const match = String(value || "").trim().match(/^(\d{2})-(\d{2})$/);
+  if (!match) return false;
+  const month = Number(match[1]);
+  const day = Number(match[2]);
+  const date = new Date(Date.UTC(2025, month - 1, day));
+  return date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
+}
+
+function monthDayToIso(monthDay, year) {
+  if (!isValidMonthDay(monthDay)) return "";
+  return `${year}-${monthDay}`;
+}
+
+function selectedListingTimeframeWindow() {
+  const preset = selectedListingTimeframePreset || document.getElementById("listing-timeframe-preset")?.value || "";
+  if (!preset) return null;
+  const definition = listingTimeframePresetDefinition(preset);
+  if (!definition || !isValidMonthDay(definition.start) || !isValidMonthDay(definition.end)) return null;
+  const targetYear = listingReferenceDate().getUTCFullYear() - 1;
+  const endYear = definition.end < definition.start ? targetYear + 1 : targetYear;
+  const range = {
+    start: monthDayToIso(definition.start, targetYear),
+    end: monthDayToIso(definition.end, endYear)
+  };
+  return {
+    ...range,
+    label: definition.label,
+    display: formatMomentWindow(range)
+  };
+}
+
 function reviewDateBounds() {
   const meta = dashboard.reviewCorpus?.listingCycleMeta || {};
   const start = meta.weekStart || dashboard.reviewCorpus?.earliestReviewISO || "";
@@ -1846,6 +1958,53 @@ function withDailySales(row) {
   if (next["Moment Avg Weekly Sales"] !== undefined && next["Moment Avg Weekly Sales"] !== "") {
     next["Moment Avg Daily Sales"] = dailyFromWeekly(next["Moment Avg Weekly Sales"]);
   }
+  return next;
+}
+
+function listingWeeksForTimeframe(row) {
+  const cycleKey = String(row["Weekly Cycle Key"] || "");
+  const cycle = listingCycleMap().get(cycleKey);
+  if (cycle) {
+    return { loading: false, source: cycle.source, weeks: fullListingCycleRows(cycle) };
+  }
+  if (cycleKey.startsWith("review:")) {
+    const result = reviewListingWeeksFromLoadedCycle(row);
+    return { ...result, source: row["Trend Source"] || "Review listing sidecar" };
+  }
+  const embedded = row["Weekly Review Counts"] ? buyerMomentListingCycleWeeks(row) : [];
+  if (embedded.length) {
+    return { loading: false, source: row["Trend Source"] || "Embedded weekly review counts", weeks: embedded };
+  }
+  return { loading: false, source: "", weeks: [] };
+}
+
+function listingTimeframeMetricRow(row, window) {
+  if (!window) return row;
+  const { loading, source, weeks } = listingWeeksForTimeframe(row);
+  const next = {
+    ...row,
+    "Last Year Timeframe Window": window.display
+  };
+  if (loading) {
+    next["Last Year Timeframe Signal"] = "Loading local review signal";
+    return next;
+  }
+  const matchingWeeks = (weeks || []).filter(week => weekOverlapsMomentWindow(week["Week Start"], window));
+  if (!matchingWeeks.length) {
+    next["Last Year Timeframe Signal"] = "No local review signal for selected timeframe";
+    return next;
+  }
+  const estimatedSales = matchingWeeks.reduce((sum, week) => sum + numericCell(week, "Estimated Weekly Sales"), 0);
+  const reviewCount = matchingWeeks.reduce((sum, week) => sum + numericCell(week, "Review Count"), 0);
+  const weeksWithDemand = matchingWeeks.filter(week => numericCell(week, "Estimated Weekly Sales") > 0).length;
+  next["Last Year Timeframe Estimated Sales"] = roundOne(estimatedSales);
+  next["Last Year Timeframe Avg Daily Sales"] = roundOne(estimatedSales / Math.max(1, matchingWeeks.length * 7));
+  next["Last Year Timeframe Review Count"] = reviewCount;
+  next["Last Year Timeframe Weeks"] = matchingWeeks.length;
+  next["Last Year Timeframe Weeks With Demand"] = weeksWithDemand;
+  next["Last Year Timeframe Signal"] = estimatedSales > 0
+    ? `${source || "Local review cycle"}`
+    : "Local weekly cycle shows no demand";
   return next;
 }
 
@@ -3198,12 +3357,20 @@ function sortListingRows(rows) {
     "daily-desc": ["Est. Daily Sales", "desc"],
     "daily-asc": ["Est. Daily Sales", "asc"],
     "thirty-desc": ["Est. 30D Sales", "desc"],
-    "thirty-asc": ["Est. 30D Sales", "asc"]
+    "thirty-asc": ["Est. 30D Sales", "asc"],
+    "timeframe-sales-desc": ["Last Year Timeframe Estimated Sales", "desc"],
+    "timeframe-daily-desc": ["Last Year Timeframe Avg Daily Sales", "desc"],
+    "timeframe-reviews-desc": ["Last Year Timeframe Review Count", "desc"]
   };
   const config = sortMap[sort];
   if (!config) return rows;
   const [column, direction] = config;
   return rows.slice().sort((a, b) => {
+    if (column.startsWith("Last Year Timeframe")) {
+      const missingA = typeof a[column] !== "number";
+      const missingB = typeof b[column] !== "number";
+      if (missingA !== missingB) return missingA ? 1 : -1;
+    }
     const delta = numericCell(a, column) - numericCell(b, column);
     const ordered = direction === "asc" ? delta : -delta;
     if (ordered) return ordered;
@@ -3793,28 +3960,43 @@ function renderMyMaravia() {
 function renderListings() {
   const query = document.getElementById("listing-search").value.trim().toLowerCase();
   const production = document.getElementById("production-filter").value;
+  selectedListingSubstrate = document.getElementById("substrate-filter")?.value || "";
+  selectedListingTimeframePreset = document.getElementById("listing-timeframe-preset")?.value || "";
+  const timeframeWindow = selectedListingTimeframeWindow();
   const allRows = getListingRows();
   let rows = allRows;
   if (production) {
     rows = rows.filter(row => row["Production Tag"] === production);
   }
+  if (selectedListingSubstrate) {
+    rows = rows.filter(row => String(row["Product Substrate Category"] || row["Product Category"] || "") === selectedListingSubstrate);
+  }
   if (query) {
     rows = rows.filter(row => listingSearchText(row).includes(query));
   }
-  const reviewRows = reviewListingRowsForListings(query, production);
+  const reviewRows = reviewListingRowsForListings(query, production, selectedListingSubstrate);
   rows = rows.concat(reviewRows);
+  if (timeframeWindow) {
+    rows = rows.map(row => listingTimeframeMetricRow(row, timeframeWindow));
+  }
   rows = sortListingRows(rows);
   const count = fmt(rows.length, "Listing Count");
   const totalCount = allRows.length + reviewListingTotal();
   const total = fmt(totalCount, "Listing Count");
   const shown = Math.min(rows.length, LISTING_RENDER_LIMIT);
-  const status = reviewListingStatusText(query, production);
+  const status = reviewListingStatusText(query, production, selectedListingSubstrate);
+  const timeframeStatus = timeframeWindow ? `Last-year timeframe: ${timeframeWindow.display}.` : "";
   const baseText = rows.length === totalCount
     ? `Showing first ${fmt(shown, "Listing Count")} of ${total} listings`
     : `Showing first ${fmt(shown, "Listing Count")} of ${count} visible/matching listings from ${total} total`;
-  document.getElementById("listing-count").textContent = [baseText, status].filter(Boolean).join(" ");
+  document.getElementById("listing-count").textContent = [baseText, timeframeStatus, status].filter(Boolean).join(" ");
+  const timeframeColumns = timeframeWindow ? [
+    "Last Year Timeframe Window", "Last Year Timeframe Estimated Sales", "Last Year Timeframe Avg Daily Sales",
+    "Last Year Timeframe Review Count", "Last Year Timeframe Weeks With Demand", "Last Year Timeframe Signal"
+  ] : [];
   renderTable("top-listings", rows, [
     "Overall Rank", "Thumbnail", "Weekly Sales Graph", "Recent Daily Sales", "Recent Weekly Sales", "Weekly Trend", "Peak Sales Week", "Peak Daily Sales", "Peak Weekly Sales",
+    ...timeframeColumns,
     "Shop", "Est. Daily Sales", "Est. 30D Sales", "Blank / Generic Sources", "Product Title", "Tags", "Tags Source", "Best Guess Tags", "Product Category", "Product Substrate Category",
     "Production Tag", "Customization Tag", "Tag Confidence", "Tag Evidence",
     "Review Corpus Count", "Review Corpus 90D", "Review Corpus 365D",
@@ -4350,6 +4532,8 @@ function initRawSelect() {
 
 function initProductionFilter() {
   const select = document.getElementById("production-filter");
+  const selected = select.value;
+  select.innerHTML = `<option value="">All production methods</option>`;
   const counts = new Map();
   getListingRows().forEach(row => {
     const tag = row["Production Tag"] || "Unclassified";
@@ -4366,6 +4550,79 @@ function initProductionFilter() {
       option.textContent = `${tag} (${count})`;
       select.appendChild(option);
     });
+  if ([...select.options].some(option => option.value === selected)) {
+    select.value = selected;
+  }
+}
+
+function initListingSubstrateFilter() {
+  const select = document.getElementById("substrate-filter");
+  if (!select) return;
+  const selected = select.value;
+  select.innerHTML = `<option value="">All product substrates</option>`;
+  const counts = new Map();
+  getListingRows().forEach(row => {
+    const category = String(row["Product Substrate Category"] || row["Product Category"] || "Uncategorized");
+    counts.set(category, (counts.get(category) || 0) + 1);
+  });
+  Object.entries(reviewListingManifest()?.categoryCounts || {}).forEach(([category, count]) => {
+    counts.set(category, (counts.get(category) || 0) + Number(count || 0));
+  });
+  [...counts.entries()]
+    .filter(([category]) => category)
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .forEach(([category, count]) => {
+      const option = document.createElement("option");
+      option.value = category;
+      option.textContent = `${category} (${count})`;
+      select.appendChild(option);
+    });
+  if ([...select.options].some(option => option.value === selected)) {
+    select.value = selected;
+  }
+}
+
+function syncListingTimeframeInputs() {
+  const preset = document.getElementById("listing-timeframe-preset")?.value || "";
+  const startInput = document.getElementById("listing-timeframe-start");
+  const endInput = document.getElementById("listing-timeframe-end");
+  const definition = listingTimeframePresetDefinition(preset);
+  if (!startInput || !endInput || !definition || preset === LISTING_TIMEFRAME_CUSTOM_ID) return;
+  startInput.value = definition.start;
+  endInput.value = definition.end;
+}
+
+function markListingTimeframeCustom() {
+  const select = document.getElementById("listing-timeframe-preset");
+  if (select && (document.getElementById("listing-timeframe-start")?.value || document.getElementById("listing-timeframe-end")?.value)) {
+    select.value = LISTING_TIMEFRAME_CUSTOM_ID;
+  }
+  selectedListingTimeframePreset = select?.value || "";
+}
+
+function initListingTimeframeControls() {
+  const preset = document.getElementById("listing-timeframe-preset");
+  const startInput = document.getElementById("listing-timeframe-start");
+  const endInput = document.getElementById("listing-timeframe-end");
+  if (!preset || !startInput || !endInput || preset.dataset.ready === "true") return;
+  preset.addEventListener("change", () => {
+    selectedListingTimeframePreset = preset.value;
+    syncListingTimeframeInputs();
+    renderListings();
+  });
+  [startInput, endInput].forEach(input => {
+    input.addEventListener("input", () => {
+      markListingTimeframeCustom();
+      scheduleRenderListings();
+    });
+  });
+  preset.dataset.ready = "true";
+}
+
+function initListingFilters() {
+  initProductionFilter();
+  initListingSubstrateFilter();
+  initListingTimeframeControls();
 }
 
 function initComparisonFilters() {
@@ -4598,6 +4855,7 @@ function renderAll() {
   renderLineByGroup("shop-trend-chart", dashboard.comparison.shopTrendChart || [], "Date", "Daily Sales", "Shop");
   renderTrendTable("shop-trends", dashboard.comparison.shopTrends, ["Shop", "Trend", "Recent Avg Daily Sales", "Prior Avg Daily Sales", "Delta", "Delta %", "Latest Complete Date", "Latest Complete Daily Sales", "Total Daily Sales In Range", "Days Used", "Review Count", "Sales Per Review Used", "Trend Confidence", "Trend Source"], 120);
   initCompanyProfile();
+  initListingFilters();
   renderListings();
   initBuyerMomentFilters();
   renderBuyerMoments();
@@ -4610,7 +4868,6 @@ function renderAll() {
   renderTable("coverage-queue", dashboard.operations.coverageQueue, ["Shop", "eRank 7D Sales", "eRank 30D Sales", "Avg Daily Sales (30D)", "Has Tab", "Tab Status", "Review Ledger Rows", "Last Evidence Run", "Last Scrape Status", "Next Action"], 80);
   renderStatusTable("recent-runs", dashboard.automation.recentRuns, ["Status", "Run Timestamp", "Pipeline / Stage", "Automation Version", "Source / Context", "eRank Sales Date", "Counts / Metrics", "Blocker / Issue", "Next Action"], 60);
   renderTable("quality-table", dashboard.market.quality, ["Date", "Raw Rows", "Unique Shops", "Duplicate Shop-Date Pairs", "Raw Market Sales", "Deduped Market Sales", "Potential Inflation", "Likely Partial Final Day", "Source Files"], 120);
-  initProductionFilter();
   initRawSelect();
 }
 
@@ -4622,6 +4879,7 @@ async function boot() {
   document.getElementById("top-shop-metric").addEventListener("change", renderTopShops);
   document.getElementById("listing-search").addEventListener("input", scheduleRenderListings);
   document.getElementById("production-filter").addEventListener("change", renderListings);
+  document.getElementById("substrate-filter").addEventListener("change", renderListings);
   document.getElementById("listing-sort").addEventListener("change", renderListings);
 }
 

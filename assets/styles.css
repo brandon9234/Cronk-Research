@@ -506,6 +506,30 @@ input[type="search"] {
   min-width: 210px;
 }
 
+.listing-timeframe-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px;
+  margin: 10px 0 12px;
+}
+
+.listing-timeframe-controls label {
+  display: grid;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.listing-timeframe-controls select {
+  min-width: 230px;
+}
+
+.listing-timeframe-controls input[type="text"] {
+  min-width: 96px;
+}
+
 .listing-count {
   margin: 4px 0 0;
 }
@@ -832,6 +856,14 @@ textarea {
     margin-top: 8px;
   }
   .listing-controls select {
+    width: 100%;
+  }
+  .listing-timeframe-controls {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+  .listing-timeframe-controls select,
+  .listing-timeframe-controls input[type="text"] {
     width: 100%;
   }
   .buyer-moment-range-controls {

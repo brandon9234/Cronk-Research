@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Cronk Research</title>
-  <link rel="stylesheet" href="assets/styles.css?v=real-listing-thumbnails-20260601-2">
+  <link rel="stylesheet" href="assets/styles.css?v=listing-substrate-timeframe-filter-20260601-1">
   <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
 </head>
 <body>
@@ -447,15 +447,42 @@
                 <select id="production-filter" aria-label="Production method filter">
                   <option value="">All production methods</option>
                 </select>
+                <select id="substrate-filter" aria-label="Product substrate filter">
+                  <option value="">All product substrates</option>
+                </select>
                 <select id="listing-sort" aria-label="Listing sort">
                   <option value="">Default order</option>
                   <option value="daily-desc">Est. daily sales: high to low</option>
                   <option value="daily-asc">Est. daily sales: low to high</option>
                   <option value="thirty-desc">Est. 30-day sales: high to low</option>
                   <option value="thirty-asc">Est. 30-day sales: low to high</option>
+                  <option value="timeframe-sales-desc">Last-year timeframe sales: high to low</option>
+                  <option value="timeframe-daily-desc">Last-year timeframe daily velocity: high to low</option>
+                  <option value="timeframe-reviews-desc">Last-year timeframe reviews: high to low</option>
                 </select>
                 <input id="listing-search" type="search" placeholder="Filter listings, shops, categories">
               </div>
+            </div>
+            <div class="listing-timeframe-controls">
+              <label>
+                <span>Timeframe</span>
+                <select id="listing-timeframe-preset" aria-label="Listing timeframe preset">
+                  <option value="">No timeframe</option>
+                  <option value="last-30">Last 30 days last year</option>
+                  <option value="mothers-day">Mother's Day season last year</option>
+                  <option value="graduation">Graduation season last year</option>
+                  <option value="christmas">Christmas season last year</option>
+                  <option value="custom">Custom range</option>
+                </select>
+              </label>
+              <label>
+                <span>Start</span>
+                <input id="listing-timeframe-start" type="text" inputmode="numeric" placeholder="MM-DD" aria-label="Listing timeframe start month and day">
+              </label>
+              <label>
+                <span>End</span>
+                <input id="listing-timeframe-end" type="text" inputmode="numeric" placeholder="MM-DD" aria-label="Listing timeframe end month and day">
+              </label>
             </div>
             <div id="top-listings"></div>
           </section>
@@ -549,6 +576,6 @@
       </section>
     </main>
   </div>
-  <script src="assets/app.js?v=real-listing-thumbnails-20260601-2"></script>
+  <script src="assets/app.js?v=listing-substrate-timeframe-filter-20260601-1"></script>
 </body>
 </html>
