@@ -17,7 +17,7 @@ let buyerMomentTopListingRowsCache = null;
 let buyerMomentListingCycleRowsCache = new Map();
 let customBuyerMomentRange = null;
 const CUSTOM_BUYER_MOMENT_ID = "custom-date-range";
-const DATA_ASSET_VERSION = "state-recovery-execution-tsv-20260602-1";
+const DATA_ASSET_VERSION = "state-recovery-decision-validation-20260602-1";
 const BUYER_MOMENT_LANE_HEIGHT = 30;
 const BUYER_MOMENT_HIGH_OPPORTUNITY_SCORE = 68;
 const BUYER_MOMENT_BUILD_FIT_ORDER = [
@@ -193,7 +193,8 @@ const wrappedColumns = new Set([
   "Recommended Action", "Recovery Decision", "Why It Matters", "Evidence Read", "First Listing IDs",
   "Top Listing Titles", "Open First Listing URL", "Batch Action", "Market Read", "Matched Terms",
   "Execution Read", "Suggested Final Decision", "Decision Fields To Fill", "No-Write Confirmation Gate",
-  "Execution Step", "Current Etsy Listing URL", "Replacement Lead"
+  "Execution Step", "Current Etsy Listing URL", "Replacement Lead", "Decision Read",
+  "Validation Read", "Allowed Decision Statuses", "Allowed Final Decisions", "Import Check"
 ]);
 
 const thumbnailColumns = new Set(["Thumbnail", "Listing Thumbnail", "Market Thumbnail", "Top Competitor Thumbnail", "My Thumbnail", "Competitor Thumbnail"]);
@@ -6424,7 +6425,9 @@ function renderOperations() {
     "Resolved Listing URL", "Previous Snapshot", "Resolved At"
   ], 80, { preserveOrder: true });
   renderStatusTable("listing-state-recovery-decision-status", dashboard.operations.listingStateRecoveryDecisionStatus || [], [
-    "Status", "Source", "Rows", "Decision Read", "Last Updated", "Decision Status Counts", "Final Decision Counts", "Next Action"
+    "Status", "Source", "Rows", "Filled Rows", "Decision Read", "Validation Read", "Unknown Listing IDs",
+    "Duplicate Listing IDs", "Invalid Rows", "Last Updated", "Decision Status Counts", "Final Decision Counts",
+    "Allowed Decision Statuses", "Allowed Final Decisions", "Next Action"
   ], 4);
   renderTable("listing-state-recovery-decision-log", dashboard.operations.listingStateRecoveryDecisionLog || [], [
     "Decision Status", "Final Decision", "Decision Date", "Decision Owner", "Segment", "Listing ID", "Product Title",
