@@ -17,7 +17,7 @@ let buyerMomentTopListingRowsCache = null;
 let buyerMomentListingCycleRowsCache = new Map();
 let customBuyerMomentRange = null;
 const CUSTOM_BUYER_MOMENT_ID = "custom-date-range";
-const DATA_ASSET_VERSION = "package-fact-fill-plan-20260602-1";
+const DATA_ASSET_VERSION = "package-fact-intake-sheet-20260602-1";
 const BUYER_MOMENT_LANE_HEIGHT = 30;
 const BUYER_MOMENT_HIGH_OPPORTUNITY_SCORE = 68;
 const BUYER_MOMENT_BUILD_FIT_ORDER = [
@@ -6544,6 +6544,13 @@ function renderOperations() {
   renderTable("next-action-package-fact-fill-status", dashboard.operations.nextActionPackageFactFillStatus || [], [
     "Status", "Source", "Plan Rows", "Family Counts", "Owner Skills", "Image Workflow Skills",
     "All Rows No-Write Gated", "Current State", "QA Gate", "Plan Summary Updated",
+    "Required Source Gate", "No-Write Guard"
+  ], 1, { preserveOrder: true });
+  renderTable("next-action-package-fact-sheet-status", dashboard.operations.nextActionPackageFactSheet || [], [
+    "Status", "Source", "Sheet Rows", "Facts Ready Rows", "Waiting Rows", "Missing Fact Rows",
+    "Blocked Rows", "Needs Brandon Rows", "Current Sheet State", "QA Gate", "Package Fact Status",
+    "Plan Status", "Intake Summary Updated", "Operator Tabs", "Editable Fields", "Allowed Fact Statuses",
+    "Package Fact Intake URL", "Package Fact Summary URL", "Package Fact QA URL", "Package Fact TSV URL",
     "Required Source Gate", "No-Write Guard"
   ], 1, { preserveOrder: true });
   renderTable("next-action-package-fact-fill-plan", dashboard.operations.nextActionPackageFactFillPlan || [], [
