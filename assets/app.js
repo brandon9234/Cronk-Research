@@ -17,7 +17,7 @@ let buyerMomentTopListingRowsCache = null;
 let buyerMomentListingCycleRowsCache = new Map();
 let customBuyerMomentRange = null;
 const CUSTOM_BUYER_MOMENT_ID = "custom-date-range";
-const DATA_ASSET_VERSION = "state-resolution-worklist-20260602-1";
+const DATA_ASSET_VERSION = "state-recovery-queue-20260602-1";
 const BUYER_MOMENT_LANE_HEIGHT = 30;
 const BUYER_MOMENT_HIGH_OPPORTUNITY_SCORE = 68;
 const BUYER_MOMENT_BUILD_FIT_ORDER = [
@@ -190,13 +190,13 @@ const wrappedColumns = new Set([
   "Market Size Source", "Market Size Read", "Product Family", "Taxonomy Evidence",
   "Snapshot Read", "Finding", "Segment", "Replacement Read", "Possible Replacement Listing",
   "Replacement Match Tokens", "Replacement URL", "Example Dropped Listing", "Dropped Listing IDs",
-  "Recommended Action"
+  "Recommended Action", "Recovery Decision", "Why It Matters"
 ]);
 
 const thumbnailColumns = new Set(["Thumbnail", "Listing Thumbnail", "Market Thumbnail", "Top Competitor Thumbnail", "My Thumbnail", "Competitor Thumbnail"]);
 const sourceLinkColumns = new Set(["Blank / Generic Sources"]);
 const companyColumns = new Set(["Shop", "Market Shop", "Top Shop"]);
-const badgeColumns = new Set(["Conquest Status", "Market State", "Opportunity Band", "MyMaravia Build Read", "Local Review Signal", "Action Type", "Confidence", "Change Type", "Investigation Status", "Resolution Status", "Resolved State"]);
+const badgeColumns = new Set(["Conquest Status", "Market State", "Opportunity Band", "MyMaravia Build Read", "Local Review Signal", "Action Type", "Confidence", "Change Type", "Investigation Status", "Resolution Status", "Resolved State", "Recovery Status"]);
 const realTagColumns = new Set(["Tags", "Actual Tags", "My Actual Tags"]);
 
 const plotConfig = { responsive: true, displayModeBar: false };
@@ -6062,6 +6062,12 @@ function renderAll() {
     "Possible Replacement Listing", "Replacement State", "Replacement Match Tokens", "Replacement URL",
     "Example Dropped Listing", "Dropped Listing IDs", "Recommended Action"
   ], 40, { preserveOrder: true });
+  renderTable("listing-state-recovery-table", dashboard.operations.listingStateRecoveryQueue || [], [
+    "Priority", "Recovery Status", "Recovery Decision", "Segment", "Previous State", "Resolved State",
+    "Listing ID", "Product Title", "Why It Matters", "Next Action",
+    "Possible Replacement Count", "Possible Replacement Listing", "Replacement State", "Replacement Match Tokens", "Replacement URL",
+    "Resolved Listing URL", "Previous Snapshot", "Resolved At"
+  ], 80, { preserveOrder: true });
   renderStatusTable("data-freshness-table", dashboard.operations.dataFreshness || [], ["Status", "Source", "Freshness Read", "Last Updated", "Data Through", "Record Count", "Decision Impact", "Refresh Step"], 40);
   renderStatusTable("taxonomy-quality-table", dashboard.operations.taxonomyQuality || [], ["Status", "Check", "Finding", "Affected Rows", "Example", "Decision Impact", "Next Action"], 40);
   renderTable("coverage-queue", dashboard.operations.coverageQueue, ["Shop", "eRank 7D Sales", "eRank 30D Sales", "Avg Daily Sales (30D)", "Has Tab", "Tab Status", "Review Ledger Rows", "Last Evidence Run", "Last Scrape Status", "Next Action"], 80);
