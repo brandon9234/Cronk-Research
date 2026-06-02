@@ -17,7 +17,7 @@ let buyerMomentTopListingRowsCache = null;
 let buyerMomentListingCycleRowsCache = new Map();
 let customBuyerMomentRange = null;
 const CUSTOM_BUYER_MOMENT_ID = "custom-date-range";
-const DATA_ASSET_VERSION = "state-investigation-worklist-20260602-1";
+const DATA_ASSET_VERSION = "state-resolution-worklist-20260602-1";
 const BUYER_MOMENT_LANE_HEIGHT = 30;
 const BUYER_MOMENT_HIGH_OPPORTUNITY_SCORE = 68;
 const BUYER_MOMENT_BUILD_FIT_ORDER = [
@@ -179,6 +179,7 @@ const wrappedColumns = new Set([
   "Conquest Status", "Trend Source", "Trend Confidence", "Top Competitor Tags",
   "Top Competitor Listing URL", "Top Competitor Production Tag", "Top Competitor Trend",
   "Change Type", "Decision Impact", "Previous Snapshot", "Current Snapshot",
+  "Resolved State", "Resolution Status", "Resolution Read", "Resolved At", "Resolved Listing URL",
   "Cycle Confidence", "Weekly Trend", "Buyer Moment", "Moment Timeframe", "Moment Window", "Matched Cues",
   "Moment Source", "Buyer Moment Tags", "Opportunity Band", "MyMaravia Build Read", "Build Fit Reason",
   "Local Review Signal", "Build Fit Segment", "Top Opportunity Listing", "Top Opportunity Shop", "Top Listing", "Top Shop", "Target Category", "My Listing",
@@ -195,7 +196,7 @@ const wrappedColumns = new Set([
 const thumbnailColumns = new Set(["Thumbnail", "Listing Thumbnail", "Market Thumbnail", "Top Competitor Thumbnail", "My Thumbnail", "Competitor Thumbnail"]);
 const sourceLinkColumns = new Set(["Blank / Generic Sources"]);
 const companyColumns = new Set(["Shop", "Market Shop", "Top Shop"]);
-const badgeColumns = new Set(["Conquest Status", "Market State", "Opportunity Band", "MyMaravia Build Read", "Local Review Signal", "Action Type", "Confidence", "Change Type", "Investigation Status"]);
+const badgeColumns = new Set(["Conquest Status", "Market State", "Opportunity Band", "MyMaravia Build Read", "Local Review Signal", "Action Type", "Confidence", "Change Type", "Investigation Status", "Resolution Status", "Resolved State"]);
 const realTagColumns = new Set(["Tags", "Actual Tags", "My Actual Tags"]);
 
 const plotConfig = { responsive: true, displayModeBar: false };
@@ -5528,13 +5529,15 @@ function renderMyMaravia() {
     const summaryBits = stateSummary
       .map(row => `${fmt(row.Listings, "Listing Count")} ${String(row["Change Type"] || "").toLowerCase()}`)
       .filter(Boolean);
+    const resolutionBit = stateAudit.resolutionRead ? ` Resolver: ${stateAudit.resolutionRead}.` : "";
     stateChangeText.textContent = stateRows.length
-      ? `Latest Etsy refresh run ${stateAudit.latestRunId || "unknown"}: ${summaryBits.join(" / ")}.`
+      ? `Latest Etsy refresh run ${stateAudit.latestRunId || "unknown"}: ${summaryBits.join(" / ")}.${resolutionBit}`
       : "No captured active/draft listing state changes in this snapshot.";
   }
   renderTable("mymaravia-state-change-table", stateRows, [
     "Change Type", "Previous State", "Current State", "Listing ID", "Product Title",
-    "Decision Impact", "Listing URL", "Previous Snapshot", "Current Snapshot"
+    "Resolved State", "Resolution Status", "Resolution Read", "Resolved At",
+    "Decision Impact", "Resolved Listing URL", "Listing URL", "Previous Snapshot", "Current Snapshot"
   ], 120, { preserveOrder: true });
 
   const diagnosticStatus = document.getElementById("my-listing-status-filter")?.value || "";
@@ -6054,6 +6057,8 @@ function renderAll() {
   renderTable("listing-state-investigation-table", dashboard.operations.listingStateInvestigation || [], [
     "Priority", "Investigation Status", "Segment", "Dropped Listings", "Previous Active", "Previous Draft",
     "Newly Visible Same Segment", "Possible Replacement Count", "Replacement Read",
+    "Resolution Read", "Resolved Active", "Resolved Draft", "Resolved Edit", "Resolved Inactive", "Resolved Expired",
+    "Resolved Not Found", "Unresolved", "Resolved At",
     "Possible Replacement Listing", "Replacement State", "Replacement Match Tokens", "Replacement URL",
     "Example Dropped Listing", "Dropped Listing IDs", "Recommended Action"
   ], 40, { preserveOrder: true });
