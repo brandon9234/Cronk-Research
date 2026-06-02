@@ -15,7 +15,7 @@ let buyerMomentTopListingRowsCache = null;
 let buyerMomentListingCycleRowsCache = new Map();
 let customBuyerMomentRange = null;
 const CUSTOM_BUYER_MOMENT_ID = "custom-date-range";
-const DATA_ASSET_VERSION = "next-action-trace-state-20260602-1";
+const DATA_ASSET_VERSION = "next-action-source-badges-20260602-1";
 const BUYER_MOMENT_LANE_HEIGHT = 30;
 const BUYER_MOMENT_HIGH_OPPORTUNITY_SCORE = 68;
 const BUYER_MOMENT_BUILD_FIT_ORDER = [
@@ -4318,7 +4318,7 @@ function listingRowByUrl(value) {
   return getListingRows().find(row => listingIdFromUrl(row["Listing URL"] || row["Market Listing URL"] || row["My Listing URL"]) === id) || null;
 }
 
-function actionEvidenceCompany(row) {
+function actionEvidenceCompanyTrace(row) {
   const direct = [
     row.Shop,
     row["Market Shop"],
@@ -4329,11 +4329,16 @@ function actionEvidenceCompany(row) {
     row["Top Opportunity Shop"],
     row["Source Shop"]
   ].map(companyName).find(Boolean);
-  if (direct) return direct;
+  if (direct) return { company: direct, confidence: "action shop" };
   const listingRow = listingRowByUrl(row["Market Listing URL"]) || listingRowByUrl(row["My Listing URL"]);
-  if (listingRow?.Shop) return companyName(listingRow.Shop);
+  if (listingRow?.Shop) return { company: companyName(listingRow.Shop), confidence: "matched listing" };
   const evidenceMatch = String(row.Evidence || "").match(/\bfrom\s+([^;,.]+)/i);
-  return companyName(evidenceMatch?.[1] || "");
+  const company = companyName(evidenceMatch?.[1] || "");
+  return company ? { company, confidence: "evidence text" } : { company: "", confidence: "" };
+}
+
+function actionEvidenceCompany(row) {
+  return actionEvidenceCompanyTrace(row).company;
 }
 
 function actionEvidencePhrases(row) {
@@ -4387,6 +4392,15 @@ function actionBuyerMomentTrace(row) {
   const matchText = match ? Object.values(match).join(" ").toLowerCase() : "";
   const matchingPhrase = phrases.find(phrase => matchText.includes(phrase));
   const matchingToken = tokens.find(token => matchText.includes(token));
+  const confidence = matchedListingId
+    ? "exact listing"
+    : matchingPhrase
+      ? "title phrase"
+      : matchingToken
+        ? "title token"
+        : match
+          ? "category match"
+          : "fallback search";
   const matchedQuery = matchedListingId
     ? listingId
     : matchingPhrase || matchingToken || match?.["Product Substrate Category"] || match?.["Product Category"] || match?.Keyword || match?.["Product Title"] || category || actionTitlePhrases(row)[0] || "";
@@ -4394,19 +4408,29 @@ function actionBuyerMomentTrace(row) {
     match,
     momentId: match?.["Moment ID"] || "",
     moment: match?.["Buyer Moment"] || "",
-    query: matchedQuery
+    query: matchedQuery,
+    confidence
   };
 }
 
-function actionEvidenceTrail(row) {
+function actionTraceItems(row) {
   const listingSearch = actionListingSearch(row);
+  const listingConfidence = listingIdFromUrl(row["Market Listing URL"]) || listingIdFromUrl(row["My Listing URL"])
+    ? "exact listing"
+    : "search cue";
   const buyerTrace = actionBuyerMomentTrace(row);
-  const company = actionEvidenceCompany(row);
+  const companyTrace = actionEvidenceCompanyTrace(row);
+  const sourceTrace = recipeText(row["Evidence Trace"]);
   return [
-    listingSearch ? `Listings search: ${listingSearch}` : "",
-    buyerTrace.moment ? `Buyer Moment: ${buyerTrace.moment} / ${buyerTrace.query}` : buyerTrace.query ? `Buyer Moment search: ${buyerTrace.query}` : "",
-    company ? `Company profile: ${company}` : ""
+    listingSearch ? { label: "Listings", value: listingSearch, confidence: listingConfidence } : null,
+    buyerTrace.moment ? { label: "Buyer Moment", value: `${buyerTrace.moment} / ${buyerTrace.query}`, confidence: buyerTrace.confidence } : buyerTrace.query ? { label: "Buyer Moment", value: buyerTrace.query, confidence: buyerTrace.confidence } : null,
+    companyTrace.company ? { label: "Company", value: companyTrace.company, confidence: companyTrace.confidence } : null,
+    sourceTrace ? { label: "Source", value: sourceTrace, confidence: "generated trace" } : null
   ].filter(Boolean);
+}
+
+function actionEvidenceTrail(row) {
+  return actionTraceItems(row).map(item => `${item.label}: ${item.value} [${item.confidence}]`);
 }
 
 function openActionListingEvidence(row) {
@@ -4464,6 +4488,12 @@ function recipeList(items) {
   return `<ul class="action-recipe-list">${items.map(item => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`;
 }
 
+function recipeTraceList(items) {
+  return `<ul class="action-recipe-list">${items.map(item => `
+    <li><strong>${escapeHtml(item.label)}:</strong> ${escapeHtml(item.value)} <span class="badge flat">${escapeHtml(item.confidence)}</span></li>
+  `).join("")}</ul>`;
+}
+
 function recipeText(value) {
   return String(value ?? "").replace(/\s+/g, " ").trim();
 }
@@ -4482,6 +4512,7 @@ function actionRecipeExportText(row, visibleCount, totalCount) {
   const exactLink = nextActionShareUrl({ ...nextActionFilterState(), action: nextActionKey(row) }).toString();
   const sourceNotes = uniqueRecipeItems([
     `${row["Source Signal"] || "Source signal"} - ${row.Confidence || "confidence pending"}`,
+    row["Evidence Trace"] || "",
     row.Evidence || "No evidence note available.",
     row["Market Listing URL"] ? "Market source link is available for live price, title, and thumbnail validation." : "",
     row["My Listing URL"] ? "Existing MyMaravia listing is attached for comparison." : "No MyMaravia listing is attached yet."
@@ -4557,6 +4588,7 @@ function renderNextActionRecipe(row, visibleCount, totalCount) {
   const tagIdeas = actionTagIdeas(row);
   const sourceNotes = uniqueRecipeItems([
     `${row["Source Signal"] || "Source signal"} · ${row.Confidence || "confidence pending"}`,
+    row["Evidence Trace"] || "",
     row.Evidence || "No evidence note available.",
     row["Market Listing URL"] ? "Market source link is available for live price, title, and thumbnail validation." : "",
     row["My Listing URL"] ? "Existing MyMaravia listing is attached for comparison." : "No MyMaravia listing is attached yet."
@@ -4580,7 +4612,7 @@ function renderNextActionRecipe(row, visibleCount, totalCount) {
         <div class="action-recipe-block"><h3>Price</h3>${recipeList([actionPriceNote(row)])}</div>
         <div class="action-recipe-block"><h3>Personalization</h3>${recipeList([actionPersonalizationField(row)])}</div>
         <div class="action-recipe-block"><h3>Source Notes</h3>${recipeList(sourceNotes)}</div>
-        <div class="action-recipe-block"><h3>Evidence Trail</h3>${recipeList(actionEvidenceTrail(row))}</div>
+        <div class="action-recipe-block"><h3>Evidence Trail</h3>${recipeTraceList(actionTraceItems(row))}</div>
         <div class="action-recipe-block"><h3>Blank Notes</h3>${recipeList([actionBlankNote(row)])}</div>
         <div class="action-recipe-block"><h3>Next Step</h3>${recipeList([nextStep])}</div>
         <div class="action-recipe-block"><h3>Evidence</h3>${recipeList([evidence])}</div>
