@@ -17,7 +17,7 @@ let buyerMomentTopListingRowsCache = null;
 let buyerMomentListingCycleRowsCache = new Map();
 let customBuyerMomentRange = null;
 const CUSTOM_BUYER_MOMENT_ID = "custom-date-range";
-const DATA_ASSET_VERSION = "mymaravia-state-audit-20260602-1";
+const DATA_ASSET_VERSION = "operations-state-alerts-20260602-1";
 const BUYER_MOMENT_LANE_HEIGHT = 30;
 const BUYER_MOMENT_HIGH_OPPORTUNITY_SCORE = 68;
 const BUYER_MOMENT_BUILD_FIT_ORDER = [
@@ -186,7 +186,8 @@ const wrappedColumns = new Set([
   "Best Listing", "Top Competitor Row", "Repeated Match Cues", "Cue / Action",
   "Evidence", "Next Edit", "Market Control Read", "Last Year Timeframe Window", "Last Year Timeframe Signal",
   "Action", "Product / Listing", "Source Signal", "Next Step", "Product / Segment",
-  "Market Size Source", "Market Size Read", "Product Family", "Taxonomy Evidence"
+  "Market Size Source", "Market Size Read", "Product Family", "Taxonomy Evidence",
+  "Snapshot Read", "Finding"
 ]);
 
 const thumbnailColumns = new Set(["Thumbnail", "Listing Thumbnail", "Market Thumbnail", "Top Competitor Thumbnail", "My Thumbnail", "Competitor Thumbnail"]);
@@ -500,7 +501,7 @@ function updateAllBottomScrollbars() {
 
 function statusBadge(value) {
   const text = String(value ?? "unknown");
-  const cls = /blocked|partial|error|fail|issue|unavailable|missing|stale/i.test(text)
+  const cls = /blocked|partial|error|fail|fix|issue|investigate|unavailable|missing|stale/i.test(text)
     ? "bad"
     : /^ok$|success|manual update|seeded|complete/i.test(text)
       ? "good"
@@ -6047,6 +6048,7 @@ function renderAll() {
   renderBar("demand-summary-chart", dashboard.listing.demandSummary || [], "Total Est. Daily Sales", "Demand Intent Cluster", 20, "#0f766e");
   renderTable("demand-summary-table", dashboard.listing.demandSummary, ["Demand Intent Cluster", "Total Est. Daily Sales", "Listing Count", "Review Count", "Review Corpus Count", "Review Corpus 90D", "Review Corpus Listings", "Avg Daily Sales / Listing", "Shop Count"], 50);
   renderStatusTable("refresh-priority-table", dashboard.operations.refreshPriorityQueue || [], ["Priority", "Status", "Source", "Freshness Read", "Decision Impact", "Why Now", "Refresh Step"], 6);
+  renderStatusTable("listing-state-alerts-table", dashboard.operations.listingStateAlerts || [], ["Status", "Check", "Finding", "Affected Rows", "Snapshot Read", "Example", "Decision Impact", "Next Action"], 20);
   renderStatusTable("data-freshness-table", dashboard.operations.dataFreshness || [], ["Status", "Source", "Freshness Read", "Last Updated", "Data Through", "Record Count", "Decision Impact", "Refresh Step"], 40);
   renderStatusTable("taxonomy-quality-table", dashboard.operations.taxonomyQuality || [], ["Status", "Check", "Finding", "Affected Rows", "Example", "Decision Impact", "Next Action"], 40);
   renderTable("coverage-queue", dashboard.operations.coverageQueue, ["Shop", "eRank 7D Sales", "eRank 30D Sales", "Avg Daily Sales (30D)", "Has Tab", "Tab Status", "Review Ledger Rows", "Last Evidence Run", "Last Scrape Status", "Next Action"], 80);
