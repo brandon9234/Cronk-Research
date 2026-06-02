@@ -16,7 +16,7 @@ let buyerMomentTopListingRowsCache = null;
 let buyerMomentListingCycleRowsCache = new Map();
 let customBuyerMomentRange = null;
 const CUSTOM_BUYER_MOMENT_ID = "custom-date-range";
-const DATA_ASSET_VERSION = "next-action-trace-strength-20260602-1";
+const DATA_ASSET_VERSION = "next-action-audit-read-20260602-1";
 const BUYER_MOMENT_LANE_HEIGHT = 30;
 const BUYER_MOMENT_HIGH_OPPORTUNITY_SCORE = 68;
 const BUYER_MOMENT_BUILD_FIT_ORDER = [
@@ -4223,6 +4223,8 @@ function renderNextActionTable(rows, columns, limit = 40, selectedRow = null) {
         ? `<button class="action-select-button${active ? " active" : ""}" type="button" data-next-action-key="${escapeHtml(key)}">${active ? "Open" : "Open"}</button>`
         : col === "Trace Strength"
           ? actionTraceStrengthBadge(row)
+        : col === "Trace Audit"
+          ? escapeHtml(actionTraceAuditRead(row))
         : col.toLowerCase().includes("url")
           ? linkCell(row[col])
           : escapeHtml(fmt(row[col], col));
@@ -4504,6 +4506,43 @@ function nextActionTraceMix(rows) {
   return counts;
 }
 
+function actionTraceAuditItems(row) {
+  const items = cachedActionTraceItems(row);
+  const trace = actionTraceStrength(row);
+  const exactListings = trace.exactListings;
+  const hasCompany = trace.hasCompany;
+  const hasSource = trace.hasSource;
+  const hasBuyerMoment = trace.hasBuyerMoment;
+  const isLaunch = String(row["Action Type"] || "") === "Launch";
+  const sourceTrace = String(row["Evidence Trace"] || "");
+  const result = [];
+  if (exactListings === 0) {
+    result.push("Attach a representative market listing URL so Listings and Buyer Moment traces can open on exact evidence.");
+  }
+  if (!hasCompany) {
+    result.push("Add a Market Shop or Top Opportunity Shop once the representative listing is chosen.");
+  }
+  if (!hasBuyerMoment && isLaunch) {
+    result.push("Map this product-family launch to the closest buyer moment or keep it explicitly marked as rollup-only.");
+  }
+  if (!hasSource) {
+    result.push("Add an Evidence Trace note that names the source path used to create the action.");
+  }
+  if (/no single market listing is attached/i.test(sourceTrace)) {
+    result.push("Treat as a planning-row opportunity until 1-3 exemplar listings are attached from the demand rollup.");
+  }
+  if (!result.length) {
+    result.push("No trace audit flags; source trail is ready for listing work.");
+  }
+  return uniqueRecipeItems(result, 5);
+}
+
+function actionTraceAuditRead(row) {
+  const trace = actionTraceStrength(row);
+  if (trace.tier !== "audit") return "Source trail ready";
+  return actionTraceAuditItems(row).join(" ");
+}
+
 function actionEvidenceTrail(row) {
   return cachedActionTraceItems(row).map(item => `${item.label}: ${item.value} [${item.confidence}]`);
 }
@@ -4618,6 +4657,8 @@ function actionRecipeExportText(row, visibleCount, totalCount) {
     "",
     recipeTextList("Evidence Trail", actionEvidenceTrail(row)),
     "",
+    recipeTextList("Source Audit", actionTraceAuditItems(row)),
+    "",
     recipeTextList("Blank Notes", [actionBlankNote(row)]),
     "",
     recipeTextList("Next Step", [row["Next Step"] || "Review the source row and decide the listing move."]),
@@ -4688,6 +4729,7 @@ function renderNextActionRecipe(row, visibleCount, totalCount) {
         <div class="action-recipe-block"><h3>Personalization</h3>${recipeList([actionPersonalizationField(row)])}</div>
         <div class="action-recipe-block"><h3>Source Notes</h3>${recipeList(sourceNotes)}</div>
         <div class="action-recipe-block"><h3>Evidence Trail</h3>${recipeTraceList(cachedActionTraceItems(row))}</div>
+        <div class="action-recipe-block"><h3>Source Audit</h3>${recipeList(actionTraceAuditItems(row))}</div>
         <div class="action-recipe-block"><h3>Blank Notes</h3>${recipeList([actionBlankNote(row)])}</div>
         <div class="action-recipe-block"><h3>Next Step</h3>${recipeList([nextStep])}</div>
         <div class="action-recipe-block"><h3>Evidence</h3>${recipeList([evidence])}</div>
@@ -4729,7 +4771,7 @@ function renderOpportunity() {
   renderNextActionRecipe(selectedNextAction, visibleNextActions.length, nextActions.length);
   renderNextActionTable(visibleNextActions, [
     "Priority", "Action Type", "Action", "Target Category", "Product / Listing",
-    "Action Score", "Expected Daily Sales", "Source Signal", "Confidence", "Trace Strength",
+    "Action Score", "Expected Daily Sales", "Source Signal", "Confidence", "Trace Strength", "Trace Audit",
     "Evidence", "Next Step", "Market Listing URL", "My Listing URL"
   ], 40, selectedNextAction);
 
