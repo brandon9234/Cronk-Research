@@ -485,6 +485,29 @@ th.thumbnail-cell {
   margin-top: 3px;
 }
 
+.action-select-button {
+  min-height: 28px;
+  padding: 5px 9px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--blue);
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.action-select-button:hover,
+.action-select-button:focus,
+.action-select-button.active {
+  border-color: var(--blue);
+  background: #eef4f7;
+}
+
+tr.selected-action-row td {
+  background: #f0f7f4;
+}
+
 select,
 input[type="search"] {
   border: 1px solid var(--line);

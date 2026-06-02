@@ -7,6 +7,7 @@ let selectedListingTimeframePreset = "";
 let selectedBuyerMomentId = "";
 let selectedImportBuyerMomentId = "";
 let selectedMarketSegment = "";
+let selectedNextActionKey = "";
 let buyerMomentRowsCache = new Map();
 let buyerMomentSummariesCache = null;
 let buyerMomentCatalogCache = null;
@@ -14,7 +15,7 @@ let buyerMomentTopListingRowsCache = null;
 let buyerMomentListingCycleRowsCache = new Map();
 let customBuyerMomentRange = null;
 const CUSTOM_BUYER_MOMENT_ID = "custom-date-range";
-const DATA_ASSET_VERSION = "next-action-share-recipes-20260601-1";
+const DATA_ASSET_VERSION = "next-action-permalink-20260602-1";
 const BUYER_MOMENT_LANE_HEIGHT = 30;
 const BUYER_MOMENT_HIGH_OPPORTUNITY_SCORE = 68;
 const BUYER_MOMENT_BUILD_FIT_ORDER = [
@@ -3915,7 +3916,8 @@ function nextActionFilterState() {
   return {
     preset: document.getElementById("next-action-preset-filter")?.value || "",
     type: document.getElementById("next-action-type-filter")?.value || "",
-    search: (document.getElementById("next-action-search")?.value || "").trim()
+    search: (document.getElementById("next-action-search")?.value || "").trim(),
+    action: selectedNextActionKey
   };
 }
 
@@ -3939,6 +3941,7 @@ function applyNextActionUrlState() {
   const search = params.get("naSearch");
   const input = document.getElementById("next-action-search");
   if (input && search !== null) input.value = search;
+  selectedNextActionKey = params.get("naAction") || "";
 }
 
 function nextActionShareUrl(state = nextActionFilterState()) {
@@ -3947,6 +3950,7 @@ function nextActionShareUrl(state = nextActionFilterState()) {
   state.preset ? url.searchParams.set("naPreset", state.preset) : url.searchParams.delete("naPreset");
   state.type ? url.searchParams.set("naType", state.type) : url.searchParams.delete("naType");
   state.search ? url.searchParams.set("naSearch", state.search) : url.searchParams.delete("naSearch");
+  state.action ? url.searchParams.set("naAction", state.action) : url.searchParams.delete("naAction");
   return url;
 }
 
@@ -3960,7 +3964,7 @@ async function copyNextActionViewLink() {
   const url = nextActionShareUrl().toString();
   if (navigator.clipboard?.writeText) {
     await navigator.clipboard.writeText(url);
-    setNextActionShareStatus("View link copied.");
+    setNextActionShareStatus(selectedNextActionKey ? "Action link copied." : "View link copied.");
   } else {
     setNextActionShareStatus(url);
   }
@@ -3973,6 +3977,7 @@ function resetNextActionView() {
   if (preset) preset.value = "";
   if (type) type.value = "";
   if (search) search.value = "";
+  selectedNextActionKey = "";
   setNextActionShareStatus("");
   updateNextActionUrl();
   renderOpportunity();
@@ -3980,8 +3985,8 @@ function resetNextActionView() {
 
 function handleNextActionFilterChange() {
   setNextActionShareStatus("");
-  updateNextActionUrl();
   renderOpportunity();
+  updateNextActionUrl();
 }
 
 function initNextActionFilters() {
@@ -4028,6 +4033,58 @@ function filteredNextActions(rows) {
     if (query && !Object.values(row).join(" ").toLowerCase().includes(query)) return false;
     return true;
   });
+}
+
+function nextActionKey(row) {
+  const priority = String(row?.Priority ?? "").trim();
+  return priority ? priority : "";
+}
+
+function selectedNextActionFromRows(rows) {
+  if (selectedNextActionKey) {
+    const selected = rows.find(row => nextActionKey(row) === selectedNextActionKey);
+    if (selected) return selected;
+    selectedNextActionKey = "";
+  }
+  return rows[0] || null;
+}
+
+function selectNextAction(key) {
+  selectedNextActionKey = key || "";
+  setNextActionShareStatus(selectedNextActionKey ? "Selected action ready to share." : "");
+  renderOpportunity();
+  updateNextActionUrl();
+}
+
+function renderNextActionTable(rows, columns, limit = 40) {
+  const target = document.getElementById("next-actions");
+  if (!target) return;
+  const data = rows.slice(0, limit);
+  if (!data.length) {
+    target.innerHTML = `<div class="empty">No rows available in this snapshot.</div>`;
+    return;
+  }
+  const cols = ["Recipe", ...columns];
+  const header = cols.map(col => `<th class="${wrappedColumns.has(col) ? "wrap" : ""}">${escapeHtml(col)}</th>`).join("");
+  const body = data.map(row => {
+    const key = nextActionKey(row);
+    const active = key && key === selectedNextActionKey;
+    const cells = cols.map(col => {
+      const cls = wrappedColumns.has(col) ? "wrap" : "";
+      const value = col === "Recipe"
+        ? `<button class="action-select-button${active ? " active" : ""}" type="button" data-next-action-key="${escapeHtml(key)}">${active ? "Open" : "Open"}</button>`
+        : col.toLowerCase().includes("url")
+          ? linkCell(row[col])
+          : escapeHtml(fmt(row[col], col));
+      return `<td class="${cls}">${value}</td>`;
+    }).join("");
+    return `<tr class="${active ? "selected-action-row" : ""}">${cells}</tr>`;
+  }).join("");
+  target.innerHTML = tableShell(header, body);
+  target.querySelectorAll("[data-next-action-key]").forEach(button => {
+    button.addEventListener("click", () => selectNextAction(button.dataset.nextActionKey || ""));
+  });
+  syncBottomScrollbar(target);
 }
 
 function uniqueRecipeItems(items, limit = 6) {
@@ -4173,15 +4230,15 @@ function renderOpportunity() {
   initNextActionFilters();
   const nextActions = dashboard.nextActions?.queue || [];
   const visibleNextActions = filteredNextActions(nextActions);
+  const selectedNextAction = selectedNextActionFromRows(visibleNextActions);
   const nextActionsSummary = document.getElementById("next-actions-summary");
   if (nextActionsSummary) {
-    const top = visibleNextActions[0];
-    nextActionsSummary.textContent = top
-      ? `${fmt(visibleNextActions.length, "Listing Count")} visible of ${fmt(nextActions.length, "Listing Count")} ranked actions. Top move: ${top["Action Type"]} - ${top["Product / Listing"] || top.Action || "selected opportunity"}.`
+    nextActionsSummary.textContent = selectedNextAction
+      ? `${fmt(visibleNextActions.length, "Listing Count")} visible of ${fmt(nextActions.length, "Listing Count")} ranked actions. Selected: priority ${fmt(selectedNextAction.Priority, "Priority")} ${selectedNextAction["Action Type"]} - ${selectedNextAction["Product / Listing"] || selectedNextAction.Action || "selected opportunity"}.`
       : "No next-action rows are available in this snapshot.";
   }
-  renderNextActionRecipe(visibleNextActions[0], visibleNextActions.length, nextActions.length);
-  renderTable("next-actions", visibleNextActions, [
+  renderNextActionRecipe(selectedNextAction, visibleNextActions.length, nextActions.length);
+  renderNextActionTable(visibleNextActions, [
     "Priority", "Action Type", "Action", "Target Category", "Product / Listing",
     "Action Score", "Expected Daily Sales", "Source Signal", "Confidence",
     "Evidence", "Next Step", "Market Listing URL", "My Listing URL"
