@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Cronk Research</title>
-  <link rel="stylesheet" href="assets/styles.css?v=state-recovery-filters-20260602-1">
+  <link rel="stylesheet" href="assets/styles.css?v=state-recovery-handoff-20260602-1">
   <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
 </head>
 <body>
@@ -654,6 +654,7 @@
             <div>
               <h2>Listing State Recovery Queue</h2>
               <p id="listing-state-recovery-count" class="subtle listing-count"></p>
+              <p id="listing-state-recovery-copy-status" class="next-action-share-status"></p>
             </div>
             <div class="listing-controls">
               <select id="listing-state-recovery-segment-filter" aria-label="Recovery segment filter">
@@ -662,6 +663,7 @@
               <select id="listing-state-recovery-status-filter" aria-label="Recovery status filter">
                 <option value="">All recovery statuses</option>
               </select>
+              <button id="listing-state-recovery-copy" class="link-button" type="button">Copy handoff</button>
               <button id="listing-state-recovery-reset" class="link-button" type="button">Reset</button>
             </div>
           </div>
@@ -713,6 +715,6 @@
       </section>
     </main>
   </div>
-  <script src="assets/app.js?v=state-recovery-filters-20260602-1"></script>
+  <script src="assets/app.js?v=state-recovery-handoff-20260602-1"></script>
 </body>
 </html>

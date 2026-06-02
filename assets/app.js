@@ -17,7 +17,7 @@ let buyerMomentTopListingRowsCache = null;
 let buyerMomentListingCycleRowsCache = new Map();
 let customBuyerMomentRange = null;
 const CUSTOM_BUYER_MOMENT_ID = "custom-date-range";
-const DATA_ASSET_VERSION = "state-recovery-filters-20260602-1";
+const DATA_ASSET_VERSION = "state-recovery-handoff-20260602-1";
 const BUYER_MOMENT_LANE_HEIGHT = 30;
 const BUYER_MOMENT_HIGH_OPPORTUNITY_SCORE = 68;
 const BUYER_MOMENT_BUILD_FIT_ORDER = [
@@ -5908,15 +5908,27 @@ function initListingStateRecoveryFilters() {
   ["listing-state-recovery-segment-filter", "listing-state-recovery-status-filter"].forEach(id => {
     const element = document.getElementById(id);
     if (!element || element.dataset.bound === "true") return;
-    element.addEventListener("change", renderOperations);
+    element.addEventListener("change", () => {
+      setListingStateRecoveryCopyStatus("");
+      renderOperations();
+    });
     element.dataset.bound = "true";
   });
+
+  const copy = document.getElementById("listing-state-recovery-copy");
+  if (copy && copy.dataset.bound !== "true") {
+    copy.addEventListener("click", () => {
+      copyListingStateRecoveryHandoff().catch(() => setListingStateRecoveryCopyStatus("Handoff copy failed."));
+    });
+    copy.dataset.bound = "true";
+  }
 
   const reset = document.getElementById("listing-state-recovery-reset");
   if (reset && reset.dataset.bound !== "true") {
     reset.addEventListener("click", () => {
       segmentSelect.value = "";
       statusSelect.value = "";
+      setListingStateRecoveryCopyStatus("");
       renderOperations();
     });
     reset.dataset.bound = "true";
@@ -5932,6 +5944,101 @@ function filteredListingStateRecoveryQueue() {
     if (status && row["Recovery Status"] !== status) return false;
     return true;
   });
+}
+
+function listingStateRecoveryFilterRead() {
+  const segment = document.getElementById("listing-state-recovery-segment-filter")?.value || "";
+  const status = document.getElementById("listing-state-recovery-status-filter")?.value || "";
+  return {
+    segment,
+    status,
+    label: [
+      segment ? `Segment: ${segment}` : "Segment: All",
+      status ? `Status: ${status}` : "Status: All"
+    ].join(" | ")
+  };
+}
+
+function setListingStateRecoveryCopyStatus(message) {
+  const target = document.getElementById("listing-state-recovery-copy-status");
+  if (target) target.textContent = message || "";
+}
+
+function countByRecoveryField(rows, field) {
+  const counts = new Map();
+  rows.forEach(row => {
+    const key = row[field] || "Unspecified";
+    counts.set(key, (counts.get(key) || 0) + 1);
+  });
+  return [...counts.entries()]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .map(([key, count]) => `${key}: ${count}`);
+}
+
+function recoveryHandoffValue(row, key, fallback = "n/a") {
+  const value = row?.[key];
+  if (value === null || value === undefined || value === "") return fallback;
+  return String(value);
+}
+
+function listingStateRecoveryHandoffText(rows = filteredListingStateRecoveryQueue()) {
+  const total = dashboard.operations?.listingStateRecoveryQueue?.length || 0;
+  const filters = listingStateRecoveryFilterRead();
+  const statusSummary = countByRecoveryField(rows, "Recovery Status").join(", ") || "No visible rows";
+  const segmentSummary = countByRecoveryField(rows, "Segment").join("; ") || "No visible rows";
+  const lines = [
+    "Cronk Research - Listing State Recovery Handoff",
+    `Generated: ${new Date().toISOString()}`,
+    filters.label,
+    `Visible rows: ${rows.length} of ${total}`,
+    `Recovery status counts: ${statusSummary}`,
+    `Segment counts: ${segmentSummary}`,
+    "",
+    "Rows"
+  ];
+  rows.forEach((row, index) => {
+    lines.push(
+      `${index + 1}. [${recoveryHandoffValue(row, "Recovery Status")}] ${recoveryHandoffValue(row, "Segment")} - ${recoveryHandoffValue(row, "Product Title")}`,
+      `   Listing ID: ${recoveryHandoffValue(row, "Listing ID")}`,
+      `   State: ${recoveryHandoffValue(row, "Previous State")} -> ${recoveryHandoffValue(row, "Resolved State")}`,
+      `   Decision: ${recoveryHandoffValue(row, "Recovery Decision")}`,
+      `   Next action: ${recoveryHandoffValue(row, "Next Action")}`,
+      `   Why it matters: ${recoveryHandoffValue(row, "Why It Matters")}`,
+      `   Etsy listing: ${recoveryHandoffValue(row, "Resolved Listing URL")}`,
+      `   Replacement lead: ${recoveryHandoffValue(row, "Possible Replacement Listing")}`,
+      `   Replacement URL: ${recoveryHandoffValue(row, "Replacement URL")}`,
+      ""
+    );
+  });
+  return lines.join("\n").trim();
+}
+
+function fallbackCopyText(text) {
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.setAttribute("readonly", "readonly");
+  textarea.style.position = "fixed";
+  textarea.style.left = "-1000px";
+  textarea.style.top = "0";
+  document.body.appendChild(textarea);
+  textarea.select();
+  try {
+    return document.execCommand("copy");
+  } finally {
+    document.body.removeChild(textarea);
+  }
+}
+
+async function copyListingStateRecoveryHandoff() {
+  const rows = filteredListingStateRecoveryQueue();
+  const text = listingStateRecoveryHandoffText(rows);
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+  } else if (!fallbackCopyText(text)) {
+    setListingStateRecoveryCopyStatus("Handoff copy unavailable in this browser.");
+    return;
+  }
+  setListingStateRecoveryCopyStatus(`${fmt(rows.length, "Listing Count")} recovery rows copied.`);
 }
 
 function initMarketControlFilters() {
