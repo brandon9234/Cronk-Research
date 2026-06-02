@@ -17,7 +17,7 @@ let buyerMomentTopListingRowsCache = null;
 let buyerMomentListingCycleRowsCache = new Map();
 let customBuyerMomentRange = null;
 const CUSTOM_BUYER_MOMENT_ID = "custom-date-range";
-const DATA_ASSET_VERSION = "template-gap-validator-status-20260602-1";
+const DATA_ASSET_VERSION = "template-gap-decision-rows-20260602-1";
 const BUYER_MOMENT_LANE_HEIGHT = 30;
 const BUYER_MOMENT_HIGH_OPPORTUNITY_SCORE = 68;
 const BUYER_MOMENT_BUILD_FIT_ORDER = [
@@ -196,13 +196,15 @@ const wrappedColumns = new Set([
   "Execution Step", "Current Etsy Listing URL", "Replacement Lead", "Decision Read",
   "Validation Read", "Allowed Decision Statuses", "Allowed Final Decisions", "Import Check",
   "Candidate Final Decision", "Final Decision Options", "Decision Status Options",
-  "Candidate Reason", "Review Prompt", "Decision Guard", "Market Evidence", "TSV Fill Reminder"
+  "Candidate Reason", "Review Prompt", "Decision Guard", "Market Evidence", "TSV Fill Reminder",
+  "Package Title", "Recommended Path", "Top Template Title", "Top Template URL", "Unresolved Facts",
+  "Unsafe Reuse Warning", "No Write Gate"
 ]);
 
 const thumbnailColumns = new Set(["Thumbnail", "Listing Thumbnail", "Market Thumbnail", "Top Competitor Thumbnail", "My Thumbnail", "Competitor Thumbnail"]);
 const sourceLinkColumns = new Set(["Blank / Generic Sources"]);
 const companyColumns = new Set(["Shop", "Market Shop", "Top Shop"]);
-const badgeColumns = new Set(["Conquest Status", "Market State", "Opportunity Band", "MyMaravia Build Read", "Local Review Signal", "Action Type", "Confidence", "Change Type", "Investigation Status", "Resolution Status", "Resolved State", "Recovery Status", "Batch Status", "Market Signal", "Execution Status"]);
+const badgeColumns = new Set(["Conquest Status", "Market State", "Opportunity Band", "MyMaravia Build Read", "Local Review Signal", "Action Type", "Confidence", "Change Type", "Investigation Status", "Resolution Status", "Resolved State", "Recovery Status", "Batch Status", "Market Signal", "Execution Status", "Decision Fill State", "Template Readiness", "Top Match Confidence"]);
 const realTagColumns = new Set(["Tags", "Actual Tags", "My Actual Tags"]);
 
 const plotConfig = { responsive: true, displayModeBar: false };
@@ -6530,6 +6532,12 @@ function renderOperations() {
     "Current Sheet State", "QA Gate", "Decision Sheet URL", "Decision QA URL", "Decision TSV URL", "Tabs",
     "Source Decision Plan Status", "Plan Summary Updated", "Queue Summary Updated", "Required Source Gate", "No-Write Guard"
   ], 1, { preserveOrder: true });
+  renderTable("next-action-template-gap-decision-rows", dashboard.operations.nextActionTemplateGapDecisionRows || [], [
+    "Priority", "Decision Fill State", "Action ID", "Target Category", "Package Title", "Package Family",
+    "Recommended Path", "Top Match Confidence", "Top Match Score", "Top Template Listing ID",
+    "Top Template Title", "Top Template Family", "Top Template URL", "Template Readiness",
+    "Unresolved Facts", "Unsafe Reuse Warning", "Next Owner Skill", "Decision Fields To Fill", "No Write Gate"
+  ], 20, { preserveOrder: true });
   renderStatusTable("listing-state-alerts-table", dashboard.operations.listingStateAlerts || [], ["Status", "Check", "Finding", "Affected Rows", "Snapshot Read", "Example", "Decision Impact", "Next Action"], 20);
   renderTable("listing-state-investigation-table", dashboard.operations.listingStateInvestigation || [], [
     "Priority", "Investigation Status", "Segment", "Dropped Listings", "Previous Active", "Previous Draft",
