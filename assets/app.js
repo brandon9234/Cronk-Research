@@ -17,7 +17,7 @@ let buyerMomentTopListingRowsCache = null;
 let buyerMomentListingCycleRowsCache = new Map();
 let customBuyerMomentRange = null;
 const CUSTOM_BUYER_MOMENT_ID = "custom-date-range";
-const DATA_ASSET_VERSION = "template-gap-decision-plan-ok-20260602-1";
+const DATA_ASSET_VERSION = "package-fact-fill-plan-20260602-1";
 const BUYER_MOMENT_LANE_HEIGHT = 30;
 const BUYER_MOMENT_HIGH_OPPORTUNITY_SCORE = 68;
 const BUYER_MOMENT_BUILD_FIT_ORDER = [
@@ -6540,6 +6540,19 @@ function renderOperations() {
     "Suggested Decision", "Suggestion Rationale", "Recommended Path", "Top Match Confidence",
     "Top Match Score", "Top Template Listing ID", "Top Template Title", "Top Template Family", "Top Template URL", "Template Readiness",
     "Unresolved Facts", "Unsafe Reuse Warning", "Next Owner Skill", "Decision Fields To Fill", "No Write Gate"
+  ], 20, { preserveOrder: true });
+  renderTable("next-action-package-fact-fill-status", dashboard.operations.nextActionPackageFactFillStatus || [], [
+    "Status", "Source", "Plan Rows", "Family Counts", "Owner Skills", "Image Workflow Skills",
+    "All Rows No-Write Gated", "Current State", "QA Gate", "Plan Summary Updated",
+    "Required Source Gate", "No-Write Guard"
+  ], 1, { preserveOrder: true });
+  renderTable("next-action-package-fact-fill-plan", dashboard.operations.nextActionPackageFactFillPlan || [], [
+    "Priority", "Action ID", "Fact Fill Status", "Decision Status", "Chosen Decision", "New Template/SKU Family",
+    "SKU Allocation Status", "Package Family", "Target Category", "Package Title", "Buyer Intent",
+    "Product Substrate To Confirm", "Required Product Form Facts", "Required Materials / Dimensions",
+    "Required Variations / Defaults", "Required Personalization", "Required Shipping / Processing",
+    "Required Image Assets", "Adjacent Evidence To Review", "Do Not Reuse", "Owner Skill",
+    "Image Workflow Skill", "Expected Output", "Next Gate", "No Write Gate"
   ], 20, { preserveOrder: true });
   renderTable("next-action-template-starter-briefs", dashboard.operations.nextActionTemplateStarterBriefs || [], [
     "Brief Priority", "Action ID", "Template Starter", "Package Family", "Target Category", "Package Title",
