@@ -15,7 +15,7 @@ let buyerMomentTopListingRowsCache = null;
 let buyerMomentListingCycleRowsCache = new Map();
 let customBuyerMomentRange = null;
 const CUSTOM_BUYER_MOMENT_ID = "custom-date-range";
-const DATA_ASSET_VERSION = "next-action-permalink-20260602-1";
+const DATA_ASSET_VERSION = "next-action-stable-permalink-20260602-1";
 const BUYER_MOMENT_LANE_HEIGHT = 30;
 const BUYER_MOMENT_HIGH_OPPORTUNITY_SCORE = 68;
 const BUYER_MOMENT_BUILD_FIT_ORDER = [
@@ -4035,15 +4035,45 @@ function filteredNextActions(rows) {
   });
 }
 
-function nextActionKey(row) {
+function legacyNextActionKey(row) {
   const priority = String(row?.Priority ?? "").trim();
   return priority ? priority : "";
 }
 
+function nextActionKey(row) {
+  if (!row) return "";
+  const explicit = String(row["Action ID"] || row["Action Key"] || "").trim();
+  if (explicit) return explicit;
+  const parts = [
+    row["Action Type"],
+    row.Action,
+    row["Target Category"],
+    row["Product / Listing"],
+    row["Market Listing URL"],
+    row["My Listing URL"],
+    row["Source Signal"]
+  ].map(value => String(value ?? "").replace(/\s+/g, " ").trim().toLowerCase());
+  const basis = parts.join("|");
+  let hash = 2166136261;
+  for (let index = 0; index < basis.length; index += 1) {
+    hash ^= basis.charCodeAt(index);
+    hash = Math.imul(hash, 16777619) >>> 0;
+  }
+  return `a${hash.toString(36)}`;
+}
+
+function nextActionMatches(row, key) {
+  if (!key) return false;
+  return nextActionKey(row) === key || legacyNextActionKey(row) === key;
+}
+
 function selectedNextActionFromRows(rows) {
   if (selectedNextActionKey) {
-    const selected = rows.find(row => nextActionKey(row) === selectedNextActionKey);
-    if (selected) return selected;
+    const selected = rows.find(row => nextActionMatches(row, selectedNextActionKey));
+    if (selected) {
+      selectedNextActionKey = nextActionKey(selected);
+      return selected;
+    }
     selectedNextActionKey = "";
   }
   return rows[0] || null;
@@ -4056,10 +4086,13 @@ function selectNextAction(key) {
   updateNextActionUrl();
 }
 
-function renderNextActionTable(rows, columns, limit = 40) {
+function renderNextActionTable(rows, columns, limit = 40, selectedRow = null) {
   const target = document.getElementById("next-actions");
   if (!target) return;
-  const data = rows.slice(0, limit);
+  let data = rows.slice(0, limit);
+  if (selectedNextActionKey && selectedRow && !data.some(row => nextActionMatches(row, selectedNextActionKey))) {
+    data = [selectedRow, ...data.slice(0, Math.max(0, limit - 1))];
+  }
   if (!data.length) {
     target.innerHTML = `<div class="empty">No rows available in this snapshot.</div>`;
     return;
@@ -4068,7 +4101,7 @@ function renderNextActionTable(rows, columns, limit = 40) {
   const header = cols.map(col => `<th class="${wrappedColumns.has(col) ? "wrap" : ""}">${escapeHtml(col)}</th>`).join("");
   const body = data.map(row => {
     const key = nextActionKey(row);
-    const active = key && key === selectedNextActionKey;
+    const active = nextActionMatches(row, selectedNextActionKey);
     const cells = cols.map(col => {
       const cls = wrappedColumns.has(col) ? "wrap" : "";
       const value = col === "Recipe"
@@ -4242,7 +4275,7 @@ function renderOpportunity() {
     "Priority", "Action Type", "Action", "Target Category", "Product / Listing",
     "Action Score", "Expected Daily Sales", "Source Signal", "Confidence",
     "Evidence", "Next Step", "Market Listing URL", "My Listing URL"
-  ], 40);
+  ], 40, selectedNextAction);
 
   const metricRows = [
     ["Top opportunity", queue[0]?.["Product Bet"] || "Unavailable"],
