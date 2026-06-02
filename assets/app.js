@@ -17,7 +17,7 @@ let buyerMomentTopListingRowsCache = null;
 let buyerMomentListingCycleRowsCache = new Map();
 let customBuyerMomentRange = null;
 const CUSTOM_BUYER_MOMENT_ID = "custom-date-range";
-const DATA_ASSET_VERSION = "state-recovery-handoff-20260602-1";
+const DATA_ASSET_VERSION = "state-recovery-batch-handoff-20260602-1";
 const BUYER_MOMENT_LANE_HEIGHT = 30;
 const BUYER_MOMENT_HIGH_OPPORTUNITY_SCORE = 68;
 const BUYER_MOMENT_BUILD_FIT_ORDER = [
@@ -385,6 +385,8 @@ function renderTable(targetId, rows, columns = null, limit = null, options = {})
         ? thumbnailCell(row, col)
         : sourceLinkColumns.has(col)
           ? sourceLinksCell(row[col])
+        : targetId === "listing-state-recovery-batches-table" && col === "Copy Handoff"
+          ? recoveryBatchHandoffCell(row)
         : targetId === "company-production" && col === "Production Tag"
           ? productionLinkCell(row[col])
         : col === "Weekly Sales Graph"
@@ -5981,7 +5983,23 @@ function recoveryHandoffValue(row, key, fallback = "n/a") {
   return String(value);
 }
 
-function listingStateRecoveryHandoffText(rows = filteredListingStateRecoveryQueue()) {
+function listingStateRecoveryBatchForSegment(segment) {
+  return (dashboard.operations?.listingStateRecoveryBatches || [])
+    .find(row => row.Segment === segment) || null;
+}
+
+function recoveryRowsForSegment(segment) {
+  return (dashboard.operations?.listingStateRecoveryQueue || [])
+    .filter(row => row.Segment === segment);
+}
+
+function recoveryBatchHandoffCell(row) {
+  const segment = row?.Segment || "";
+  if (!segment) return "";
+  return `<button class="link-button recovery-batch-copy" type="button" data-recovery-batch-segment="${escapeHtml(segment)}">Copy batch</button>`;
+}
+
+function listingStateRecoveryHandoffText(rows = filteredListingStateRecoveryQueue(), options = {}) {
   const total = dashboard.operations?.listingStateRecoveryQueue?.length || 0;
   const filters = listingStateRecoveryFilterRead();
   const statusSummary = countByRecoveryField(rows, "Recovery Status").join(", ") || "No visible rows";
@@ -5989,7 +6007,8 @@ function listingStateRecoveryHandoffText(rows = filteredListingStateRecoveryQueu
   const lines = [
     "Cronk Research - Listing State Recovery Handoff",
     `Generated: ${new Date().toISOString()}`,
-    filters.label,
+    options.scopeLabel || filters.label,
+    ...(options.extraSummary || []),
     `Visible rows: ${rows.length} of ${total}`,
     `Recovery status counts: ${statusSummary}`,
     `Segment counts: ${segmentSummary}`,
@@ -6039,6 +6058,37 @@ async function copyListingStateRecoveryHandoff() {
     return;
   }
   setListingStateRecoveryCopyStatus(`${fmt(rows.length, "Listing Count")} recovery rows copied.`);
+}
+
+async function copyListingStateRecoveryBatchHandoff(segment) {
+  const rows = recoveryRowsForSegment(segment);
+  const batch = listingStateRecoveryBatchForSegment(segment);
+  const extraSummary = batch ? [
+    `Batch status: ${recoveryHandoffValue(batch, "Batch Status")}`,
+    `Batch action: ${recoveryHandoffValue(batch, "Batch Action")}`,
+    `Batch listings: ${recoveryHandoffValue(batch, "Listings")}`,
+    `Evidence read: ${recoveryHandoffValue(batch, "Evidence Read")}`
+  ] : [];
+  const text = listingStateRecoveryHandoffText(rows, {
+    scopeLabel: `Recovery batch: ${segment}`,
+    extraSummary
+  });
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+  } else if (!fallbackCopyText(text)) {
+    setListingStateRecoveryCopyStatus("Batch handoff copy unavailable in this browser.");
+    return;
+  }
+  setListingStateRecoveryCopyStatus(`${segment}: ${fmt(rows.length, "Listing Count")} recovery rows copied.`);
+}
+
+function bindRecoveryBatchHandoffButtons() {
+  document.querySelectorAll("[data-recovery-batch-segment]").forEach(button => {
+    button.addEventListener("click", () => {
+      copyListingStateRecoveryBatchHandoff(button.dataset.recoveryBatchSegment || "")
+        .catch(() => setListingStateRecoveryCopyStatus("Batch handoff copy failed."));
+    });
+  });
 }
 
 function initMarketControlFilters() {
@@ -6197,8 +6247,9 @@ function renderOperations() {
   renderTable("listing-state-recovery-batches-table", dashboard.operations.listingStateRecoveryBatches || [], [
     "Batch Priority", "Batch Status", "Segment", "Recovery Decision", "Listings", "Fix Listings",
     "Review Listings", "Prior Active", "Prior Draft", "Resolved Edit", "Replacement Leads",
-    "Evidence Read", "First Listing IDs", "Top Listing Titles", "Open First Listing URL", "Batch Action"
+    "Evidence Read", "First Listing IDs", "Top Listing Titles", "Open First Listing URL", "Copy Handoff", "Batch Action"
   ], 20, { preserveOrder: true });
+  bindRecoveryBatchHandoffButtons();
 
   const recoveryRows = filteredListingStateRecoveryQueue();
   const count = document.getElementById("listing-state-recovery-count");
