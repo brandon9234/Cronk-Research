@@ -17,7 +17,7 @@ let buyerMomentTopListingRowsCache = null;
 let buyerMomentListingCycleRowsCache = new Map();
 let customBuyerMomentRange = null;
 const CUSTOM_BUYER_MOMENT_ID = "custom-date-range";
-const DATA_ASSET_VERSION = "state-recovery-intake-tsv-20260602-1";
+const DATA_ASSET_VERSION = "recovery-decision-sheet-link-20260602-1";
 const BUYER_MOMENT_LANE_HEIGHT = 30;
 const BUYER_MOMENT_HIGH_OPPORTUNITY_SCORE = 68;
 const BUYER_MOMENT_BUILD_FIT_ORDER = [
@@ -6554,6 +6554,10 @@ function renderOperations() {
     "Decision Guard", "Current Etsy Listing URL", "Replacement Lead", "Replacement URL",
     "Market Evidence", "TSV Fill Reminder"
   ], 40, { preserveOrder: true });
+  renderTable("listing-state-recovery-decision-sheet-status", dashboard.operations.listingStateRecoveryDecisionSheet || [], [
+    "Status", "Source", "Sheet Rows", "Current Sheet State", "QA Gate", "Decision Sheet URL",
+    "Decision QA URL", "Tabs", "Source Decision Log Status", "Required Source Gate", "No-Write Guard"
+  ], 1, { preserveOrder: true });
   renderTable("listing-state-recovery-batches-table", dashboard.operations.listingStateRecoveryBatches || [], [
     "Batch Priority", "Batch Status", "Segment", "Recovery Decision", "Listings", "Fix Listings",
     "Review Listings", "Prior Active", "Prior Draft", "Resolved Edit", "Replacement Leads",
