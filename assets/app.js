@@ -17,7 +17,7 @@ let buyerMomentTopListingRowsCache = null;
 let buyerMomentListingCycleRowsCache = new Map();
 let customBuyerMomentRange = null;
 const CUSTOM_BUYER_MOMENT_ID = "custom-date-range";
-const DATA_ASSET_VERSION = "template-starter-briefs-20260602-1";
+const DATA_ASSET_VERSION = "template-source-audit-checklists-20260602-1";
 const BUYER_MOMENT_LANE_HEIGHT = 30;
 const BUYER_MOMENT_HIGH_OPPORTUNITY_SCORE = 68;
 const BUYER_MOMENT_BUILD_FIT_ORDER = [
@@ -200,13 +200,14 @@ const wrappedColumns = new Set([
   "Package Title", "Recommended Path", "Top Template Title", "Top Template URL", "Unresolved Facts",
   "Unsafe Reuse Warning", "No Write Gate", "Suggested Decision", "Suggestion Rationale",
   "Template Starter", "Starter Brief", "Required Facts", "Market Evidence To Review", "Evidence URL",
-  "Do Not Reuse", "Next Gate"
+  "Do Not Reuse", "Next Gate", "Source Audit Checklist", "Fact Capture Fields", "Evidence Targets",
+  "Reject If", "Decision Output"
 ]);
 
 const thumbnailColumns = new Set(["Thumbnail", "Listing Thumbnail", "Market Thumbnail", "Top Competitor Thumbnail", "My Thumbnail", "Competitor Thumbnail"]);
 const sourceLinkColumns = new Set(["Blank / Generic Sources"]);
 const companyColumns = new Set(["Shop", "Market Shop", "Top Shop"]);
-const badgeColumns = new Set(["Conquest Status", "Market State", "Opportunity Band", "MyMaravia Build Read", "Local Review Signal", "Action Type", "Confidence", "Change Type", "Investigation Status", "Resolution Status", "Resolved State", "Recovery Status", "Batch Status", "Market Signal", "Execution Status", "Decision Fill State", "Template Readiness", "Top Match Confidence", "Suggested Decision"]);
+const badgeColumns = new Set(["Conquest Status", "Market State", "Opportunity Band", "MyMaravia Build Read", "Local Review Signal", "Action Type", "Confidence", "Change Type", "Investigation Status", "Resolution Status", "Resolved State", "Recovery Status", "Batch Status", "Market Signal", "Execution Status", "Decision Fill State", "Template Readiness", "Top Match Confidence", "Suggested Decision", "Audit Status"]);
 const realTagColumns = new Set(["Tags", "Actual Tags", "My Actual Tags"]);
 
 const plotConfig = { responsive: true, displayModeBar: false };
@@ -6544,6 +6545,11 @@ function renderOperations() {
     "Brief Priority", "Action ID", "Template Starter", "Package Family", "Target Category", "Package Title",
     "Starter Brief", "Required Facts", "Market Evidence To Review", "Evidence URL", "Unresolved Facts",
     "Do Not Reuse", "Owner Skill", "Next Gate", "No Write Gate"
+  ], 20, { preserveOrder: true });
+  renderTable("next-action-template-source-audit-checklists", dashboard.operations.nextActionTemplateSourceAuditChecklists || [], [
+    "Audit Priority", "Action ID", "Audit Status", "Package Family", "Target Category", "Package Title",
+    "Source Audit Checklist", "Fact Capture Fields", "Evidence Targets", "Market Evidence To Review",
+    "Evidence URL", "Reject If", "Decision Output", "Owner Skill", "Next Gate", "No Write Gate"
   ], 20, { preserveOrder: true });
   renderStatusTable("listing-state-alerts-table", dashboard.operations.listingStateAlerts || [], ["Status", "Check", "Finding", "Affected Rows", "Snapshot Read", "Example", "Decision Impact", "Next Action"], 20);
   renderTable("listing-state-investigation-table", dashboard.operations.listingStateInvestigation || [], [
