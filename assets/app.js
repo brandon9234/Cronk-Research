@@ -16,7 +16,7 @@ let buyerMomentTopListingRowsCache = null;
 let buyerMomentListingCycleRowsCache = new Map();
 let customBuyerMomentRange = null;
 const CUSTOM_BUYER_MOMENT_ID = "custom-date-range";
-const DATA_ASSET_VERSION = "next-action-launch-reps-20260602-1";
+const DATA_ASSET_VERSION = "next-action-launch-briefs-20260602-1";
 const BUYER_MOMENT_LANE_HEIGHT = 30;
 const BUYER_MOMENT_HIGH_OPPORTUNITY_SCORE = 68;
 const BUYER_MOMENT_BUILD_FIT_ORDER = [
@@ -4129,6 +4129,7 @@ function nextActionPresetMatches(row, preset) {
   const type = String(row["Action Type"] || "");
   const text = Object.values(row).join(" ").toLowerCase();
   if (preset === "nameplates") return /name\s*plates?|nameplates?|desk sign|office sign|medical desk|teacher desk|led desk/.test(text);
+  if (preset === "launch") return type === "Launch";
   if (preset === "build") return type === "Build" || type === "Launch";
   if (preset === "fix") return type === "Fix";
   if (preset === "scale") return type === "Scale";
@@ -4291,7 +4292,28 @@ function actionThumbnailAngle(row) {
   return "Lead with the finished personalized product, crop tight enough that the custom text is readable at thumbnail size.";
 }
 
+function actionListingBuilderBriefItems(row) {
+  if (String(row["Action Type"] || "") !== "Launch") return [];
+  return uniqueRecipeItems([
+    row["Launch Brief"] || "",
+    row["Draft Title Pattern"] ? `Title pattern: ${row["Draft Title Pattern"]}` : "",
+    row["Draft Batch"] ? `First draft batch: ${row["Draft Batch"]}` : "",
+    row["Representative Listing"] ? `Market exemplar: ${row["Representative Listing"]}${row["Market Shop"] ? ` (${row["Market Shop"]})` : ""}` : "",
+  ], 5);
+}
+
+function actionImageQueueItems(row) {
+  if (String(row["Action Type"] || "") !== "Launch") return [];
+  return uniqueRecipeItems([
+    row["Media Queue"] || "",
+    /led|nameplate|desk sign|office/i.test(`${row["Product / Listing"] || ""} ${row["Target Category"] || ""}`)
+      ? "Route media through the LED nameplate workflow: long horizontal acrylic panel, warm edge glow, wood base choices, readable role/name text, and no concept-board final hero."
+      : "",
+  ], 4);
+}
+
 function actionPersonalizationField(row) {
+  if (row["Personalization Brief"]) return row["Personalization Brief"];
   const text = `${row["Product / Listing"] || ""} ${row["Target Category"] || ""}`.toLowerCase();
   if (/pet|dog|collar/.test(text)) return "Pet name, phone number, collar color or plate finish, and optional icon.";
   if (/nameplate|desk sign|office/.test(text)) return "Name, title or role, logo line, font choice, base/light color, and proof preference.";
@@ -4602,6 +4624,11 @@ function recipeList(items) {
   return `<ul class="action-recipe-list">${items.map(item => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`;
 }
 
+function optionalRecipeBlock(title, items) {
+  const rows = uniqueRecipeItems(items);
+  return rows.length ? `<div class="action-recipe-block"><h3>${escapeHtml(title)}</h3>${recipeList(rows)}</div>` : "";
+}
+
 function recipeTraceList(items) {
   return `<ul class="action-recipe-list">${items.map(item => `
     <li><strong>${escapeHtml(item.label)}:</strong> ${escapeHtml(item.value)} <span class="badge flat">${escapeHtml(item.confidence)}</span></li>
@@ -4615,6 +4642,11 @@ function recipeText(value) {
 function recipeTextList(title, items) {
   const rows = uniqueRecipeItems(items).map(item => `- ${recipeText(item)}`);
   return [`## ${title}`, ...(rows.length ? rows : ["- Not available."])].join("\n");
+}
+
+function optionalRecipeTextList(title, items) {
+  const rows = uniqueRecipeItems(items);
+  return rows.length ? recipeTextList(title, rows) : "";
 }
 
 function actionRecipeExportText(row, visibleCount, totalCount) {
@@ -4642,6 +4674,10 @@ function actionRecipeExportText(row, visibleCount, totalCount) {
     `Dashboard link: ${exactLink}`,
     row["Market Listing URL"] ? `Market source: ${recipeText(row["Market Listing URL"])}` : null,
     row["My Listing URL"] ? `MyMaravia listing: ${recipeText(row["My Listing URL"])}` : null,
+    "",
+    optionalRecipeTextList("Listing Builder Brief", actionListingBuilderBriefItems(row)),
+    "",
+    optionalRecipeTextList("Image Queue", actionImageQueueItems(row)),
     "",
     recipeTextList("Title Phrases", actionTitlePhrases(row)),
     "",
@@ -4702,6 +4738,8 @@ function renderNextActionRecipe(row, visibleCount, totalCount) {
   ].filter(Boolean).join("");
   const titlePhrases = actionTitlePhrases(row);
   const tagIdeas = actionTagIdeas(row);
+  const listingBuilderBrief = actionListingBuilderBriefItems(row);
+  const imageQueue = actionImageQueueItems(row);
   const sourceNotes = uniqueRecipeItems([
     `${row["Source Signal"] || "Source signal"} · ${row.Confidence || "confidence pending"}`,
     row["Evidence Trace"] || "",
@@ -4722,6 +4760,8 @@ function renderNextActionRecipe(row, visibleCount, totalCount) {
         <div class="action-recipe-links">${links}</div>
       </div>
       <div class="action-recipe-grid">
+        ${optionalRecipeBlock("Listing Builder Brief", listingBuilderBrief)}
+        ${optionalRecipeBlock("Image Queue", imageQueue)}
         <div class="action-recipe-block"><h3>Title Phrases</h3>${recipeList(titlePhrases)}</div>
         <div class="action-recipe-block"><h3>Thumbnail Angle</h3>${recipeList([actionThumbnailAngle(row)])}</div>
         <div class="action-recipe-block"><h3>Tags To Test</h3>${recipeList(tagIdeas)}</div>
