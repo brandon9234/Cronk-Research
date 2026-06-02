@@ -17,7 +17,7 @@ let buyerMomentTopListingRowsCache = null;
 let buyerMomentListingCycleRowsCache = new Map();
 let customBuyerMomentRange = null;
 const CUSTOM_BUYER_MOMENT_ID = "custom-date-range";
-const DATA_ASSET_VERSION = "template-source-audit-checklists-20260602-1";
+const DATA_ASSET_VERSION = "template-source-audit-sheet-link-20260602-1";
 const BUYER_MOMENT_LANE_HEIGHT = 30;
 const BUYER_MOMENT_HIGH_OPPORTUNITY_SCORE = 68;
 const BUYER_MOMENT_BUILD_FIT_ORDER = [
@@ -201,7 +201,7 @@ const wrappedColumns = new Set([
   "Unsafe Reuse Warning", "No Write Gate", "Suggested Decision", "Suggestion Rationale",
   "Template Starter", "Starter Brief", "Required Facts", "Market Evidence To Review", "Evidence URL",
   "Do Not Reuse", "Next Gate", "Source Audit Checklist", "Fact Capture Fields", "Evidence Targets",
-  "Reject If", "Decision Output"
+  "Reject If", "Decision Output", "Editable Fields", "Allowed Audit Statuses", "Source Audit URL"
 ]);
 
 const thumbnailColumns = new Set(["Thumbnail", "Listing Thumbnail", "Market Thumbnail", "Top Competitor Thumbnail", "My Thumbnail", "Competitor Thumbnail"]);
@@ -6546,6 +6546,10 @@ function renderOperations() {
     "Starter Brief", "Required Facts", "Market Evidence To Review", "Evidence URL", "Unresolved Facts",
     "Do Not Reuse", "Owner Skill", "Next Gate", "No Write Gate"
   ], 20, { preserveOrder: true });
+  renderTable("next-action-template-source-audit-sheet-status", dashboard.operations.nextActionTemplateSourceAuditSheet || [], [
+    "Status", "Source", "Sheet Rows", "Waiting Rows", "Editable Fields", "Allowed Audit Statuses",
+    "Source Audit URL", "Decision Sheet URL", "Required Source Gate", "No-Write Guard"
+  ], 1, { preserveOrder: true });
   renderTable("next-action-template-source-audit-checklists", dashboard.operations.nextActionTemplateSourceAuditChecklists || [], [
     "Audit Priority", "Action ID", "Audit Status", "Package Family", "Target Category", "Package Title",
     "Source Audit Checklist", "Fact Capture Fields", "Evidence Targets", "Market Evidence To Review",
