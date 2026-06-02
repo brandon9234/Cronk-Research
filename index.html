@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Cronk Research</title>
-  <link rel="stylesheet" href="assets/styles.css?v=state-recovery-execution-plan-20260602-1">
+  <link rel="stylesheet" href="assets/styles.css?v=state-recovery-execution-tsv-20260602-1">
   <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
 </head>
 <body>
@@ -656,8 +656,14 @@
           <div id="listing-state-recovery-market-priority-table"></div>
         </section>
         <section class="panel">
-          <div class="panel-head">
-            <h2>Recovery Execution Plan</h2>
+          <div class="panel-head with-control">
+            <div>
+              <h2>Recovery Execution Plan</h2>
+              <p id="listing-state-recovery-execution-copy-status" class="next-action-share-status"></p>
+            </div>
+            <div class="listing-controls">
+              <button id="listing-state-recovery-execution-decision-copy" class="link-button" type="button">Copy execution TSV</button>
+            </div>
           </div>
           <div id="listing-state-recovery-execution-plan-table"></div>
         </section>
@@ -735,6 +741,6 @@
       </section>
     </main>
   </div>
-  <script src="assets/app.js?v=state-recovery-execution-plan-20260602-1"></script>
+  <script src="assets/app.js?v=state-recovery-execution-tsv-20260602-1"></script>
 </body>
 </html>

@@ -17,7 +17,7 @@ let buyerMomentTopListingRowsCache = null;
 let buyerMomentListingCycleRowsCache = new Map();
 let customBuyerMomentRange = null;
 const CUSTOM_BUYER_MOMENT_ID = "custom-date-range";
-const DATA_ASSET_VERSION = "state-recovery-execution-plan-20260602-1";
+const DATA_ASSET_VERSION = "state-recovery-execution-tsv-20260602-1";
 const BUYER_MOMENT_LANE_HEIGHT = 30;
 const BUYER_MOMENT_HIGH_OPPORTUNITY_SCORE = 68;
 const BUYER_MOMENT_BUILD_FIT_ORDER = [
@@ -5935,6 +5935,15 @@ function initListingStateRecoveryFilters() {
     decisionCopy.dataset.bound = "true";
   }
 
+  const executionDecisionCopy = document.getElementById("listing-state-recovery-execution-decision-copy");
+  if (executionDecisionCopy && executionDecisionCopy.dataset.bound !== "true") {
+    executionDecisionCopy.addEventListener("click", () => {
+      copyListingStateRecoveryExecutionDecisionTsv()
+        .catch(() => setListingStateRecoveryExecutionCopyStatus("Execution TSV copy failed."));
+    });
+    executionDecisionCopy.dataset.bound = "true";
+  }
+
   const reset = document.getElementById("listing-state-recovery-reset");
   if (reset && reset.dataset.bound !== "true") {
     reset.addEventListener("click", () => {
@@ -5973,6 +5982,11 @@ function listingStateRecoveryFilterRead() {
 
 function setListingStateRecoveryCopyStatus(message) {
   const target = document.getElementById("listing-state-recovery-copy-status");
+  if (target) target.textContent = message || "";
+}
+
+function setListingStateRecoveryExecutionCopyStatus(message) {
+  const target = document.getElementById("listing-state-recovery-execution-copy-status");
   if (target) target.textContent = message || "";
 }
 
@@ -6123,6 +6137,52 @@ function listingStateRecoveryDecisionTsv(rows = filteredListingStateRecoveryQueu
     .join("\n");
 }
 
+function listingStateRecoveryExecutionDecisionTsv(rows = dashboard.operations?.listingStateRecoveryExecutionPlan || []) {
+  const headers = [
+    "Decision Status",
+    "Final Decision",
+    "Decision Date",
+    "Decision Owner",
+    "Decision Notes",
+    "Segment",
+    "Listing ID",
+    "Product Title",
+    "Recovery Status",
+    "Previous State",
+    "Resolved State",
+    "Recommended Decision",
+    "Recommended Next Action",
+    "Why It Matters",
+    "Resolved Listing URL",
+    "Replacement Lead",
+    "Replacement URL",
+    "Resolved At"
+  ];
+  const dataRows = rows.map(row => [
+    "",
+    "",
+    "",
+    "",
+    "",
+    row.Segment,
+    row["Listing ID"],
+    row["Product Title"],
+    row["Recovery Status"],
+    row["Previous State"],
+    row["Resolved State"],
+    row["Suggested Final Decision"],
+    row["Execution Step"],
+    row["No-Write Confirmation Gate"],
+    row["Current Etsy Listing URL"],
+    row["Replacement Lead"],
+    row["Replacement URL"],
+    ""
+  ]);
+  return [headers, ...dataRows]
+    .map(row => row.map(tsvCell).join("\t"))
+    .join("\n");
+}
+
 async function copyListingStateRecoveryDecisionTsv() {
   const rows = filteredListingStateRecoveryQueue();
   const text = listingStateRecoveryDecisionTsv(rows);
@@ -6133,6 +6193,18 @@ async function copyListingStateRecoveryDecisionTsv() {
     return;
   }
   setListingStateRecoveryCopyStatus(`${fmt(rows.length, "Listing Count")} decision rows copied.`);
+}
+
+async function copyListingStateRecoveryExecutionDecisionTsv() {
+  const rows = dashboard.operations?.listingStateRecoveryExecutionPlan || [];
+  const text = listingStateRecoveryExecutionDecisionTsv(rows);
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+  } else if (!fallbackCopyText(text)) {
+    setListingStateRecoveryExecutionCopyStatus("Execution TSV copy unavailable in this browser.");
+    return;
+  }
+  setListingStateRecoveryExecutionCopyStatus(`${fmt(rows.length, "Listing Count")} execution decision rows copied.`);
 }
 
 async function copyListingStateRecoveryBatchHandoff(segment) {
