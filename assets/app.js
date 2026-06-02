@@ -17,7 +17,7 @@ let buyerMomentTopListingRowsCache = null;
 let buyerMomentListingCycleRowsCache = new Map();
 let customBuyerMomentRange = null;
 const CUSTOM_BUYER_MOMENT_ID = "custom-date-range";
-const DATA_ASSET_VERSION = "template-gap-sheet-link-20260602-1";
+const DATA_ASSET_VERSION = "template-gap-validator-status-20260602-1";
 const BUYER_MOMENT_LANE_HEIGHT = 30;
 const BUYER_MOMENT_HIGH_OPPORTUNITY_SCORE = 68;
 const BUYER_MOMENT_BUILD_FIT_ORDER = [
@@ -6526,8 +6526,9 @@ function initCompanyProfile() {
 function renderOperations() {
   renderStatusTable("refresh-priority-table", dashboard.operations.refreshPriorityQueue || [], ["Priority", "Status", "Source", "Freshness Read", "Decision Impact", "Why Now", "Refresh Step"], 6);
   renderTable("next-action-template-gap-decision-sheet-status", dashboard.operations.nextActionTemplateGapDecisionSheet || [], [
-    "Status", "Source", "Sheet Rows", "Current Sheet State", "QA Gate", "Decision Sheet URL",
-    "Decision QA URL", "Decision TSV URL", "Tabs", "Source Decision Plan Status", "Required Source Gate", "No-Write Guard"
+    "Status", "Source", "Sheet Rows", "Filled Rows", "Waiting Rows", "Partial Rows", "Validator Problems",
+    "Current Sheet State", "QA Gate", "Decision Sheet URL", "Decision QA URL", "Decision TSV URL", "Tabs",
+    "Source Decision Plan Status", "Plan Summary Updated", "Queue Summary Updated", "Required Source Gate", "No-Write Guard"
   ], 1, { preserveOrder: true });
   renderStatusTable("listing-state-alerts-table", dashboard.operations.listingStateAlerts || [], ["Status", "Check", "Finding", "Affected Rows", "Snapshot Read", "Example", "Decision Impact", "Next Action"], 20);
   renderTable("listing-state-investigation-table", dashboard.operations.listingStateInvestigation || [], [
