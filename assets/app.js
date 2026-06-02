@@ -15,7 +15,7 @@ let buyerMomentTopListingRowsCache = null;
 let buyerMomentListingCycleRowsCache = new Map();
 let customBuyerMomentRange = null;
 const CUSTOM_BUYER_MOMENT_ID = "custom-date-range";
-const DATA_ASSET_VERSION = "next-action-recipe-export-20260602-1";
+const DATA_ASSET_VERSION = "next-action-evidence-trail-20260602-1";
 const BUYER_MOMENT_LANE_HEIGHT = 30;
 const BUYER_MOMENT_HIGH_OPPORTUNITY_SCORE = 68;
 const BUYER_MOMENT_BUILD_FIT_ORDER = [
@@ -4196,6 +4196,163 @@ function actionBlankNote(row) {
   return "Check source listing details before acting; the next-action row carries public-safe summary evidence only.";
 }
 
+function actionListingSearch(row) {
+  return listingIdFromUrl(row["Market Listing URL"]) ||
+    listingIdFromUrl(row["My Listing URL"]) ||
+    actionTitlePhrases(row)[0] ||
+    row["Target Category"] ||
+    row.Action ||
+    "";
+}
+
+function listingRowByUrl(value) {
+  const id = listingIdFromUrl(value);
+  if (!id) return null;
+  return getListingRows().find(row => listingIdFromUrl(row["Listing URL"] || row["Market Listing URL"] || row["My Listing URL"]) === id) || null;
+}
+
+function actionEvidenceCompany(row) {
+  const direct = [
+    row.Shop,
+    row["Market Shop"],
+    row["Top Shop"],
+    row["Top Competitor Shop"],
+    row["Competing Shop"],
+    row["Competitor Shop"],
+    row["Top Opportunity Shop"],
+    row["Source Shop"]
+  ].map(companyName).find(Boolean);
+  if (direct) return direct;
+  const listingRow = listingRowByUrl(row["Market Listing URL"]) || listingRowByUrl(row["My Listing URL"]);
+  if (listingRow?.Shop) return companyName(listingRow.Shop);
+  const evidenceMatch = String(row.Evidence || "").match(/\bfrom\s+([^;,.]+)/i);
+  return companyName(evidenceMatch?.[1] || "");
+}
+
+function actionEvidencePhrases(row) {
+  const generic = /^(for him|for her|him|her|mom|dad|gift|gifts|custom|personalized|personalised|made to order)$/i;
+  return actionTitlePhrases(row)
+    .map(item => item.toLowerCase())
+    .filter(item => item.length >= 8 && !generic.test(item));
+}
+
+function actionTraceTokens(row) {
+  const stopwords = new Set([
+    "with", "your", "from", "this", "that", "gift", "gifts", "custom", "personalized",
+    "personalised", "birthday", "anniversary", "mother", "father", "mothers", "fathers",
+    "for", "and", "the", "her", "him", "mom", "dad"
+  ]);
+  return uniqueRecipeItems(
+    `${row["Product / Listing"] || ""} ${row["Target Category"] || ""}`
+      .toLowerCase()
+      .split(/[^a-z0-9]+/)
+      .filter(token => token.length >= 4 && !stopwords.has(token)),
+    16
+  );
+}
+
+function actionBuyerMomentTrace(row) {
+  const listingId = listingIdFromUrl(row["Market Listing URL"]) || listingIdFromUrl(row["My Listing URL"]);
+  const category = recipeText(row["Target Category"]);
+  const phrases = actionEvidencePhrases(row);
+  const tokens = actionTraceTokens(row);
+  const rows = buyerMomentTopListingRows();
+  const scored = rows.map(item => {
+    const text = Object.values(item).join(" ").toLowerCase();
+    const itemId = listingIdFromUrl(item["Listing URL"]);
+    const tokenHits = tokens.filter(token => text.includes(token));
+    let score = 0;
+    if (listingId && itemId === listingId) score += 1000;
+    if (category && String(item["Product Substrate Category"] || item["Product Category"] || "").toLowerCase() === category.toLowerCase()) score += 120;
+    if (phrases.some(phrase => phrase && text.includes(phrase))) score += 120;
+    if (tokenHits.length >= 2) score += tokenHits.length * 18;
+    if (tokenHits.length >= 4) score += 60;
+    if (category && text.includes(category.toLowerCase())) score += 40;
+    return { item, score };
+  }).filter(result => result.score > 0);
+  scored.sort((a, b) =>
+    b.score - a.score ||
+    numericCell(b.item, "Buyer Moment Opportunity Score") - numericCell(a.item, "Buyer Moment Opportunity Score") ||
+    numericCell(b.item, "Moment Estimated Sales") - numericCell(a.item, "Moment Estimated Sales")
+  );
+  const match = scored[0]?.item || null;
+  const matchedListingId = match && listingId && listingIdFromUrl(match["Listing URL"]) === listingId;
+  const matchText = match ? Object.values(match).join(" ").toLowerCase() : "";
+  const matchingPhrase = phrases.find(phrase => matchText.includes(phrase));
+  const matchingToken = tokens.find(token => matchText.includes(token));
+  const matchedQuery = matchedListingId
+    ? listingId
+    : matchingPhrase || matchingToken || match?.["Product Substrate Category"] || match?.["Product Category"] || match?.Keyword || match?.["Product Title"] || category || actionTitlePhrases(row)[0] || "";
+  return {
+    match,
+    momentId: match?.["Moment ID"] || "",
+    moment: match?.["Buyer Moment"] || "",
+    query: matchedQuery
+  };
+}
+
+function actionEvidenceTrail(row) {
+  const listingSearch = actionListingSearch(row);
+  const buyerTrace = actionBuyerMomentTrace(row);
+  const company = actionEvidenceCompany(row);
+  return [
+    listingSearch ? `Listings search: ${listingSearch}` : "",
+    buyerTrace.moment ? `Buyer Moment: ${buyerTrace.moment} / ${buyerTrace.query}` : buyerTrace.query ? `Buyer Moment search: ${buyerTrace.query}` : "",
+    company ? `Company profile: ${company}` : ""
+  ].filter(Boolean);
+}
+
+function openActionListingEvidence(row) {
+  const query = actionListingSearch(row);
+  const search = document.getElementById("listing-search");
+  const production = document.getElementById("production-filter");
+  const substrate = document.getElementById("substrate-filter");
+  const timeframe = document.getElementById("listing-timeframe-preset");
+  const start = document.getElementById("listing-timeframe-start");
+  const end = document.getElementById("listing-timeframe-end");
+  if (search) search.value = query;
+  if (production) production.value = "";
+  if (substrate) substrate.value = "";
+  if (timeframe) timeframe.value = "";
+  if (start) start.value = "";
+  if (end) end.value = "";
+  selectedListingTimeframePreset = "";
+  activateView("listings");
+  renderListings();
+  setNextActionShareStatus(query ? `Listings evidence opened for ${query}.` : "Listings evidence opened.");
+  requestAnimationFrame(() => document.getElementById("top-listings")?.scrollIntoView({ block: "start" }));
+}
+
+function openActionBuyerMomentEvidence(row) {
+  const trace = actionBuyerMomentTrace(row);
+  const source = document.getElementById("buyer-moment-source-filter");
+  const calendarSearch = document.getElementById("buyer-moment-calendar-search");
+  const listingSearch = document.getElementById("buyer-moment-search");
+  if (source) source.value = "";
+  BUYER_MOMENT_FILTER_IDS.forEach(([, id]) => {
+    const input = document.getElementById(id);
+    if (input) input.checked = false;
+  });
+  if (calendarSearch) calendarSearch.value = trace.moment || "";
+  if (listingSearch) listingSearch.value = trace.query || "";
+  selectedBuyerMomentId = trace.momentId || "";
+  activateView("buyer-moments");
+  renderBuyerMoments();
+  setNextActionShareStatus(trace.moment ? `Buyer Moment evidence opened: ${trace.moment}.` : "Buyer Moment evidence opened.");
+  requestAnimationFrame(() => document.getElementById("buyer-moment-listings")?.scrollIntoView({ block: "start" }));
+}
+
+function openActionCompanyEvidence(row) {
+  const company = actionEvidenceCompany(row);
+  if (!company || !companyStats().has(company)) {
+    setNextActionShareStatus("No matching company profile found for this action.");
+    return;
+  }
+  openCompanyProfile(company);
+  setNextActionShareStatus(`Company evidence opened: ${company}.`);
+  requestAnimationFrame(() => document.getElementById("company-listings")?.scrollIntoView({ block: "start" }));
+}
+
 function recipeList(items) {
   return `<ul class="action-recipe-list">${items.map(item => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`;
 }
@@ -4246,6 +4403,8 @@ function actionRecipeExportText(row, visibleCount, totalCount) {
     "",
     recipeTextList("Source Notes", sourceNotes),
     "",
+    recipeTextList("Evidence Trail", actionEvidenceTrail(row)),
+    "",
     recipeTextList("Blank Notes", [actionBlankNote(row)]),
     "",
     recipeTextList("Next Step", [row["Next Step"] || "Review the source row and decide the listing move."]),
@@ -4278,8 +4437,12 @@ function renderNextActionRecipe(row, visibleCount, totalCount) {
   const daily = escapeHtml(fmt(row["Expected Daily Sales"], "Expected Daily Sales") || "");
   const evidence = row.Evidence || "No evidence note available.";
   const nextStep = row["Next Step"] || "Review the source row and decide the listing move.";
+  const company = actionEvidenceCompany(row);
   const links = [
     `<button class="link-button" type="button" data-next-action-recipe-copy="${escapeHtml(nextActionKey(row))}">Copy recipe</button>`,
+    `<button class="link-button" type="button" data-next-action-listings-trace="${escapeHtml(nextActionKey(row))}">Trace listings</button>`,
+    `<button class="link-button" type="button" data-next-action-buyer-trace="${escapeHtml(nextActionKey(row))}">Trace buyer moment</button>`,
+    company ? `<button class="link-button" type="button" data-next-action-company-trace="${escapeHtml(nextActionKey(row))}">Trace company</button>` : "",
     row["Market Listing URL"] ? `<a class="link-button" href="${escapeHtml(row["Market Listing URL"])}" target="_blank" rel="noreferrer">Market source</a>` : "",
     row["My Listing URL"] ? `<a class="link-button" href="${escapeHtml(row["My Listing URL"])}" target="_blank" rel="noreferrer">My listing</a>` : ""
   ].filter(Boolean).join("");
@@ -4310,6 +4473,7 @@ function renderNextActionRecipe(row, visibleCount, totalCount) {
         <div class="action-recipe-block"><h3>Price</h3>${recipeList([actionPriceNote(row)])}</div>
         <div class="action-recipe-block"><h3>Personalization</h3>${recipeList([actionPersonalizationField(row)])}</div>
         <div class="action-recipe-block"><h3>Source Notes</h3>${recipeList(sourceNotes)}</div>
+        <div class="action-recipe-block"><h3>Evidence Trail</h3>${recipeList(actionEvidenceTrail(row))}</div>
         <div class="action-recipe-block"><h3>Blank Notes</h3>${recipeList([actionBlankNote(row)])}</div>
         <div class="action-recipe-block"><h3>Next Step</h3>${recipeList([nextStep])}</div>
         <div class="action-recipe-block"><h3>Evidence</h3>${recipeList([evidence])}</div>
@@ -4321,6 +4485,12 @@ function renderNextActionRecipe(row, visibleCount, totalCount) {
       copyNextActionRecipe(row, visibleCount, totalCount).catch(() => setNextActionShareStatus("Recipe copy failed."));
     });
   }
+  const listingsTrace = target.querySelector("[data-next-action-listings-trace]");
+  if (listingsTrace) listingsTrace.addEventListener("click", () => openActionListingEvidence(row));
+  const buyerTrace = target.querySelector("[data-next-action-buyer-trace]");
+  if (buyerTrace) buyerTrace.addEventListener("click", () => openActionBuyerMomentEvidence(row));
+  const companyTrace = target.querySelector("[data-next-action-company-trace]");
+  if (companyTrace) companyTrace.addEventListener("click", () => openActionCompanyEvidence(row));
 }
 
 function renderOpportunity() {
