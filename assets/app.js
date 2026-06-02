@@ -17,7 +17,7 @@ let buyerMomentTopListingRowsCache = null;
 let buyerMomentListingCycleRowsCache = new Map();
 let customBuyerMomentRange = null;
 const CUSTOM_BUYER_MOMENT_ID = "custom-date-range";
-const DATA_ASSET_VERSION = "state-recovery-decision-log-20260602-1";
+const DATA_ASSET_VERSION = "state-recovery-market-priority-20260602-1";
 const BUYER_MOMENT_LANE_HEIGHT = 30;
 const BUYER_MOMENT_HIGH_OPPORTUNITY_SCORE = 68;
 const BUYER_MOMENT_BUILD_FIT_ORDER = [
@@ -191,13 +191,14 @@ const wrappedColumns = new Set([
   "Snapshot Read", "Finding", "Segment", "Replacement Read", "Possible Replacement Listing",
   "Replacement Match Tokens", "Replacement URL", "Example Dropped Listing", "Dropped Listing IDs",
   "Recommended Action", "Recovery Decision", "Why It Matters", "Evidence Read", "First Listing IDs",
-  "Top Listing Titles", "Open First Listing URL", "Batch Action"
+  "Top Listing Titles", "Open First Listing URL", "Batch Action", "Market Read", "Matched Terms",
+  "Execution Read"
 ]);
 
 const thumbnailColumns = new Set(["Thumbnail", "Listing Thumbnail", "Market Thumbnail", "Top Competitor Thumbnail", "My Thumbnail", "Competitor Thumbnail"]);
 const sourceLinkColumns = new Set(["Blank / Generic Sources"]);
 const companyColumns = new Set(["Shop", "Market Shop", "Top Shop"]);
-const badgeColumns = new Set(["Conquest Status", "Market State", "Opportunity Band", "MyMaravia Build Read", "Local Review Signal", "Action Type", "Confidence", "Change Type", "Investigation Status", "Resolution Status", "Resolved State", "Recovery Status", "Batch Status"]);
+const badgeColumns = new Set(["Conquest Status", "Market State", "Opportunity Band", "MyMaravia Build Read", "Local Review Signal", "Action Type", "Confidence", "Change Type", "Investigation Status", "Resolution Status", "Resolved State", "Recovery Status", "Batch Status", "Market Signal"]);
 const realTagColumns = new Set(["Tags", "Actual Tags", "My Actual Tags"]);
 
 const plotConfig = { responsive: true, displayModeBar: false };
@@ -6317,6 +6318,11 @@ function renderOperations() {
     "Possible Replacement Listing", "Replacement State", "Replacement Match Tokens", "Replacement URL",
     "Example Dropped Listing", "Dropped Listing IDs", "Recommended Action"
   ], 40, { preserveOrder: true });
+  renderTable("listing-state-recovery-market-priority-table", dashboard.operations.listingStateRecoveryMarketPriority || [], [
+    "Recovery Market Priority", "Market Signal", "Segment", "Fix Listings", "Review Listings", "Replacement Leads",
+    "Best Action Priority", "Best Action Type", "Target Category", "Product / Listing", "Expected Daily Sales",
+    "Action Score", "Market Shop", "Market Listing URL", "Market Read", "Matched Terms", "Execution Read", "Batch Action"
+  ], 20, { preserveOrder: true });
   renderTable("listing-state-recovery-batches-table", dashboard.operations.listingStateRecoveryBatches || [], [
     "Batch Priority", "Batch Status", "Segment", "Recovery Decision", "Listings", "Fix Listings",
     "Review Listings", "Prior Active", "Prior Draft", "Resolved Edit", "Replacement Leads",
