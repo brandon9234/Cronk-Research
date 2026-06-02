@@ -15,7 +15,7 @@ let buyerMomentTopListingRowsCache = null;
 let buyerMomentListingCycleRowsCache = new Map();
 let customBuyerMomentRange = null;
 const CUSTOM_BUYER_MOMENT_ID = "custom-date-range";
-const DATA_ASSET_VERSION = "next-action-evidence-trail-20260602-1";
+const DATA_ASSET_VERSION = "next-action-trace-state-20260602-1";
 const BUYER_MOMENT_LANE_HEIGHT = 30;
 const BUYER_MOMENT_HIGH_OPPORTUNITY_SCORE = 68;
 const BUYER_MOMENT_BUILD_FIT_ORDER = [
@@ -2654,6 +2654,7 @@ function renderBuyerMomentTimeline(summaries) {
     button.addEventListener("click", () => {
       selectedBuyerMomentId = button.dataset.momentId || "";
       renderBuyerMoments();
+      updateViewUrl("buyer-moments");
     });
   });
 }
@@ -2685,6 +2686,7 @@ function applyCustomRangeFromInputs() {
   endInput.value = customBuyerMomentRange.end;
   selectedBuyerMomentId = CUSTOM_BUYER_MOMENT_ID;
   renderBuyerMoments();
+  updateViewUrl("buyer-moments");
 }
 
 function clearCustomRange() {
@@ -2695,6 +2697,12 @@ function clearCustomRange() {
   if (startInput) startInput.value = "";
   if (endInput) endInput.value = "";
   renderBuyerMoments();
+  updateViewUrl("buyer-moments");
+}
+
+function handleBuyerMomentFilterChange() {
+  renderBuyerMoments();
+  updateViewUrl("buyer-moments");
 }
 
 function initBuyerMomentFilters() {
@@ -2724,7 +2732,7 @@ function initBuyerMomentFilters() {
   ].forEach(([id, eventName]) => {
     const element = document.getElementById(id);
     if (!element || element.dataset.bound === "true") return;
-    element.addEventListener(eventName, renderBuyerMoments);
+    element.addEventListener(eventName, handleBuyerMomentFilterChange);
     element.dataset.bound = "true";
   });
 
@@ -3629,6 +3637,9 @@ function selectCompanyProfile(company, options = {}) {
   renderCompanyOptions();
   hideCompanySuggestions();
   renderCompanyProfile();
+  if (document.getElementById("company")?.classList.contains("active")) {
+    updateViewUrl("company");
+  }
 }
 
 function companyRows(company) {
@@ -3903,6 +3914,7 @@ function updateViewUrl(viewId) {
   if (!window.history?.replaceState) return;
   const url = new URL(window.location.href);
   if (viewId) url.searchParams.set("view", viewId);
+  writeViewUrlState(url.searchParams, viewId);
   window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
 }
 
@@ -3932,6 +3944,101 @@ function setSelectIfOption(id, value) {
   if ([...select.options].some(option => option.value === value)) {
     select.value = value;
   }
+}
+
+function setUrlParam(params, key, value) {
+  const text = String(value ?? "").trim();
+  text ? params.set(key, text) : params.delete(key);
+}
+
+function inputValue(id) {
+  return document.getElementById(id)?.value || "";
+}
+
+function setInputFromParam(params, id, key) {
+  const input = document.getElementById(id);
+  const value = params.get(key);
+  if (input && value !== null) input.value = value;
+}
+
+function writeListingUrlState(params) {
+  setUrlParam(params, "listSearch", inputValue("listing-search"));
+  setUrlParam(params, "listProduction", inputValue("production-filter"));
+  setUrlParam(params, "listSubstrate", inputValue("substrate-filter"));
+  setUrlParam(params, "listSort", inputValue("listing-sort"));
+  setUrlParam(params, "listTimeframe", inputValue("listing-timeframe-preset"));
+  setUrlParam(params, "listStart", inputValue("listing-timeframe-start"));
+  setUrlParam(params, "listEnd", inputValue("listing-timeframe-end"));
+}
+
+function applyListingUrlState() {
+  const params = new URLSearchParams(window.location.search);
+  setInputFromParam(params, "listing-search", "listSearch");
+  setInputFromParam(params, "listing-timeframe-start", "listStart");
+  setInputFromParam(params, "listing-timeframe-end", "listEnd");
+  setSelectIfOption("production-filter", params.get("listProduction") || "");
+  setSelectIfOption("substrate-filter", params.get("listSubstrate") || "");
+  setSelectIfOption("listing-sort", params.get("listSort") || "");
+  setSelectIfOption("listing-timeframe-preset", params.get("listTimeframe") || "");
+  selectedListingTimeframePreset = document.getElementById("listing-timeframe-preset")?.value || "";
+}
+
+function writeBuyerMomentUrlState(params) {
+  setUrlParam(params, "bmMoment", selectedBuyerMomentId);
+  setUrlParam(params, "bmSource", inputValue("buyer-moment-source-filter"));
+  setUrlParam(params, "bmSort", inputValue("buyer-moment-sort"));
+  setUrlParam(params, "bmCalendar", inputValue("buyer-moment-calendar-search"));
+  setUrlParam(params, "bmSearch", inputValue("buyer-moment-search"));
+  const customActive = selectedBuyerMomentId === CUSTOM_BUYER_MOMENT_ID;
+  setUrlParam(params, "bmStart", customActive ? inputValue("buyer-moment-range-start") : "");
+  setUrlParam(params, "bmEnd", customActive ? inputValue("buyer-moment-range-end") : "");
+  const filters = activeBuyerMomentFilters();
+  setUrlParam(params, "bmFilters", filters.join(","));
+}
+
+function applyBuyerMomentUrlState() {
+  const params = new URLSearchParams(window.location.search);
+  setSelectIfOption("buyer-moment-source-filter", params.get("bmSource") || "");
+  setSelectIfOption("buyer-moment-sort", params.get("bmSort") || "");
+  setInputFromParam(params, "buyer-moment-calendar-search", "bmCalendar");
+  setInputFromParam(params, "buyer-moment-search", "bmSearch");
+  setInputFromParam(params, "buyer-moment-range-start", "bmStart");
+  setInputFromParam(params, "buyer-moment-range-end", "bmEnd");
+  const start = params.get("bmStart");
+  const end = params.get("bmEnd");
+  const moment = params.get("bmMoment");
+  if (start && end && (!moment || moment === CUSTOM_BUYER_MOMENT_ID)) {
+    customBuyerMomentRange = normalizeDateRange(start, end);
+  }
+  if (moment) selectedBuyerMomentId = moment;
+  if (!moment && start && end) selectedBuyerMomentId = CUSTOM_BUYER_MOMENT_ID;
+  const activeFilters = new Set(String(params.get("bmFilters") || "").split(",").filter(Boolean));
+  BUYER_MOMENT_FILTER_IDS.forEach(([key, id]) => {
+    const input = document.getElementById(id);
+    if (input) input.checked = activeFilters.has(key);
+  });
+}
+
+function writeCompanyUrlState(params) {
+  setUrlParam(params, "company", selectedCompany || inputValue("company-select"));
+  setUrlParam(params, "companyProduction", selectedCompanyProduction);
+}
+
+function applyCompanyUrlState() {
+  const params = new URLSearchParams(window.location.search);
+  const company = companyName(params.get("company") || "");
+  if (company && companyStats().has(company)) {
+    selectedCompany = company;
+    const search = document.getElementById("company-search");
+    if (search) search.value = company;
+  }
+  selectedCompanyProduction = params.get("companyProduction") || "";
+}
+
+function writeViewUrlState(params, viewId) {
+  if (viewId === "listings") writeListingUrlState(params);
+  if (viewId === "buyer-moments") writeBuyerMomentUrlState(params);
+  if (viewId === "company") writeCompanyUrlState(params);
 }
 
 function applyNextActionUrlState() {
@@ -4676,6 +4783,16 @@ function renderMyMaravia() {
   ], 500);
 }
 
+function handleListingInputChange() {
+  scheduleRenderListings();
+  updateViewUrl("listings");
+}
+
+function handleListingFilterChange() {
+  renderListings();
+  updateViewUrl("listings");
+}
+
 function renderListings() {
   const query = document.getElementById("listing-search").value.trim().toLowerCase();
   const production = document.getElementById("production-filter").value;
@@ -4861,11 +4978,13 @@ function initListingTimeframeControls() {
     selectedListingTimeframePreset = preset.value;
     syncListingTimeframeInputs();
     renderListings();
+    updateViewUrl("listings");
   });
   [startInput, endInput].forEach(input => {
     input.addEventListener("input", () => {
       markListingTimeframeCustom();
       scheduleRenderListings();
+      updateViewUrl("listings");
     });
   });
   preset.dataset.ready = "true";
@@ -4989,6 +5108,7 @@ function initCompanyProfile() {
   if (!selectedCompany) {
     selectedCompany = allCompanies.has("MyMaravia") ? "MyMaravia" : companyOptions()[0]?.name || "";
   }
+  applyCompanyUrlState();
   renderCompanyOptions();
 
   const select = document.getElementById("company-select");
@@ -5033,6 +5153,7 @@ function initCompanyProfile() {
       if (productionTarget) {
         selectedCompanyProduction = productionTarget.dataset.production || productionTarget.textContent || "";
         renderCompanyProfile();
+        updateViewUrl("company");
         document.getElementById("company-listings")?.scrollIntoView({ block: "start" });
         return;
       }
@@ -5050,6 +5171,7 @@ function initCompanyProfile() {
     clearProduction.addEventListener("click", () => {
       selectedCompanyProduction = "";
       renderCompanyProfile();
+      updateViewUrl("company");
     });
     clearProduction.dataset.bound = "true";
   }
@@ -5081,8 +5203,10 @@ function renderAll() {
   renderTrendTable("shop-trends", dashboard.comparison.shopTrends, ["Shop", "Trend", "Recent Avg Daily Sales", "Prior Avg Daily Sales", "Delta", "Delta %", "Latest Complete Date", "Latest Complete Daily Sales", "Total Daily Sales In Range", "Days Used", "Review Count", "Sales Per Review Used", "Trend Confidence", "Trend Source"], 120);
   initCompanyProfile();
   initListingFilters();
+  applyListingUrlState();
   renderListings();
   initBuyerMomentFilters();
+  applyBuyerMomentUrlState();
   renderBuyerMoments();
   renderBar("category-rollup-chart", dashboard.listing.categoryRollup || [], "Total Est. Daily Sales", "Product Substrate Category", 15, "#1f5fbf");
   renderTable("category-rollup-table", dashboard.listing.categoryRollup, ["Product Substrate Category", "Total Est. Daily Sales", "Total Est. 30D Sales", "Review Corpus Count", "Review Corpus 90D", "Review Corpus 365D", "Review Corpus Listings", "Listing Count", "Shop Count"], 40);
@@ -5105,10 +5229,10 @@ async function boot() {
   const initialView = initialDashboardView();
   if (initialView && initialView !== "opportunity") activateView(initialView);
   document.getElementById("top-shop-metric").addEventListener("change", renderTopShops);
-  document.getElementById("listing-search").addEventListener("input", scheduleRenderListings);
-  document.getElementById("production-filter").addEventListener("change", renderListings);
-  document.getElementById("substrate-filter").addEventListener("change", renderListings);
-  document.getElementById("listing-sort").addEventListener("change", renderListings);
+  document.getElementById("listing-search").addEventListener("input", handleListingInputChange);
+  document.getElementById("production-filter").addEventListener("change", handleListingFilterChange);
+  document.getElementById("substrate-filter").addEventListener("change", handleListingFilterChange);
+  document.getElementById("listing-sort").addEventListener("change", handleListingFilterChange);
 }
 
 boot().catch(error => {
