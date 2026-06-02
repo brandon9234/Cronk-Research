@@ -17,7 +17,7 @@ let buyerMomentTopListingRowsCache = null;
 let buyerMomentListingCycleRowsCache = new Map();
 let customBuyerMomentRange = null;
 const CUSTOM_BUYER_MOMENT_ID = "custom-date-range";
-const DATA_ASSET_VERSION = "state-recovery-decision-validation-20260602-1";
+const DATA_ASSET_VERSION = "state-recovery-decision-intake-20260602-1";
 const BUYER_MOMENT_LANE_HEIGHT = 30;
 const BUYER_MOMENT_HIGH_OPPORTUNITY_SCORE = 68;
 const BUYER_MOMENT_BUILD_FIT_ORDER = [
@@ -194,7 +194,9 @@ const wrappedColumns = new Set([
   "Top Listing Titles", "Open First Listing URL", "Batch Action", "Market Read", "Matched Terms",
   "Execution Read", "Suggested Final Decision", "Decision Fields To Fill", "No-Write Confirmation Gate",
   "Execution Step", "Current Etsy Listing URL", "Replacement Lead", "Decision Read",
-  "Validation Read", "Allowed Decision Statuses", "Allowed Final Decisions", "Import Check"
+  "Validation Read", "Allowed Decision Statuses", "Allowed Final Decisions", "Import Check",
+  "Candidate Final Decision", "Final Decision Options", "Decision Status Options",
+  "Candidate Reason", "Review Prompt", "Decision Guard", "Market Evidence", "TSV Fill Reminder"
 ]);
 
 const thumbnailColumns = new Set(["Thumbnail", "Listing Thumbnail", "Market Thumbnail", "Top Competitor Thumbnail", "My Thumbnail", "Competitor Thumbnail"]);
@@ -5945,6 +5947,15 @@ function initListingStateRecoveryFilters() {
     executionDecisionCopy.dataset.bound = "true";
   }
 
+  const intakeBriefCopy = document.getElementById("listing-state-recovery-intake-copy");
+  if (intakeBriefCopy && intakeBriefCopy.dataset.bound !== "true") {
+    intakeBriefCopy.addEventListener("click", () => {
+      copyListingStateRecoveryDecisionIntakeBrief()
+        .catch(() => setListingStateRecoveryIntakeCopyStatus("Decision intake copy failed."));
+    });
+    intakeBriefCopy.dataset.bound = "true";
+  }
+
   const reset = document.getElementById("listing-state-recovery-reset");
   if (reset && reset.dataset.bound !== "true") {
     reset.addEventListener("click", () => {
@@ -5988,6 +5999,11 @@ function setListingStateRecoveryCopyStatus(message) {
 
 function setListingStateRecoveryExecutionCopyStatus(message) {
   const target = document.getElementById("listing-state-recovery-execution-copy-status");
+  if (target) target.textContent = message || "";
+}
+
+function setListingStateRecoveryIntakeCopyStatus(message) {
+  const target = document.getElementById("listing-state-recovery-intake-copy-status");
   if (target) target.textContent = message || "";
 }
 
@@ -6184,6 +6200,41 @@ function listingStateRecoveryExecutionDecisionTsv(rows = dashboard.operations?.l
     .join("\n");
 }
 
+function listingStateRecoveryDecisionIntakeBrief(rows = dashboard.operations?.listingStateRecoveryDecisionIntake || []) {
+  const statusRow = dashboard.operations?.listingStateRecoveryDecisionStatus?.[0] || {};
+  const statusOptions = statusRow["Allowed Decision Statuses"] || "Confirmed, Needs Review, Deferred, Blocked";
+  const finalOptions = statusRow["Allowed Final Decisions"] || "Publish/reactivate, Return to draft, Park, Replace, Retire, No action";
+  const segmentSummary = countByRecoveryField(rows, "Segment").join("; ") || "No intake rows";
+  const lines = [
+    "Cronk Research - Recovery Decision Intake Brief",
+    `Generated: ${new Date().toISOString()}`,
+    `Rows needing review: ${rows.length}`,
+    `Segments: ${segmentSummary}`,
+    `Allowed Decision Status values: ${statusOptions}`,
+    `Allowed Final Decision values: ${finalOptions}`,
+    "No-write gate: Do not publish, reactivate, retire, or replace until Brandon confirms the listing ID and final decision.",
+    "",
+    "Rows"
+  ];
+  rows.forEach((row, index) => {
+    lines.push(
+      `${index + 1}. ${recoveryHandoffValue(row, "Segment")} - ${recoveryHandoffValue(row, "Product Title")}`,
+      `   Listing ID: ${recoveryHandoffValue(row, "Listing ID")}`,
+      `   State: ${recoveryHandoffValue(row, "Previous State")} -> ${recoveryHandoffValue(row, "Resolved State")} (${recoveryHandoffValue(row, "Recovery Status")})`,
+      `   Candidate final decision: ${recoveryHandoffValue(row, "Candidate Final Decision")}`,
+      `   Final decision options: ${recoveryHandoffValue(row, "Final Decision Options")}`,
+      `   Reason: ${recoveryHandoffValue(row, "Candidate Reason")}`,
+      `   Review prompt: ${recoveryHandoffValue(row, "Review Prompt")}`,
+      `   Current Etsy listing: ${recoveryHandoffValue(row, "Current Etsy Listing URL")}`,
+      `   Replacement lead: ${recoveryHandoffValue(row, "Replacement Lead")}`,
+      `   Replacement URL: ${recoveryHandoffValue(row, "Replacement URL")}`,
+      `   Market evidence: ${recoveryHandoffValue(row, "Market Evidence")}`,
+      ""
+    );
+  });
+  return lines.join("\n").trim();
+}
+
 async function copyListingStateRecoveryDecisionTsv() {
   const rows = filteredListingStateRecoveryQueue();
   const text = listingStateRecoveryDecisionTsv(rows);
@@ -6206,6 +6257,18 @@ async function copyListingStateRecoveryExecutionDecisionTsv() {
     return;
   }
   setListingStateRecoveryExecutionCopyStatus(`${fmt(rows.length, "Listing Count")} execution decision rows copied.`);
+}
+
+async function copyListingStateRecoveryDecisionIntakeBrief() {
+  const rows = dashboard.operations?.listingStateRecoveryDecisionIntake || [];
+  const text = listingStateRecoveryDecisionIntakeBrief(rows);
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+  } else if (!fallbackCopyText(text)) {
+    setListingStateRecoveryIntakeCopyStatus("Decision intake copy unavailable in this browser.");
+    return;
+  }
+  setListingStateRecoveryIntakeCopyStatus(`${fmt(rows.length, "Listing Count")} decision-intake rows copied.`);
 }
 
 async function copyListingStateRecoveryBatchHandoff(segment) {
@@ -6404,6 +6467,13 @@ function renderOperations() {
     "Current Etsy Listing URL", "Replacement Lead", "Replacement URL", "Best Action Priority",
     "Best Action Type", "Target Category", "Expected Daily Sales", "Action Score", "Market Shop",
     "Market Listing URL", "Matched Terms", "Market Read"
+  ], 40, { preserveOrder: true });
+  renderTable("listing-state-recovery-decision-intake-table", dashboard.operations.listingStateRecoveryDecisionIntake || [], [
+    "Review Priority", "Review Status", "Segment", "Listing ID", "Product Title",
+    "Recovery Status", "Previous State", "Resolved State", "Candidate Final Decision",
+    "Final Decision Options", "Decision Status Options", "Candidate Reason", "Review Prompt",
+    "Decision Guard", "Current Etsy Listing URL", "Replacement Lead", "Replacement URL",
+    "Market Evidence", "TSV Fill Reminder"
   ], 40, { preserveOrder: true });
   renderTable("listing-state-recovery-batches-table", dashboard.operations.listingStateRecoveryBatches || [], [
     "Batch Priority", "Batch Status", "Segment", "Recovery Decision", "Listings", "Fix Listings",
