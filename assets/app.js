@@ -17,7 +17,7 @@ let buyerMomentTopListingRowsCache = null;
 let buyerMomentListingCycleRowsCache = new Map();
 let customBuyerMomentRange = null;
 const CUSTOM_BUYER_MOMENT_ID = "custom-date-range";
-const DATA_ASSET_VERSION = "market-size-listing-search-20260602-1";
+const DATA_ASSET_VERSION = "taxonomy-overhaul-20260602-1";
 const BUYER_MOMENT_LANE_HEIGHT = 30;
 const BUYER_MOMENT_HIGH_OPPORTUNITY_SCORE = 68;
 const BUYER_MOMENT_BUILD_FIT_ORDER = [
@@ -123,7 +123,7 @@ const numericColumns = new Set([
   "Broad Market 30D Sales", "Segment Market Daily Sales", "Segment Market 30D Sales",
   "Build Queue Daily Sales", "Build Queue 30D Sales", "Listing Evidence Daily Sales",
   "Open Long Tails", "Evidence Listings", "Tracked Shops", "My Listing Count", "Weighted Coverage %",
-  "Preview Daily Sales", "Preview Listing Count",
+  "Preview Daily Sales", "Preview Listing Count", "Taxonomy Confidence",
   "Last Year Timeframe Estimated Sales", "Last Year Timeframe Avg Daily Sales",
   "Last Year Timeframe Review Count", "Last Year Timeframe Weeks", "Last Year Timeframe Weeks With Demand",
   "Action Score", "Expected Daily Sales"
@@ -185,7 +185,7 @@ const wrappedColumns = new Set([
   "Best Listing", "Top Competitor Row", "Repeated Match Cues", "Cue / Action",
   "Evidence", "Next Edit", "Market Control Read", "Last Year Timeframe Window", "Last Year Timeframe Signal",
   "Action", "Product / Listing", "Source Signal", "Next Step", "Product / Segment",
-  "Market Size Source", "Market Size Read"
+  "Market Size Source", "Market Size Read", "Product Family", "Taxonomy Evidence"
 ]);
 
 const thumbnailColumns = new Set(["Thumbnail", "Listing Thumbnail", "Market Thumbnail", "Top Competitor Thumbnail", "My Thumbnail", "Competitor Thumbnail"]);
@@ -5620,7 +5620,7 @@ function renderListings() {
   renderTable("top-listings", rows, [
     "Overall Rank", "Thumbnail", "Weekly Sales Graph", "Recent Daily Sales", "Recent Weekly Sales", "Weekly Trend", "Peak Sales Week", "Peak Daily Sales", "Peak Weekly Sales",
     ...timeframeColumns,
-    "Shop", "Est. Daily Sales", "Est. 30D Sales", "Blank / Generic Sources", "Product Title", "Tags", "Tags Source", "Best Guess Tags", "Product Category", "Product Substrate Category",
+    "Shop", "Est. Daily Sales", "Est. 30D Sales", "Blank / Generic Sources", "Product Title", "Tags", "Tags Source", "Best Guess Tags", "Product Category", "Product Substrate Category", "Product Family", "Taxonomy Confidence", "Taxonomy Evidence",
     "Production Tag", "Customization Tag", "Tag Confidence", "Tag Evidence",
     "Review Corpus Count", "Review Corpus 90D", "Review Corpus 365D",
     "Review Corpus Avg Rating", "Review Corpus Latest ISO", "Evidence Confidence", "Last Review ISO", "Listing URL"
@@ -6025,7 +6025,7 @@ function renderAll() {
   applyBuyerMomentUrlState();
   renderBuyerMoments();
   renderBar("category-rollup-chart", dashboard.listing.categoryRollup || [], "Total Est. Daily Sales", "Product Substrate Category", 15, "#1f5fbf");
-  renderTable("category-rollup-table", dashboard.listing.categoryRollup, ["Product Substrate Category", "Total Est. Daily Sales", "Total Est. 30D Sales", "Review Corpus Count", "Review Corpus 90D", "Review Corpus 365D", "Review Corpus Listings", "Listing Count", "Shop Count"], 40);
+  renderTable("category-rollup-table", dashboard.listing.categoryRollup, ["Product Substrate Category", "Product Family", "Total Est. Daily Sales", "Total Est. 30D Sales", "Review Corpus Count", "Review Corpus 90D", "Review Corpus 365D", "Review Corpus Listings", "Listing Count", "Shop Count"], 40);
   renderBar("demand-summary-chart", dashboard.listing.demandSummary || [], "Total Est. Daily Sales", "Demand Intent Cluster", 20, "#0f766e");
   renderTable("demand-summary-table", dashboard.listing.demandSummary, ["Demand Intent Cluster", "Total Est. Daily Sales", "Listing Count", "Review Count", "Review Corpus Count", "Review Corpus 90D", "Review Corpus Listings", "Avg Daily Sales / Listing", "Shop Count"], 50);
   renderStatusTable("data-freshness-table", dashboard.operations.dataFreshness || [], ["Status", "Source", "Freshness Read", "Last Updated", "Data Through", "Record Count", "Decision Impact", "Refresh Step"], 40);
