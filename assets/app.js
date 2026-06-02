@@ -17,7 +17,7 @@ let buyerMomentTopListingRowsCache = null;
 let buyerMomentListingCycleRowsCache = new Map();
 let customBuyerMomentRange = null;
 const CUSTOM_BUYER_MOMENT_ID = "custom-date-range";
-const DATA_ASSET_VERSION = "package-fact-intake-validator-20260602-1";
+const DATA_ASSET_VERSION = "package-fact-research-packets-20260602-1";
 const BUYER_MOMENT_LANE_HEIGHT = 30;
 const BUYER_MOMENT_HIGH_OPPORTUNITY_SCORE = 68;
 const BUYER_MOMENT_BUILD_FIT_ORDER = [
@@ -201,13 +201,15 @@ const wrappedColumns = new Set([
   "Unsafe Reuse Warning", "No Write Gate", "Suggested Decision", "Suggestion Rationale",
   "Template Starter", "Starter Brief", "Required Facts", "Market Evidence To Review", "Evidence URL",
   "Do Not Reuse", "Next Gate", "Source Audit Checklist", "Fact Capture Fields", "Evidence Targets",
-  "Reject If", "Decision Output", "Editable Fields", "Allowed Audit Statuses", "Source Audit URL"
+  "Reject If", "Decision Output", "Editable Fields", "Allowed Audit Statuses", "Source Audit URL",
+  "Source Queries", "Primary Source Targets", "Field Fill Plan", "Acceptance Criteria",
+  "Adjacent Evidence Link", "Adjacent Evidence Read", "Suggested Fact Status", "Needs Brandon Decision"
 ]);
 
 const thumbnailColumns = new Set(["Thumbnail", "Listing Thumbnail", "Market Thumbnail", "Top Competitor Thumbnail", "My Thumbnail", "Competitor Thumbnail"]);
 const sourceLinkColumns = new Set(["Blank / Generic Sources"]);
 const companyColumns = new Set(["Shop", "Market Shop", "Top Shop"]);
-const badgeColumns = new Set(["Conquest Status", "Market State", "Opportunity Band", "MyMaravia Build Read", "Local Review Signal", "Action Type", "Confidence", "Change Type", "Investigation Status", "Resolution Status", "Resolved State", "Recovery Status", "Batch Status", "Market Signal", "Execution Status", "Decision Fill State", "Template Readiness", "Top Match Confidence", "Suggested Decision", "Audit Status"]);
+const badgeColumns = new Set(["Conquest Status", "Market State", "Opportunity Band", "MyMaravia Build Read", "Local Review Signal", "Action Type", "Confidence", "Change Type", "Investigation Status", "Resolution Status", "Resolved State", "Recovery Status", "Batch Status", "Market Signal", "Execution Status", "Decision Fill State", "Template Readiness", "Top Match Confidence", "Suggested Decision", "Audit Status", "Research Status"]);
 const realTagColumns = new Set(["Tags", "Actual Tags", "My Actual Tags"]);
 
 const plotConfig = { responsive: true, displayModeBar: false };
@@ -6562,6 +6564,18 @@ function renderOperations() {
     "Required Variations / Defaults", "Required Personalization", "Required Shipping / Processing",
     "Required Image Assets", "Adjacent Evidence To Review", "Do Not Reuse", "Owner Skill",
     "Image Workflow Skill", "Expected Output", "Next Gate", "No Write Gate"
+  ], 20, { preserveOrder: true });
+  renderTable("next-action-package-fact-research-status", dashboard.operations.nextActionPackageFactResearchStatus || [], [
+    "Status", "Source", "Packet Rows", "Family Counts", "Research Owners", "Image Workflow Skills",
+    "All Rows No-Write Gated", "Current State", "QA Gate", "Packet Summary Updated",
+    "Packet Markdown", "Packet TSV", "Packet JSON", "Required Source Gate", "No-Write Guard"
+  ], 1, { preserveOrder: true });
+  renderTable("next-action-package-fact-research-packets", dashboard.operations.nextActionPackageFactResearchPackets || [], [
+    "Priority", "Action ID", "Research Status", "Package Family", "Target Category", "Package Title",
+    "New Template/SKU Family", "Research Owner", "Image Workflow Skill", "Buyer Intent", "Source Queries",
+    "Primary Source Targets", "Field Fill Plan", "Acceptance Criteria", "Reject If",
+    "Adjacent Evidence Link", "Adjacent Evidence Read", "Suggested Fact Status",
+    "Needs Brandon Decision", "Next Gate", "No Write Gate"
   ], 20, { preserveOrder: true });
   renderTable("next-action-template-starter-briefs", dashboard.operations.nextActionTemplateStarterBriefs || [], [
     "Brief Priority", "Action ID", "Template Starter", "Package Family", "Target Category", "Package Title",
