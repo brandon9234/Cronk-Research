@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Cronk Research</title>
-  <link rel="stylesheet" href="assets/styles.css?v=next-action-source-badges-20260602-1">
+  <link rel="stylesheet" href="assets/styles.css?v=next-action-trace-strength-20260602-1">
   <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
 </head>
 <body>
@@ -55,6 +55,13 @@
                 <option value="Scale">Scale</option>
                 <option value="Seasonal">Seasonal</option>
                 <option value="Launch">Launch</option>
+              </select>
+              <select id="next-action-trace-filter" aria-label="Next action trace strength filter">
+                <option value="">All trace strength</option>
+                <option value="strong">Strong source</option>
+                <option value="good">Good or stronger</option>
+                <option value="exact">Exact listing trace</option>
+                <option value="audit">Needs source audit</option>
               </select>
               <input id="next-action-search" type="search" placeholder="Find category, listing, cue">
               <button id="next-action-copy-link" class="link-button" type="button">Copy link</button>
@@ -590,6 +597,6 @@
       </section>
     </main>
   </div>
-  <script src="assets/app.js?v=next-action-source-badges-20260602-1"></script>
+  <script src="assets/app.js?v=next-action-trace-strength-20260602-1"></script>
 </body>
 </html>

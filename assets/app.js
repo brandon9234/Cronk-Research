@@ -8,6 +8,7 @@ let selectedBuyerMomentId = "";
 let selectedImportBuyerMomentId = "";
 let selectedMarketSegment = "";
 let selectedNextActionKey = "";
+let nextActionTraceCache = new Map();
 let buyerMomentRowsCache = new Map();
 let buyerMomentSummariesCache = null;
 let buyerMomentCatalogCache = null;
@@ -15,7 +16,7 @@ let buyerMomentTopListingRowsCache = null;
 let buyerMomentListingCycleRowsCache = new Map();
 let customBuyerMomentRange = null;
 const CUSTOM_BUYER_MOMENT_ID = "custom-date-range";
-const DATA_ASSET_VERSION = "next-action-source-badges-20260602-1";
+const DATA_ASSET_VERSION = "next-action-trace-strength-20260602-1";
 const BUYER_MOMENT_LANE_HEIGHT = 30;
 const BUYER_MOMENT_HIGH_OPPORTUNITY_SCORE = 68;
 const BUYER_MOMENT_BUILD_FIT_ORDER = [
@@ -3928,6 +3929,7 @@ function nextActionFilterState() {
   return {
     preset: document.getElementById("next-action-preset-filter")?.value || "",
     type: document.getElementById("next-action-type-filter")?.value || "",
+    trace: document.getElementById("next-action-trace-filter")?.value || "",
     search: (document.getElementById("next-action-search")?.value || "").trim(),
     action: selectedNextActionKey
   };
@@ -4045,6 +4047,7 @@ function applyNextActionUrlState() {
   const params = new URLSearchParams(window.location.search);
   setSelectIfOption("next-action-preset-filter", params.get("naPreset") || "");
   setSelectIfOption("next-action-type-filter", params.get("naType") || "");
+  setSelectIfOption("next-action-trace-filter", params.get("naTrace") || "");
   const search = params.get("naSearch");
   const input = document.getElementById("next-action-search");
   if (input && search !== null) input.value = search;
@@ -4056,6 +4059,7 @@ function nextActionShareUrl(state = nextActionFilterState()) {
   url.searchParams.set("view", "opportunity");
   state.preset ? url.searchParams.set("naPreset", state.preset) : url.searchParams.delete("naPreset");
   state.type ? url.searchParams.set("naType", state.type) : url.searchParams.delete("naType");
+  state.trace ? url.searchParams.set("naTrace", state.trace) : url.searchParams.delete("naTrace");
   state.search ? url.searchParams.set("naSearch", state.search) : url.searchParams.delete("naSearch");
   state.action ? url.searchParams.set("naAction", state.action) : url.searchParams.delete("naAction");
   return url;
@@ -4080,9 +4084,11 @@ async function copyNextActionViewLink() {
 function resetNextActionView() {
   const preset = document.getElementById("next-action-preset-filter");
   const type = document.getElementById("next-action-type-filter");
+  const trace = document.getElementById("next-action-trace-filter");
   const search = document.getElementById("next-action-search");
   if (preset) preset.value = "";
   if (type) type.value = "";
+  if (trace) trace.value = "";
   if (search) search.value = "";
   selectedNextActionKey = "";
   setNextActionShareStatus("");
@@ -4097,7 +4103,7 @@ function handleNextActionFilterChange() {
 }
 
 function initNextActionFilters() {
-  ["next-action-preset-filter", "next-action-type-filter", "next-action-search"].forEach(id => {
+  ["next-action-preset-filter", "next-action-type-filter", "next-action-trace-filter", "next-action-search"].forEach(id => {
     const element = document.getElementById(id);
     if (!element || element.dataset.bound === "true") return;
     element.addEventListener("input", handleNextActionFilterChange);
@@ -4133,10 +4139,12 @@ function nextActionPresetMatches(row, preset) {
 function filteredNextActions(rows) {
   const preset = document.getElementById("next-action-preset-filter")?.value || "";
   const type = document.getElementById("next-action-type-filter")?.value || "";
+  const trace = document.getElementById("next-action-trace-filter")?.value || "";
   const query = (document.getElementById("next-action-search")?.value || "").trim().toLowerCase();
   return rows.filter(row => {
     if (type && row["Action Type"] !== type) return false;
     if (!nextActionPresetMatches(row, preset)) return false;
+    if (!nextActionTraceFilterMatches(row, trace)) return false;
     if (query && !Object.values(row).join(" ").toLowerCase().includes(query)) return false;
     return true;
   });
@@ -4213,6 +4221,8 @@ function renderNextActionTable(rows, columns, limit = 40, selectedRow = null) {
       const cls = wrappedColumns.has(col) ? "wrap" : "";
       const value = col === "Recipe"
         ? `<button class="action-select-button${active ? " active" : ""}" type="button" data-next-action-key="${escapeHtml(key)}">${active ? "Open" : "Open"}</button>`
+        : col === "Trace Strength"
+          ? actionTraceStrengthBadge(row)
         : col.toLowerCase().includes("url")
           ? linkCell(row[col])
           : escapeHtml(fmt(row[col], col));
@@ -4429,8 +4439,73 @@ function actionTraceItems(row) {
   ].filter(Boolean);
 }
 
+function cachedActionTraceItems(row) {
+  const key = nextActionKey(row);
+  if (key && nextActionTraceCache.has(key)) return nextActionTraceCache.get(key);
+  const items = actionTraceItems(row);
+  if (key) nextActionTraceCache.set(key, items);
+  return items;
+}
+
+function actionTraceConfidenceScore(item) {
+  const confidence = String(item?.confidence || "").toLowerCase();
+  if (confidence === "exact listing") return 34;
+  if (confidence === "title phrase") return 26;
+  if (confidence === "action shop") return 22;
+  if (confidence === "matched listing") return 20;
+  if (confidence === "title token") return 18;
+  if (confidence === "category match") return 14;
+  if (confidence === "evidence text") return 12;
+  if (confidence === "generated trace") return 10;
+  if (confidence === "search cue") return 8;
+  if (confidence === "fallback search") return 4;
+  return 0;
+}
+
+function actionTraceStrength(row) {
+  const items = cachedActionTraceItems(row);
+  const score = items.reduce((total, item) => total + actionTraceConfidenceScore(item), 0);
+  const exactListings = items.filter(item => item.confidence === "exact listing").length;
+  const hasCompany = items.some(item => item.label === "Company");
+  const hasSource = items.some(item => item.label === "Source");
+  const hasBuyerMoment = items.some(item => item.label === "Buyer Moment");
+  if (score >= 76 && exactListings >= 1 && hasCompany && hasSource) {
+    return { label: "Strong source", tier: "strong", score, exactListings, hasCompany, hasSource, hasBuyerMoment };
+  }
+  if (score >= 48 && hasSource && (exactListings >= 1 || hasBuyerMoment || hasCompany)) {
+    return { label: "Good source", tier: "good", score, exactListings, hasCompany, hasSource, hasBuyerMoment };
+  }
+  return { label: "Needs audit", tier: "audit", score, exactListings, hasCompany, hasSource, hasBuyerMoment };
+}
+
+function actionTraceStrengthBadge(row) {
+  const trace = actionTraceStrength(row);
+  const cls = trace.tier === "strong" ? "good" : trace.tier === "good" ? "flat" : "warn";
+  return `<span class="badge ${cls}" title="${escapeHtml(trace.score)} trace points">${escapeHtml(trace.label)}</span>`;
+}
+
+function nextActionTraceFilterMatches(row, filter) {
+  if (!filter) return true;
+  const trace = actionTraceStrength(row);
+  if (filter === "strong") return trace.tier === "strong";
+  if (filter === "good") return trace.tier === "strong" || trace.tier === "good";
+  if (filter === "audit") return trace.tier === "audit";
+  if (filter === "exact") return trace.exactListings > 0;
+  return true;
+}
+
+function nextActionTraceMix(rows) {
+  const counts = { strong: 0, good: 0, audit: 0, exact: 0 };
+  rows.forEach(row => {
+    const trace = actionTraceStrength(row);
+    counts[trace.tier] += 1;
+    if (trace.exactListings > 0) counts.exact += 1;
+  });
+  return counts;
+}
+
 function actionEvidenceTrail(row) {
-  return actionTraceItems(row).map(item => `${item.label}: ${item.value} [${item.confidence}]`);
+  return cachedActionTraceItems(row).map(item => `${item.label}: ${item.value} [${item.confidence}]`);
 }
 
 function openActionListingEvidence(row) {
@@ -4612,7 +4687,7 @@ function renderNextActionRecipe(row, visibleCount, totalCount) {
         <div class="action-recipe-block"><h3>Price</h3>${recipeList([actionPriceNote(row)])}</div>
         <div class="action-recipe-block"><h3>Personalization</h3>${recipeList([actionPersonalizationField(row)])}</div>
         <div class="action-recipe-block"><h3>Source Notes</h3>${recipeList(sourceNotes)}</div>
-        <div class="action-recipe-block"><h3>Evidence Trail</h3>${recipeTraceList(actionTraceItems(row))}</div>
+        <div class="action-recipe-block"><h3>Evidence Trail</h3>${recipeTraceList(cachedActionTraceItems(row))}</div>
         <div class="action-recipe-block"><h3>Blank Notes</h3>${recipeList([actionBlankNote(row)])}</div>
         <div class="action-recipe-block"><h3>Next Step</h3>${recipeList([nextStep])}</div>
         <div class="action-recipe-block"><h3>Evidence</h3>${recipeList([evidence])}</div>
@@ -4644,16 +4719,17 @@ function renderOpportunity() {
   const nextActions = dashboard.nextActions?.queue || [];
   const visibleNextActions = filteredNextActions(nextActions);
   const selectedNextAction = selectedNextActionFromRows(visibleNextActions);
+  const traceMix = nextActionTraceMix(visibleNextActions);
   const nextActionsSummary = document.getElementById("next-actions-summary");
   if (nextActionsSummary) {
     nextActionsSummary.textContent = selectedNextAction
-      ? `${fmt(visibleNextActions.length, "Listing Count")} visible of ${fmt(nextActions.length, "Listing Count")} ranked actions. Selected: priority ${fmt(selectedNextAction.Priority, "Priority")} ${selectedNextAction["Action Type"]} - ${selectedNextAction["Product / Listing"] || selectedNextAction.Action || "selected opportunity"}.`
+      ? `${fmt(visibleNextActions.length, "Listing Count")} visible of ${fmt(nextActions.length, "Listing Count")} ranked actions. Trace: ${fmt(traceMix.strong, "Listing Count")} strong, ${fmt(traceMix.good, "Listing Count")} good, ${fmt(traceMix.audit, "Listing Count")} audit. Selected: priority ${fmt(selectedNextAction.Priority, "Priority")} ${selectedNextAction["Action Type"]} - ${selectedNextAction["Product / Listing"] || selectedNextAction.Action || "selected opportunity"}.`
       : "No next-action rows are available in this snapshot.";
   }
   renderNextActionRecipe(selectedNextAction, visibleNextActions.length, nextActions.length);
   renderNextActionTable(visibleNextActions, [
     "Priority", "Action Type", "Action", "Target Category", "Product / Listing",
-    "Action Score", "Expected Daily Sales", "Source Signal", "Confidence",
+    "Action Score", "Expected Daily Sales", "Source Signal", "Confidence", "Trace Strength",
     "Evidence", "Next Step", "Market Listing URL", "My Listing URL"
   ], 40, selectedNextAction);
 
