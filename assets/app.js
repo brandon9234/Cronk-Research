@@ -17,7 +17,7 @@ let buyerMomentTopListingRowsCache = null;
 let buyerMomentListingCycleRowsCache = new Map();
 let customBuyerMomentRange = null;
 const CUSTOM_BUYER_MOMENT_ID = "custom-date-range";
-const DATA_ASSET_VERSION = "template-gap-suggested-decisions-20260602-1";
+const DATA_ASSET_VERSION = "template-starter-briefs-20260602-1";
 const BUYER_MOMENT_LANE_HEIGHT = 30;
 const BUYER_MOMENT_HIGH_OPPORTUNITY_SCORE = 68;
 const BUYER_MOMENT_BUILD_FIT_ORDER = [
@@ -198,7 +198,9 @@ const wrappedColumns = new Set([
   "Candidate Final Decision", "Final Decision Options", "Decision Status Options",
   "Candidate Reason", "Review Prompt", "Decision Guard", "Market Evidence", "TSV Fill Reminder",
   "Package Title", "Recommended Path", "Top Template Title", "Top Template URL", "Unresolved Facts",
-  "Unsafe Reuse Warning", "No Write Gate", "Suggested Decision", "Suggestion Rationale"
+  "Unsafe Reuse Warning", "No Write Gate", "Suggested Decision", "Suggestion Rationale",
+  "Template Starter", "Starter Brief", "Required Facts", "Market Evidence To Review", "Evidence URL",
+  "Do Not Reuse", "Next Gate"
 ]);
 
 const thumbnailColumns = new Set(["Thumbnail", "Listing Thumbnail", "Market Thumbnail", "Top Competitor Thumbnail", "My Thumbnail", "Competitor Thumbnail"]);
@@ -6537,6 +6539,11 @@ function renderOperations() {
     "Suggested Decision", "Suggestion Rationale", "Recommended Path", "Top Match Confidence",
     "Top Match Score", "Top Template Listing ID", "Top Template Title", "Top Template Family", "Top Template URL", "Template Readiness",
     "Unresolved Facts", "Unsafe Reuse Warning", "Next Owner Skill", "Decision Fields To Fill", "No Write Gate"
+  ], 20, { preserveOrder: true });
+  renderTable("next-action-template-starter-briefs", dashboard.operations.nextActionTemplateStarterBriefs || [], [
+    "Brief Priority", "Action ID", "Template Starter", "Package Family", "Target Category", "Package Title",
+    "Starter Brief", "Required Facts", "Market Evidence To Review", "Evidence URL", "Unresolved Facts",
+    "Do Not Reuse", "Owner Skill", "Next Gate", "No Write Gate"
   ], 20, { preserveOrder: true });
   renderStatusTable("listing-state-alerts-table", dashboard.operations.listingStateAlerts || [], ["Status", "Check", "Finding", "Affected Rows", "Snapshot Read", "Example", "Decision Impact", "Next Action"], 20);
   renderTable("listing-state-investigation-table", dashboard.operations.listingStateInvestigation || [], [
