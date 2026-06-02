@@ -17,7 +17,7 @@ let buyerMomentTopListingRowsCache = null;
 let buyerMomentListingCycleRowsCache = new Map();
 let customBuyerMomentRange = null;
 const CUSTOM_BUYER_MOMENT_ID = "custom-date-range";
-const DATA_ASSET_VERSION = "package-fact-research-packets-20260602-1";
+const DATA_ASSET_VERSION = "package-fact-research-sheet-20260602-1";
 const BUYER_MOMENT_LANE_HEIGHT = 30;
 const BUYER_MOMENT_HIGH_OPPORTUNITY_SCORE = 68;
 const BUYER_MOMENT_BUILD_FIT_ORDER = [
@@ -6568,7 +6568,9 @@ function renderOperations() {
   renderTable("next-action-package-fact-research-status", dashboard.operations.nextActionPackageFactResearchStatus || [], [
     "Status", "Source", "Packet Rows", "Family Counts", "Research Owners", "Image Workflow Skills",
     "All Rows No-Write Gated", "Current State", "QA Gate", "Packet Summary Updated",
-    "Packet Markdown", "Packet TSV", "Packet JSON", "Required Source Gate", "No-Write Guard"
+    "Packet Markdown", "Packet TSV", "Packet JSON", "Operator Tabs",
+    "Package Fact Research URL", "Package Fact Research Summary URL", "Package Fact Research QA URL",
+    "Required Source Gate", "No-Write Guard"
   ], 1, { preserveOrder: true });
   renderTable("next-action-package-fact-research-packets", dashboard.operations.nextActionPackageFactResearchPackets || [], [
     "Priority", "Action ID", "Research Status", "Package Family", "Target Category", "Package Title",
