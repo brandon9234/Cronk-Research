@@ -17,7 +17,7 @@ let buyerMomentTopListingRowsCache = null;
 let buyerMomentListingCycleRowsCache = new Map();
 let customBuyerMomentRange = null;
 const CUSTOM_BUYER_MOMENT_ID = "custom-date-range";
-const DATA_ASSET_VERSION = "state-recovery-batch-handoff-20260602-1";
+const DATA_ASSET_VERSION = "state-recovery-decision-tsv-20260602-1";
 const BUYER_MOMENT_LANE_HEIGHT = 30;
 const BUYER_MOMENT_HIGH_OPPORTUNITY_SCORE = 68;
 const BUYER_MOMENT_BUILD_FIT_ORDER = [
@@ -5925,6 +5925,14 @@ function initListingStateRecoveryFilters() {
     copy.dataset.bound = "true";
   }
 
+  const decisionCopy = document.getElementById("listing-state-recovery-decision-copy");
+  if (decisionCopy && decisionCopy.dataset.bound !== "true") {
+    decisionCopy.addEventListener("click", () => {
+      copyListingStateRecoveryDecisionTsv().catch(() => setListingStateRecoveryCopyStatus("Decision TSV copy failed."));
+    });
+    decisionCopy.dataset.bound = "true";
+  }
+
   const reset = document.getElementById("listing-state-recovery-reset");
   if (reset && reset.dataset.bound !== "true") {
     reset.addEventListener("click", () => {
@@ -6058,6 +6066,71 @@ async function copyListingStateRecoveryHandoff() {
     return;
   }
   setListingStateRecoveryCopyStatus(`${fmt(rows.length, "Listing Count")} recovery rows copied.`);
+}
+
+function tsvCell(value) {
+  return String(value ?? "")
+    .replace(/\t/g, " ")
+    .replace(/\r?\n/g, " ")
+    .trim();
+}
+
+function listingStateRecoveryDecisionTsv(rows = filteredListingStateRecoveryQueue()) {
+  const headers = [
+    "Decision Status",
+    "Final Decision",
+    "Decision Date",
+    "Decision Owner",
+    "Decision Notes",
+    "Segment",
+    "Listing ID",
+    "Product Title",
+    "Recovery Status",
+    "Previous State",
+    "Resolved State",
+    "Recommended Decision",
+    "Recommended Next Action",
+    "Why It Matters",
+    "Resolved Listing URL",
+    "Replacement Lead",
+    "Replacement URL",
+    "Resolved At"
+  ];
+  const dataRows = rows.map(row => [
+    "",
+    "",
+    "",
+    "",
+    "",
+    row.Segment,
+    row["Listing ID"],
+    row["Product Title"],
+    row["Recovery Status"],
+    row["Previous State"],
+    row["Resolved State"],
+    row["Recovery Decision"],
+    row["Next Action"],
+    row["Why It Matters"],
+    row["Resolved Listing URL"],
+    row["Possible Replacement Listing"],
+    row["Replacement URL"],
+    row["Resolved At"]
+  ]);
+  return [headers, ...dataRows]
+    .map(row => row.map(tsvCell).join("\t"))
+    .join("\n");
+}
+
+async function copyListingStateRecoveryDecisionTsv() {
+  const rows = filteredListingStateRecoveryQueue();
+  const text = listingStateRecoveryDecisionTsv(rows);
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+  } else if (!fallbackCopyText(text)) {
+    setListingStateRecoveryCopyStatus("Decision TSV copy unavailable in this browser.");
+    return;
+  }
+  setListingStateRecoveryCopyStatus(`${fmt(rows.length, "Listing Count")} decision rows copied.`);
 }
 
 async function copyListingStateRecoveryBatchHandoff(segment) {
