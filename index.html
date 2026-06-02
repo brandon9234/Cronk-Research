@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Cronk Research</title>
-  <link rel="stylesheet" href="assets/styles.css?v=next-action-launch-briefs-20260602-1">
+  <link rel="stylesheet" href="assets/styles.css?v=market-size-listing-search-20260602-1">
   <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
 </head>
 <body>
@@ -21,6 +21,7 @@
       <button class="tab active" data-view="opportunity">Opportunity</button>
       <button class="tab" data-view="mymaravia">MyMaravia</button>
       <button class="tab" data-view="market-control">Market Control</button>
+      <button class="tab" data-view="market-size">Market Size</button>
       <button class="tab" data-view="overview">Overview</button>
       <button class="tab" data-view="comparison">Comparison</button>
       <button class="tab" data-view="company">Company</button>
@@ -226,6 +227,73 @@
             <h2>Winner Cues And Action Queue</h2>
           </div>
           <div id="market-control-actions"></div>
+        </section>
+      </section>
+
+      <section id="market-size" class="view">
+        <div id="market-size-metrics" class="metric-grid"></div>
+        <section class="panel">
+          <div class="panel-head with-control">
+            <div>
+              <h2>Market Size By Product</h2>
+              <p id="market-size-count" class="subtle listing-count"></p>
+            </div>
+            <div class="listing-controls">
+              <select id="market-size-product-filter" aria-label="Market size product filter">
+                <option value="">All products and segments</option>
+              </select>
+              <select id="market-size-source-filter" aria-label="Market size source filter">
+                <option value="">Best available market-size read</option>
+                <option value="rollup">Broad category rollup only</option>
+                <option value="segment">MyMaravia segment sizing only</option>
+                <option value="build">Build-queue long-tail evidence</option>
+                <option value="listing">Listing evidence rows</option>
+              </select>
+              <select id="market-size-sort" aria-label="Market size sort">
+                <option value="primary-desc">Market size: high to low</option>
+                <option value="gap-desc">Leader gap: high to low</option>
+                <option value="coverage-asc">Coverage: low to high</option>
+                <option value="listings-desc">Listing evidence: high to low</option>
+                <option value="name-asc">Product: A to Z</option>
+              </select>
+              <input id="market-size-search" type="search" placeholder="Search product, long tail, shop, cue">
+            </div>
+          </div>
+          <div id="market-size-summary" class="callout"></div>
+          <div id="market-size-chart" class="chart"></div>
+          <div id="market-size-products"></div>
+        </section>
+        <div class="grid two-wide">
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Top Competitor Shops</h2>
+            </div>
+            <div id="market-size-shops"></div>
+          </section>
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Demand Context</h2>
+            </div>
+            <div id="market-size-demand"></div>
+          </section>
+        </div>
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Competitor Long-Tail Evidence</h2>
+          </div>
+          <div id="market-size-long-tails"></div>
+        </section>
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Listing Evidence</h2>
+          </div>
+          <div id="market-size-listings"></div>
+        </section>
+        <section class="panel">
+          <div class="panel-head">
+            <h2>MyMaravia Coverage</h2>
+          </div>
+          <div id="market-size-coverage"></div>
         </section>
       </section>
 
@@ -500,6 +568,7 @@
                   <option value="timeframe-reviews-desc">Last-year timeframe reviews: high to low</option>
                 </select>
                 <input id="listing-search" type="search" placeholder="Filter listings, shops, categories">
+                <button id="listing-search-submit" class="primary-button" type="button">Search</button>
               </div>
             </div>
             <div class="listing-timeframe-controls">
@@ -598,6 +667,6 @@
       </section>
     </main>
   </div>
-  <script src="assets/app.js?v=next-action-launch-briefs-20260602-1"></script>
+  <script src="assets/app.js?v=market-size-listing-search-20260602-1"></script>
 </body>
 </html>

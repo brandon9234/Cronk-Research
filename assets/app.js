@@ -7,6 +7,7 @@ let selectedListingTimeframePreset = "";
 let selectedBuyerMomentId = "";
 let selectedImportBuyerMomentId = "";
 let selectedMarketSegment = "";
+let selectedMarketSizeProduct = "";
 let selectedNextActionKey = "";
 let nextActionTraceCache = new Map();
 let buyerMomentRowsCache = new Map();
@@ -16,7 +17,7 @@ let buyerMomentTopListingRowsCache = null;
 let buyerMomentListingCycleRowsCache = new Map();
 let customBuyerMomentRange = null;
 const CUSTOM_BUYER_MOMENT_ID = "custom-date-range";
-const DATA_ASSET_VERSION = "next-action-launch-briefs-20260602-1";
+const DATA_ASSET_VERSION = "market-size-listing-search-20260602-1";
 const BUYER_MOMENT_LANE_HEIGHT = 30;
 const BUYER_MOMENT_HIGH_OPPORTUNITY_SCORE = 68;
 const BUYER_MOMENT_BUILD_FIT_ORDER = [
@@ -46,6 +47,8 @@ const LISTING_TIMEFRAME_PRESETS = {
   "christmas": { label: "Christmas season", start: "11-01", end: "12-31" }
 };
 let listingRenderTimer = null;
+let appliedListingFilters = null;
+let listingSearchDirty = false;
 const reviewListingState = {
   rowChunks: new Map(),
   cycleChunks: new Map(),
@@ -116,6 +119,11 @@ const numericColumns = new Set([
   "Segment Daily Sales", "Segment 30D Sales", "Segment Share %",
   "Covered Competitor Daily", "Covered 30D", "Covered Share %",
   "Competitor Rows Covered", "Best Listing Daily",
+  "Primary Market Daily Sales", "Primary Market 30D Sales", "Broad Market Daily Sales",
+  "Broad Market 30D Sales", "Segment Market Daily Sales", "Segment Market 30D Sales",
+  "Build Queue Daily Sales", "Build Queue 30D Sales", "Listing Evidence Daily Sales",
+  "Open Long Tails", "Evidence Listings", "Tracked Shops", "My Listing Count", "Weighted Coverage %",
+  "Preview Daily Sales", "Preview Listing Count",
   "Last Year Timeframe Estimated Sales", "Last Year Timeframe Avg Daily Sales",
   "Last Year Timeframe Review Count", "Last Year Timeframe Weeks", "Last Year Timeframe Weeks With Demand",
   "Action Score", "Expected Daily Sales"
@@ -176,7 +184,8 @@ const wrappedColumns = new Set([
   "Competing Listing", "Competing Shop", "Competing Tags", "My Listing URL", "Competitor Listing URL",
   "Best Listing", "Top Competitor Row", "Repeated Match Cues", "Cue / Action",
   "Evidence", "Next Edit", "Market Control Read", "Last Year Timeframe Window", "Last Year Timeframe Signal",
-  "Action", "Product / Listing", "Source Signal", "Next Step"
+  "Action", "Product / Listing", "Source Signal", "Next Step", "Product / Segment",
+  "Market Size Source", "Market Size Read"
 ]);
 
 const thumbnailColumns = new Set(["Thumbnail", "Listing Thumbnail", "Market Thumbnail", "Top Competitor Thumbnail", "My Thumbnail", "Competitor Thumbnail"]);
@@ -840,6 +849,66 @@ function reviewListingStatusText(query, production, substrate) {
 function scheduleRenderListings() {
   window.clearTimeout(listingRenderTimer);
   listingRenderTimer = window.setTimeout(renderListings, 160);
+}
+
+function listingControlState() {
+  const search = (document.getElementById("listing-search")?.value || "").trim();
+  return {
+    search,
+    query: search.toLowerCase(),
+    production: document.getElementById("production-filter")?.value || "",
+    substrate: document.getElementById("substrate-filter")?.value || "",
+    sort: document.getElementById("listing-sort")?.value || "",
+    timeframe: document.getElementById("listing-timeframe-preset")?.value || "",
+    start: document.getElementById("listing-timeframe-start")?.value || "",
+    end: document.getElementById("listing-timeframe-end")?.value || ""
+  };
+}
+
+function listingFilterSignature(filters) {
+  return JSON.stringify([
+    filters.search || "",
+    filters.production || "",
+    filters.substrate || "",
+    filters.sort || "",
+    filters.timeframe || "",
+    filters.start || "",
+    filters.end || ""
+  ]);
+}
+
+function updateListingSearchButtonState() {
+  const button = document.getElementById("listing-search-submit");
+  if (!button) return;
+  button.classList.toggle("needs-apply", listingSearchDirty);
+}
+
+function ensureAppliedListingFilters() {
+  if (!appliedListingFilters) appliedListingFilters = listingControlState();
+  return appliedListingFilters;
+}
+
+function setAppliedListingFiltersFromControls() {
+  appliedListingFilters = listingControlState();
+  selectedListingSubstrate = appliedListingFilters.substrate;
+  selectedListingTimeframePreset = appliedListingFilters.timeframe;
+  listingSearchDirty = false;
+  updateListingSearchButtonState();
+  return appliedListingFilters;
+}
+
+function markListingSearchDirty() {
+  const currentFilters = listingControlState();
+  const appliedFilters = appliedListingFilters || currentFilters;
+  listingSearchDirty = listingFilterSignature(currentFilters) !== listingFilterSignature(appliedFilters);
+  updateListingSearchButtonState();
+}
+
+function applyListingSearch({ updateUrl = true } = {}) {
+  window.clearTimeout(listingRenderTimer);
+  setAppliedListingFiltersFromControls();
+  if (updateUrl) updateViewUrl("listings");
+  renderListings();
 }
 
 function comparisonCategory(row) {
@@ -1876,13 +1945,13 @@ function last30ListingTimeframePreset() {
   };
 }
 
-function listingTimeframePresetDefinition(preset) {
+function listingTimeframePresetDefinition(preset, filters = null) {
   if (preset === "last-30") return last30ListingTimeframePreset();
   if (preset === LISTING_TIMEFRAME_CUSTOM_ID) {
     return {
       label: "Custom range",
-      start: document.getElementById("listing-timeframe-start")?.value || "",
-      end: document.getElementById("listing-timeframe-end")?.value || ""
+      start: filters?.start ?? document.getElementById("listing-timeframe-start")?.value ?? "",
+      end: filters?.end ?? document.getElementById("listing-timeframe-end")?.value ?? ""
     };
   }
   return LISTING_TIMEFRAME_PRESETS[preset] || null;
@@ -1917,10 +1986,10 @@ function monthDayToIso(monthDay, year) {
   return normalized ? `${year}-${normalized}` : "";
 }
 
-function selectedListingTimeframeWindow() {
-  const preset = selectedListingTimeframePreset || document.getElementById("listing-timeframe-preset")?.value || "";
+function selectedListingTimeframeWindow(filters = null) {
+  const preset = filters?.timeframe || selectedListingTimeframePreset || document.getElementById("listing-timeframe-preset")?.value || "";
   if (!preset) return null;
-  const definition = listingTimeframePresetDefinition(preset);
+  const definition = listingTimeframePresetDefinition(preset, filters);
   if (!definition) return null;
   const startMonthDay = normalizedMonthDay(definition.start);
   const endMonthDay = normalizedMonthDay(definition.end);
@@ -3396,6 +3465,511 @@ function marketSegmentCueRows(segment, categoryRow, myListingRows, queue, covera
   ];
 }
 
+function marketSizeText(value) {
+  return String(value ?? "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function marketSizeTokens(value) {
+  return marketSizeText(value).split(/\s+/).filter(token => token.length > 1);
+}
+
+function marketSizeRowText(row) {
+  if (row.__marketSizeText) return row.__marketSizeText;
+  const text = marketSizeText(Object.keys(row || {})
+    .filter(key => !key.startsWith("__"))
+    .map(key => row[key])
+    .join(" "));
+  Object.defineProperty(row, "__marketSizeText", {
+    value: text,
+    configurable: true,
+    writable: true
+  });
+  return text;
+}
+
+function marketSizeMatchesTokens(row, tokens, requireAll = true) {
+  if (!tokens.length) return true;
+  const text = marketSizeRowText(row);
+  return requireAll
+    ? tokens.every(token => text.includes(token))
+    : tokens.some(token => text.includes(token));
+}
+
+function marketSizeCategoryName(row) {
+  return String(
+    row?.["Product / Segment"] ||
+    row?.["Product Substrate Category"] ||
+    row?.["Product Category"] ||
+    row?.["Target Category"] ||
+    ""
+  ).trim();
+}
+
+function marketSizeEntry(entries, name) {
+  const product = String(name || "Uncategorized").trim() || "Uncategorized";
+  if (!entries.has(product)) {
+    entries.set(product, {
+      "Product / Segment": product,
+      "Category Aliases": "",
+      "Primary Market Daily Sales": 0,
+      "Primary Market 30D Sales": 0,
+      "Broad Market Daily Sales": 0,
+      "Broad Market 30D Sales": 0,
+      "Segment Market Daily Sales": 0,
+      "Segment Market 30D Sales": 0,
+      "Build Queue Daily Sales": 0,
+      "Build Queue 30D Sales": 0,
+      "Listing Evidence Daily Sales": 0,
+      "Evidence Listings": 0,
+      "Tracked Shops": 0,
+      "My Daily Sales": 0,
+      "My Market Share %": null,
+      "Coverage %": null,
+      "Weighted Coverage %": null,
+      "Open Long Tails": 0,
+      "Top Open Daily Sales": 0,
+      "Top Open Long Tail": "",
+      "Top Competitor Daily Sales": 0,
+      "Leader Gap Daily": 0,
+      "Market Size Source": "",
+      "Market Size Read": "",
+      __shops: new Set(),
+      __texts: new Set(),
+      __sources: new Set(),
+      __listingCount: 0,
+      __myListingDaily: 0
+    });
+  }
+  return entries.get(product);
+}
+
+function marketSizeAddText(entry, ...values) {
+  values.filter(Boolean).forEach(value => entry.__texts.add(String(value)));
+}
+
+function marketSizeProductRowsRaw() {
+  const entries = new Map();
+  (dashboard.listing?.categoryRollup || []).forEach(row => {
+    const entry = marketSizeEntry(entries, row["Product Substrate Category"] || row["Product Category"]);
+    entry["Broad Market Daily Sales"] = Math.max(entry["Broad Market Daily Sales"], numericCell(row, "Total Est. Daily Sales"));
+    entry["Broad Market 30D Sales"] = Math.max(entry["Broad Market 30D Sales"], numericCell(row, "Total Est. 30D Sales"));
+    entry["Evidence Listings"] = Math.max(entry["Evidence Listings"], numericCell(row, "Listing Count"));
+    entry["Tracked Shops"] = Math.max(entry["Tracked Shops"], numericCell(row, "Shop Count"));
+    entry["Review Corpus Count"] = numericCell(row, "Review Corpus Count");
+    entry["Review Corpus 90D"] = numericCell(row, "Review Corpus 90D");
+    entry["Review Corpus 365D"] = numericCell(row, "Review Corpus 365D");
+    entry.__sources.add("Category rollup");
+    marketSizeAddText(entry, Object.values(row).join(" "));
+  });
+
+  (dashboard.myMaravia?.categories || []).forEach(row => {
+    const entry = marketSizeEntry(entries, row["Product Category"]);
+    entry["Category Aliases"] ||= row["Category Aliases"] || "";
+    entry["Segment Market Daily Sales"] = Math.max(entry["Segment Market Daily Sales"], numericCell(row, "Market Daily Sales"));
+    entry["Segment Market 30D Sales"] = Math.max(entry["Segment Market 30D Sales"], numericCell(row, "Market Daily Sales") * 30);
+    entry["My Daily Sales"] = Math.max(entry["My Daily Sales"], numericCell(row, "My Category Daily Sales"));
+    entry["My Market Share %"] = row["My Market Share %"] ?? entry["My Market Share %"];
+    entry["Coverage %"] = row["Coverage %"] ?? entry["Coverage %"];
+    entry["Weighted Coverage %"] = row["Coverage %"] ?? entry["Weighted Coverage %"];
+    entry["Top Open Daily Sales"] = Math.max(entry["Top Open Daily Sales"], numericCell(row, "Top Open Daily Sales"));
+    entry["Top Open Long Tail"] ||= row["Top Open Long Tail"] || "";
+    entry["Top Competitor Daily Sales"] = Math.max(entry["Top Competitor Daily Sales"], numericCell(row, "Top Competitor Daily Sales"));
+    entry["Leader Gap Daily"] = Math.max(entry["Leader Gap Daily"], numericCell(row, "Leader Gap Daily"));
+    entry["Active Listings"] = numericCell(row, "Active Listings");
+    entry["MyMaravia Listings"] = numericCell(row, "MyMaravia Listings");
+    entry.__sources.add("MyMaravia segment");
+    marketSizeAddText(entry, Object.values(row).join(" "));
+  });
+
+  (dashboard.myMaravia?.longTailQueue || []).forEach(row => {
+    const entry = marketSizeEntry(entries, row["Product Category"]);
+    entry["Category Aliases"] ||= row["Category Aliases"] || "";
+    entry["Build Queue Daily Sales"] += numericCell(row, "Market Daily Sales");
+    entry["Build Queue 30D Sales"] += numericCell(row, "Market 30D Sales");
+    entry["Open Long Tails"] += row.Status === "Needs build" ? 1 : 0;
+    if (numericCell(row, "Market Daily Sales") > numericCell(entry, "Top Open Daily Sales")) {
+      entry["Top Open Daily Sales"] = numericCell(row, "Market Daily Sales");
+      entry["Top Open Long Tail"] = row["Market Long Tail"] || "";
+    }
+    if (row["Market Shop"]) entry.__shops.add(row["Market Shop"]);
+    entry.__sources.add("Build queue");
+    marketSizeAddText(entry, Object.values(row).join(" "));
+  });
+
+  getListingRows().forEach(row => {
+    const category = marketSizeCategoryName(row);
+    if (!category) return;
+    const entry = marketSizeEntry(entries, category);
+    entry["Listing Evidence Daily Sales"] += numericCell(row, "Est. Daily Sales");
+    entry.__listingCount += 1;
+    entry.__myListingDaily += /mymaravia/i.test(String(row.Shop || row.Source || "")) ? numericCell(row, "Est. Daily Sales") : 0;
+    if (row.Shop) entry.__shops.add(row.Shop);
+    entry.__sources.add("Listing evidence");
+    marketSizeAddText(entry, Object.values(row).join(" "));
+  });
+
+  return [...entries.values()].map(entry => {
+    const broad = numericCell(entry, "Broad Market Daily Sales");
+    const segment = numericCell(entry, "Segment Market Daily Sales");
+    const build = numericCell(entry, "Build Queue Daily Sales");
+    const listing = numericCell(entry, "Listing Evidence Daily Sales");
+    const primary = segment || broad || build || listing;
+    const primary30 = entry["Segment Market 30D Sales"] || entry["Broad Market 30D Sales"] || entry["Build Queue 30D Sales"] || primary * 30;
+    const myDaily = Math.max(numericCell(entry, "My Daily Sales"), entry.__myListingDaily);
+    const share = entry["My Market Share %"] ?? percentShare(myDaily, primary + myDaily);
+    const coverage = entry["Coverage %"] ?? null;
+    const read = coverage !== null && numericCell(entry, "Open Long Tails") > 0
+      ? "Open build gap"
+      : myDaily > 0
+        ? "Covered / optimize"
+        : primary > 0
+          ? "Market exists; no MyMaravia signal"
+          : "Evidence only";
+    return {
+      "Product / Segment": entry["Product / Segment"],
+      "Category Aliases": entry["Category Aliases"],
+      "Primary Market Daily Sales": Number(primary.toFixed(2)),
+      "Primary Market 30D Sales": Math.round(primary30),
+      "Broad Market Daily Sales": Number(broad.toFixed(2)),
+      "Broad Market 30D Sales": Math.round(numericCell(entry, "Broad Market 30D Sales")),
+      "Segment Market Daily Sales": Number(segment.toFixed(2)),
+      "Build Queue Daily Sales": Number(build.toFixed(2)),
+      "Build Queue 30D Sales": Math.round(numericCell(entry, "Build Queue 30D Sales")),
+      "Listing Evidence Daily Sales": Number(listing.toFixed(2)),
+      "Evidence Listings": Math.max(numericCell(entry, "Evidence Listings"), entry.__listingCount),
+      "Tracked Shops": Math.max(numericCell(entry, "Tracked Shops"), entry.__shops.size),
+      "My Daily Sales": Number(myDaily.toFixed(2)),
+      "My Market Share %": share,
+      "Coverage %": coverage,
+      "Open Long Tails": numericCell(entry, "Open Long Tails"),
+      "Top Open Daily Sales": numericCell(entry, "Top Open Daily Sales"),
+      "Top Open Long Tail": entry["Top Open Long Tail"],
+      "Top Competitor Daily Sales": numericCell(entry, "Top Competitor Daily Sales"),
+      "Leader Gap Daily": numericCell(entry, "Leader Gap Daily"),
+      "Review Corpus Count": numericCell(entry, "Review Corpus Count"),
+      "Review Corpus 90D": numericCell(entry, "Review Corpus 90D"),
+      "Review Corpus 365D": numericCell(entry, "Review Corpus 365D"),
+      "Market Size Source": [...entry.__sources].join(" + "),
+      "Market Size Read": read,
+      __marketSizeText: marketSizeText([
+        entry["Product / Segment"],
+        entry["Category Aliases"],
+        entry["Top Open Long Tail"],
+        [...entry.__texts].join(" ")
+      ].join(" "))
+    };
+  });
+}
+
+function marketSizeFilterState() {
+  const product = document.getElementById("market-size-product-filter")?.value || selectedMarketSizeProduct || "";
+  return {
+    product,
+    source: document.getElementById("market-size-source-filter")?.value || "",
+    sort: document.getElementById("market-size-sort")?.value || "primary-desc",
+    search: (document.getElementById("market-size-search")?.value || "").trim(),
+    tokens: marketSizeTokens(document.getElementById("market-size-search")?.value || "")
+  };
+}
+
+function marketSizeEvidenceCategorySet(state) {
+  const names = new Set();
+  if (state.product) names.add(state.product);
+  if (!state.tokens.length) return names;
+  const rows = [
+    ...(dashboard.myMaravia?.longTailQueue || []),
+    ...getListingRows(),
+    ...(dashboard.myMaravia?.categories || []),
+    ...(dashboard.listing?.categoryRollup || [])
+  ];
+  let matched = rows.filter(row => marketSizeMatchesTokens(row, state.tokens, true));
+  if (!matched.length) matched = rows.filter(row => marketSizeMatchesTokens(row, state.tokens, false));
+  matched.forEach(row => {
+    const category = marketSizeCategoryName(row);
+    if (category) names.add(category);
+  });
+  return names;
+}
+
+function marketSizeSourceMatches(row, source) {
+  if (!source) return true;
+  if (source === "rollup") return numericCell(row, "Broad Market Daily Sales") > 0;
+  if (source === "segment") return numericCell(row, "Segment Market Daily Sales") > 0;
+  if (source === "build") return numericCell(row, "Build Queue Daily Sales") > 0;
+  if (source === "listing") return numericCell(row, "Evidence Listings") > 0;
+  return true;
+}
+
+function marketSizeRelevanceScore(row, state) {
+  if (!state.tokens.length) return 0;
+  const query = marketSizeText(state.search);
+  const productText = marketSizeText([
+    row["Product / Segment"],
+    row["Category Aliases"],
+    row["Top Open Long Tail"]
+  ].join(" "));
+  const fullText = marketSizeRowText(row);
+  let score = 0;
+  if (query && productText.includes(query)) score += 120;
+  if (query && fullText.includes(query)) score += 60;
+  if (state.tokens.every(token => productText.includes(token))) score += 80;
+  if (state.tokens.every(token => fullText.includes(token))) score += 30;
+  score += state.tokens.filter(token => productText.includes(token)).length * 12;
+  score += state.tokens.filter(token => fullText.includes(token)).length * 3;
+  return score;
+}
+
+function marketSizeProductRows(state = marketSizeFilterState()) {
+  const categories = marketSizeEvidenceCategorySet(state);
+  let rows = marketSizeProductRowsRaw().filter(row => marketSizeSourceMatches(row, state.source));
+  if (state.product) {
+    rows = rows.filter(row => row["Product / Segment"] === state.product);
+  }
+  if (state.tokens.length) {
+    rows = rows.filter(row => categories.has(row["Product / Segment"]) || marketSizeMatchesTokens(row, state.tokens, true));
+  }
+  if (state.tokens.length > 1 && !state.product) {
+    const strongRows = rows.filter(row => marketSizeRelevanceScore(row, state) >= 100);
+    if (strongRows.length) rows = strongRows;
+  }
+  rows.sort((a, b) => {
+    if (state.tokens.length && !state.product) {
+      const scoreDelta = marketSizeRelevanceScore(b, state) - marketSizeRelevanceScore(a, state);
+      if (scoreDelta) return scoreDelta;
+    }
+    if (state.sort === "gap-desc") {
+      return numericCell(b, "Leader Gap Daily") - numericCell(a, "Leader Gap Daily") ||
+        numericCell(b, "Primary Market Daily Sales") - numericCell(a, "Primary Market Daily Sales");
+    }
+    if (state.sort === "coverage-asc") {
+      const coverageA = a["Coverage %"] === null || a["Coverage %"] === undefined ? 999 : numericCell(a, "Coverage %");
+      const coverageB = b["Coverage %"] === null || b["Coverage %"] === undefined ? 999 : numericCell(b, "Coverage %");
+      return coverageA - coverageB ||
+        numericCell(b, "Primary Market Daily Sales") - numericCell(a, "Primary Market Daily Sales");
+    }
+    if (state.sort === "listings-desc") {
+      return numericCell(b, "Evidence Listings") - numericCell(a, "Evidence Listings") ||
+        numericCell(b, "Primary Market Daily Sales") - numericCell(a, "Primary Market Daily Sales");
+    }
+    if (state.sort === "name-asc") {
+      return String(a["Product / Segment"]).localeCompare(String(b["Product / Segment"]));
+    }
+    return numericCell(b, "Primary Market Daily Sales") - numericCell(a, "Primary Market Daily Sales") ||
+      String(a["Product / Segment"]).localeCompare(String(b["Product / Segment"]));
+  });
+  return rows;
+}
+
+function marketSizeProductOptions() {
+  return marketSizeProductRowsRaw()
+    .filter(row => numericCell(row, "Primary Market Daily Sales") > 0 || numericCell(row, "Evidence Listings") > 0)
+    .sort((a, b) => numericCell(b, "Primary Market Daily Sales") - numericCell(a, "Primary Market Daily Sales") ||
+      String(a["Product / Segment"]).localeCompare(String(b["Product / Segment"])))
+    .map(row => row["Product / Segment"]);
+}
+
+function marketSizeLongTailRows(state, productRows) {
+  const categories = new Set(productRows.map(row => row["Product / Segment"]));
+  let rows = (dashboard.myMaravia?.longTailQueue || [])
+    .filter(row => categories.has(row["Product Category"]));
+  if (state.tokens.length && !state.product) {
+    const direct = rows.filter(row => marketSizeMatchesTokens(row, state.tokens, true));
+    if (direct.length) rows = direct;
+  }
+  const totalDaily = rows.reduce((sum, row) => sum + numericCell(row, "Market Daily Sales"), 0);
+  return rows
+    .slice()
+    .sort((a, b) => numericCell(b, "Market Daily Sales") - numericCell(a, "Market Daily Sales"))
+    .map((row, index) => ({
+      ...row,
+      "Rank": index + 1,
+      "Segment Share %": percentShare(row["Market Daily Sales"], totalDaily)
+    }));
+}
+
+function marketSizeListingRows(state, productRows) {
+  const categories = new Set(productRows.map(row => row["Product / Segment"]));
+  let rows = getListingRows()
+    .filter(row => categories.has(marketSizeCategoryName(row)));
+  if (state.tokens.length && !state.product) {
+    const direct = rows.filter(row => marketSizeMatchesTokens(row, state.tokens, true));
+    if (direct.length) rows = direct;
+  }
+  return rows
+    .slice()
+    .sort((a, b) => numericCell(b, "Est. Daily Sales") - numericCell(a, "Est. Daily Sales"))
+    .map(row => ({ ...row, "Market Size Match": marketSizeCategoryName(row) }));
+}
+
+function marketSizeShopRows(longTailRows) {
+  const groups = new Map();
+  longTailRows.forEach(row => {
+    const shop = row["Market Shop"] || "Unknown";
+    if (!groups.has(shop)) {
+      groups.set(shop, {
+        "Shop": shop,
+        "Segment Daily Sales": 0,
+        "Segment 30D Sales": 0,
+        "Market Listings": 0,
+        "Best Listing Daily": 0,
+        "Best Listing": "",
+        "Market Listing URL": ""
+      });
+    }
+    const group = groups.get(shop);
+    group["Segment Daily Sales"] += numericCell(row, "Market Daily Sales");
+    group["Segment 30D Sales"] += numericCell(row, "Market 30D Sales");
+    group["Market Listings"] += 1;
+    if (numericCell(row, "Market Daily Sales") > numericCell(group, "Best Listing Daily")) {
+      group["Best Listing Daily"] = numericCell(row, "Market Daily Sales");
+      group["Best Listing"] = row["Market Long Tail"] || "";
+      group["Market Listing URL"] = row["Market Listing URL"] || "";
+    }
+  });
+  return [...groups.values()]
+    .map(row => ({
+      ...row,
+      "Segment Daily Sales": Number(row["Segment Daily Sales"].toFixed(2)),
+      "Segment 30D Sales": Math.round(row["Segment 30D Sales"])
+    }))
+    .sort((a, b) => numericCell(b, "Segment Daily Sales") - numericCell(a, "Segment Daily Sales"));
+}
+
+function marketSizeCoverageRows(productRows) {
+  const categories = new Set(productRows.map(row => row["Product / Segment"]));
+  return (dashboard.myMaravia?.categories || [])
+    .filter(row => categories.has(row["Product Category"]))
+    .slice()
+    .sort((a, b) => numericCell(b, "Market Daily Sales") - numericCell(a, "Market Daily Sales"));
+}
+
+function marketSizeDemandRows(state, productRows) {
+  const categories = new Set(productRows.map(row => row["Product / Segment"]));
+  const detailRows = (dashboard.rawPreviews?.demand_detail || [])
+    .filter(row => categories.has(row["Product Substrate Category"]) || categories.has(row["Product Substrate"]))
+    .filter(row => !state.tokens.length || marketSizeMatchesTokens(row, state.tokens, true));
+  if (detailRows.length) {
+    const groups = new Map();
+    detailRows.forEach(row => {
+      const cluster = row["Demand Intent Cluster"] || "Unclustered demand";
+      if (!groups.has(cluster)) {
+        groups.set(cluster, {
+          "Demand Intent Cluster": cluster,
+          "Preview Daily Sales": 0,
+          "Preview Listing Count": 0,
+          "Top Product Substrate": row["Product Substrate Category"] || row["Product Substrate"] || "",
+          "Evidence Strength": row["Evidence Strength"] || ""
+        });
+      }
+      const group = groups.get(cluster);
+      group["Preview Daily Sales"] += numericCell(row, "Est. 30D Sales") / 30;
+      group["Preview Listing Count"] += 1;
+    });
+    return [...groups.values()]
+      .map(row => ({ ...row, "Preview Daily Sales": Number(row["Preview Daily Sales"].toFixed(2)) }))
+      .sort((a, b) => numericCell(b, "Preview Daily Sales") - numericCell(a, "Preview Daily Sales"));
+  }
+  return (dashboard.listing?.demandSummary || [])
+    .filter(row => !state.tokens.length || marketSizeMatchesTokens(row, state.tokens, false))
+    .slice()
+    .sort((a, b) => numericCell(b, "Total Est. Daily Sales") - numericCell(a, "Total Est. Daily Sales"));
+}
+
+function renderMarketSize() {
+  const metricTarget = document.getElementById("market-size-metrics");
+  if (!metricTarget) return;
+  const state = marketSizeFilterState();
+  selectedMarketSizeProduct = state.product;
+  const productRows = marketSizeProductRows(state);
+  const longTailRows = marketSizeLongTailRows(state, productRows);
+  const listingRows = marketSizeListingRows(state, productRows);
+  const shopRows = marketSizeShopRows(longTailRows);
+  const coverageRows = marketSizeCoverageRows(productRows);
+  const demandRows = marketSizeDemandRows(state, productRows);
+  const daily = productRows.reduce((sum, row) => sum + numericCell(row, "Primary Market Daily Sales"), 0);
+  const thirty = productRows.reduce((sum, row) => sum + numericCell(row, "Primary Market 30D Sales"), 0);
+  const myDaily = productRows.reduce((sum, row) => sum + numericCell(row, "My Daily Sales"), 0);
+  const openLongTails = productRows.reduce((sum, row) => sum + numericCell(row, "Open Long Tails"), 0);
+  const evidenceListings = productRows.reduce((sum, row) => sum + numericCell(row, "Evidence Listings"), 0);
+  const weightedCoverageBase = productRows.reduce((sum, row) => {
+    const coverage = row["Coverage %"];
+    return coverage === null || coverage === undefined ? sum : sum + numericCell(row, "Primary Market Daily Sales");
+  }, 0);
+  const weightedCoverage = weightedCoverageBase
+    ? productRows.reduce((sum, row) => {
+        const coverage = row["Coverage %"];
+        return coverage === null || coverage === undefined
+          ? sum
+          : sum + numericCell(row, "Coverage %") * numericCell(row, "Primary Market Daily Sales");
+      }, 0) / weightedCoverageBase
+    : null;
+  const myShare = percentShare(myDaily, daily + myDaily);
+  const top = productRows[0] || {};
+  const scope = state.product || state.search || "all products and segments";
+
+  metricTarget.innerHTML = [
+    ["Products", fmt(productRows.length, "Listing Count")],
+    ["Market daily sales", fmt(Number(daily.toFixed(2)), "Primary Market Daily Sales") || "0"],
+    ["Market 30D sales", fmt(Math.round(thirty), "Primary Market 30D Sales") || "0"],
+    ["Evidence listings", fmt(evidenceListings, "Evidence Listings") || "0"],
+    ["Open long tails", fmt(openLongTails, "Open Long Tails") || "0"],
+    ["My share", myShare === null ? "0%" : fmt(myShare, "My Market Share %")]
+  ].map(([label, value]) => metric(label, value)).join("");
+
+  const count = document.getElementById("market-size-count");
+  if (count) {
+    count.textContent = `Showing ${fmt(productRows.length, "Listing Count")} product markets, ${fmt(longTailRows.length, "Listing Count")} long-tail rows, and ${fmt(listingRows.length, "Listing Count")} listing evidence rows for ${scope}.`;
+  }
+  const summary = document.getElementById("market-size-summary");
+  if (summary) {
+    summary.innerHTML = productRows.length
+      ? `<strong>${escapeHtml(top["Product / Segment"])}</strong> is the largest visible match at ${escapeHtml(fmt(top["Primary Market Daily Sales"], "Primary Market Daily Sales"))} estimated daily sales and ${escapeHtml(fmt(top["Primary Market 30D Sales"], "Primary Market 30D Sales"))} estimated 30-day sales. Coverage across this view is ${weightedCoverage === null ? "not available" : escapeHtml(fmt(Number(weightedCoverage.toFixed(1)), "Coverage %"))}; use the evidence tables below to see which shops and listings are driving the read.`
+      : `No market-size rows match ${escapeHtml(scope)}.`;
+  }
+
+  if (productRows.length) {
+    renderBar("market-size-chart", productRows, "Primary Market Daily Sales", "Product / Segment", 20, "#244c66");
+  } else {
+    document.getElementById("market-size-chart").innerHTML = `<div class="empty">No market-size rows match the current filters.</div>`;
+  }
+  renderTable("market-size-products", productRows, [
+    "Product / Segment", "Primary Market Daily Sales", "Primary Market 30D Sales",
+    "Broad Market Daily Sales", "Segment Market Daily Sales", "Build Queue Daily Sales",
+    "Evidence Listings", "Tracked Shops", "My Daily Sales", "My Market Share %",
+    "Coverage %", "Open Long Tails", "Top Open Daily Sales", "Leader Gap Daily",
+    "Top Open Long Tail", "Market Size Source", "Market Size Read"
+  ], 120, { preserveOrder: true });
+  renderTable("market-size-shops", shopRows, [
+    "Shop", "Segment Daily Sales", "Segment 30D Sales", "Market Listings",
+    "Best Listing Daily", "Best Listing", "Market Listing URL"
+  ], 40, { preserveOrder: true });
+  renderTable("market-size-demand", demandRows, [
+    "Demand Intent Cluster", "Total Est. Daily Sales", "Total Est. 30D Sales", "Preview Daily Sales",
+    "Preview Listing Count", "Listing Count", "Review Count", "Avg Daily Sales / Listing",
+    "Shop Count", "Top Product Substrate", "Evidence Strength"
+  ], 30, { preserveOrder: true });
+  renderTable("market-size-long-tails", longTailRows, [
+    "Rank", "Product Category", "Market Thumbnail", "Market Daily Sales", "Market 30D Sales",
+    "Segment Share %", "Status", "Market Shop", "Market Long Tail",
+    "Matching MyMaravia Listing", "Match Tokens", "Build Recommendation", "Market Listing URL"
+  ], 250, { preserveOrder: true });
+  renderTable("market-size-listings", listingRows, [
+    "Overall Rank", "Thumbnail", "Shop", "Est. Daily Sales", "Est. 30D Sales",
+    "Product Title", "Market Size Match", "Product Substrate Category", "Production Tag",
+    "Review Corpus Count", "Review Corpus 90D", "Review Corpus 365D", "Listing URL"
+  ], 250, { preserveOrder: true });
+  renderTable("market-size-coverage", coverageRows, [
+    "Product Category", "Market Daily Sales", "My Category Daily Sales", "My Market Share %",
+    "Coverage %", "Active Listings", "MyMaravia Listings", "Needs Build",
+    "Top Open Daily Sales", "Top Competitor Daily Sales", "Leader Gap Daily",
+    "Top Open Long Tail", "Existing MyMaravia Long Tails"
+  ], 80, { preserveOrder: true });
+}
+
 function renderMarketControl() {
   const metricTarget = document.getElementById("market-control-metrics");
   if (!metricTarget) return;
@@ -3469,8 +4043,8 @@ function renderMarketControl() {
   renderTable("market-control-actions", actionRows, ["Cue / Action", "Evidence", "Next Edit", "Market Control Read"], 20);
 }
 
-function sortListingRows(rows) {
-  const sort = document.getElementById("listing-sort").value || "daily-desc";
+function sortListingRows(rows, selectedSort = null) {
+  const sort = (selectedSort ?? document.getElementById("listing-sort").value) || "daily-desc";
   const sortMap = {
     "daily-desc": ["Est. Daily Sales", "desc"],
     "daily-asc": ["Est. Daily Sales", "asc"],
@@ -3964,13 +4538,14 @@ function setInputFromParam(params, id, key) {
 }
 
 function writeListingUrlState(params) {
-  setUrlParam(params, "listSearch", inputValue("listing-search"));
-  setUrlParam(params, "listProduction", inputValue("production-filter"));
-  setUrlParam(params, "listSubstrate", inputValue("substrate-filter"));
-  setUrlParam(params, "listSort", inputValue("listing-sort"));
-  setUrlParam(params, "listTimeframe", inputValue("listing-timeframe-preset"));
-  setUrlParam(params, "listStart", inputValue("listing-timeframe-start"));
-  setUrlParam(params, "listEnd", inputValue("listing-timeframe-end"));
+  const filters = appliedListingFilters || listingControlState();
+  setUrlParam(params, "listSearch", filters.search);
+  setUrlParam(params, "listProduction", filters.production);
+  setUrlParam(params, "listSubstrate", filters.substrate);
+  setUrlParam(params, "listSort", filters.sort);
+  setUrlParam(params, "listTimeframe", filters.timeframe);
+  setUrlParam(params, "listStart", filters.start);
+  setUrlParam(params, "listEnd", filters.end);
 }
 
 function applyListingUrlState() {
@@ -3982,7 +4557,7 @@ function applyListingUrlState() {
   setSelectIfOption("substrate-filter", params.get("listSubstrate") || "");
   setSelectIfOption("listing-sort", params.get("listSort") || "");
   setSelectIfOption("listing-timeframe-preset", params.get("listTimeframe") || "");
-  selectedListingTimeframePreset = document.getElementById("listing-timeframe-preset")?.value || "";
+  setAppliedListingFiltersFromControls();
 }
 
 function writeBuyerMomentUrlState(params) {
@@ -4037,10 +4612,27 @@ function applyCompanyUrlState() {
   selectedCompanyProduction = params.get("companyProduction") || "";
 }
 
+function writeMarketSizeUrlState(params) {
+  setUrlParam(params, "msProduct", inputValue("market-size-product-filter"));
+  setUrlParam(params, "msSource", inputValue("market-size-source-filter"));
+  setUrlParam(params, "msSort", inputValue("market-size-sort"));
+  setUrlParam(params, "msSearch", inputValue("market-size-search"));
+}
+
+function applyMarketSizeUrlState() {
+  const params = new URLSearchParams(window.location.search);
+  setSelectIfOption("market-size-product-filter", params.get("msProduct") || "");
+  setSelectIfOption("market-size-source-filter", params.get("msSource") || "");
+  setSelectIfOption("market-size-sort", params.get("msSort") || "");
+  setInputFromParam(params, "market-size-search", "msSearch");
+  selectedMarketSizeProduct = document.getElementById("market-size-product-filter")?.value || "";
+}
+
 function writeViewUrlState(params, viewId) {
   if (viewId === "listings") writeListingUrlState(params);
   if (viewId === "buyer-moments") writeBuyerMomentUrlState(params);
   if (viewId === "company") writeCompanyUrlState(params);
+  if (viewId === "market-size") writeMarketSizeUrlState(params);
 }
 
 function applyNextActionUrlState() {
@@ -4583,9 +5175,8 @@ function openActionListingEvidence(row) {
   if (timeframe) timeframe.value = "";
   if (start) start.value = "";
   if (end) end.value = "";
-  selectedListingTimeframePreset = "";
+  setAppliedListingFiltersFromControls();
   activateView("listings");
-  renderListings();
   setNextActionShareStatus(query ? `Listings evidence opened for ${query}.` : "Listings evidence opened.");
   requestAnimationFrame(() => document.getElementById("top-listings")?.scrollIntoView({ block: "start" }));
 }
@@ -4974,21 +5565,20 @@ function renderMyMaravia() {
 }
 
 function handleListingInputChange() {
-  scheduleRenderListings();
-  updateViewUrl("listings");
+  markListingSearchDirty();
 }
 
 function handleListingFilterChange() {
-  renderListings();
-  updateViewUrl("listings");
+  markListingSearchDirty();
 }
 
 function renderListings() {
-  const query = document.getElementById("listing-search").value.trim().toLowerCase();
-  const production = document.getElementById("production-filter").value;
-  selectedListingSubstrate = document.getElementById("substrate-filter")?.value || "";
-  selectedListingTimeframePreset = document.getElementById("listing-timeframe-preset")?.value || "";
-  const timeframeWindow = selectedListingTimeframeWindow();
+  const filters = ensureAppliedListingFilters();
+  const query = filters.query;
+  const production = filters.production;
+  selectedListingSubstrate = filters.substrate;
+  selectedListingTimeframePreset = filters.timeframe;
+  const timeframeWindow = selectedListingTimeframeWindow(filters);
   const allRows = getListingRows();
   let rows = allRows;
   if (production) {
@@ -5013,7 +5603,7 @@ function renderListings() {
       .filter(listingHasTimeframeSignal);
     timeframeStatus = `Last-year timeframe: ${timeframeWindow.display}. Showing only listings with sales/review signal in that range.`;
   }
-  rows = sortListingRows(rows);
+  rows = sortListingRows(rows, filters.sort);
   const count = fmt(rows.length, "Listing Count");
   const totalCount = allRows.length + reviewListingTotal();
   const total = fmt(totalCount, "Listing Count");
@@ -5065,6 +5655,7 @@ function activateView(viewId) {
   });
   window.dispatchEvent(new Event("resize"));
   if (viewId === "listings") renderListings();
+  if (viewId === "market-size") renderMarketSize();
   updateViewUrl(viewId);
   requestAnimationFrame(updateAllBottomScrollbars);
 }
@@ -5167,14 +5758,12 @@ function initListingTimeframeControls() {
   preset.addEventListener("change", () => {
     selectedListingTimeframePreset = preset.value;
     syncListingTimeframeInputs();
-    renderListings();
-    updateViewUrl("listings");
+    handleListingFilterChange();
   });
   [startInput, endInput].forEach(input => {
     input.addEventListener("input", () => {
       markListingTimeframeCustom();
-      scheduleRenderListings();
-      updateViewUrl("listings");
+      handleListingFilterChange();
     });
   });
   preset.dataset.ready = "true";
@@ -5293,6 +5882,40 @@ function initMarketControlFilters() {
   });
 }
 
+function initMarketSizeFilters() {
+  const productSelect = document.getElementById("market-size-product-filter");
+  if (!productSelect) return;
+
+  if (productSelect.dataset.ready !== "true") {
+    const existingValues = new Set([...productSelect.options].map(option => option.value));
+    marketSizeProductOptions().forEach(product => {
+      if (existingValues.has(product)) return;
+      const option = document.createElement("option");
+      option.value = product;
+      option.textContent = product;
+      productSelect.appendChild(option);
+      existingValues.add(product);
+    });
+    productSelect.dataset.ready = "true";
+  }
+
+  ["market-size-product-filter", "market-size-source-filter", "market-size-sort", "market-size-search"].forEach(id => {
+    const element = document.getElementById(id);
+    if (!element || element.dataset.bound === "true") return;
+    element.addEventListener("input", () => {
+      if (id === "market-size-product-filter") selectedMarketSizeProduct = element.value;
+      renderMarketSize();
+      updateViewUrl("market-size");
+    });
+    element.addEventListener("change", () => {
+      if (id === "market-size-product-filter") selectedMarketSizeProduct = element.value;
+      renderMarketSize();
+      updateViewUrl("market-size");
+    });
+    element.dataset.bound = "true";
+  });
+}
+
 function initCompanyProfile() {
   const allCompanies = companyStats();
   if (!selectedCompany) {
@@ -5378,6 +6001,9 @@ function renderAll() {
   renderMyMaravia();
   initMarketControlFilters();
   renderMarketControl();
+  initMarketSizeFilters();
+  applyMarketSizeUrlState();
+  renderMarketSize();
   renderMetrics();
   renderStatusTable("latest-ok", dashboard.automation.latestOk, ["Status", "Run Timestamp", "Pipeline / Stage", "Automation Version", "eRank Sales Date", "Next Action"]);
   renderStatusTable("latest-problem", dashboard.automation.latestProblem, ["Status", "Run Timestamp", "Pipeline / Stage", "Blocker / Issue", "Next Action"]);
@@ -5419,7 +6045,15 @@ async function boot() {
   const initialView = initialDashboardView();
   if (initialView && initialView !== "opportunity") activateView(initialView);
   document.getElementById("top-shop-metric").addEventListener("change", renderTopShops);
-  document.getElementById("listing-search").addEventListener("input", handleListingInputChange);
+  const listingSearch = document.getElementById("listing-search");
+  listingSearch.addEventListener("input", handleListingInputChange);
+  listingSearch.addEventListener("keydown", event => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      applyListingSearch();
+    }
+  });
+  document.getElementById("listing-search-submit").addEventListener("click", () => applyListingSearch());
   document.getElementById("production-filter").addEventListener("change", handleListingFilterChange);
   document.getElementById("substrate-filter").addEventListener("change", handleListingFilterChange);
   document.getElementById("listing-sort").addEventListener("change", handleListingFilterChange);

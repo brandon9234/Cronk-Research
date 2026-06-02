@@ -588,6 +588,15 @@ input[type="search"] {
   min-height: 34px;
 }
 
+.listing-controls .primary-button {
+  min-height: 34px;
+  white-space: nowrap;
+}
+
+.listing-controls .primary-button.needs-apply {
+  box-shadow: 0 0 0 3px rgba(31, 95, 191, 0.16);
+}
+
 .next-action-share-status {
   flex: 1 0 100%;
   min-height: 20px;
@@ -884,7 +893,8 @@ input[type="search"] {
   .listing-controls select {
     width: 100%;
   }
-  .listing-controls .link-button {
+  .listing-controls .link-button,
+  .listing-controls .primary-button {
     width: 100%;
     margin-top: 8px;
   }
