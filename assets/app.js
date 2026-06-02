@@ -15,7 +15,7 @@ let buyerMomentTopListingRowsCache = null;
 let buyerMomentListingCycleRowsCache = new Map();
 let customBuyerMomentRange = null;
 const CUSTOM_BUYER_MOMENT_ID = "custom-date-range";
-const DATA_ASSET_VERSION = "next-action-stable-permalink-20260602-1";
+const DATA_ASSET_VERSION = "next-action-recipe-export-20260602-1";
 const BUYER_MOMENT_LANE_HEIGHT = 30;
 const BUYER_MOMENT_HIGH_OPPORTUNITY_SCORE = 68;
 const BUYER_MOMENT_BUILD_FIT_ORDER = [
@@ -4200,6 +4200,70 @@ function recipeList(items) {
   return `<ul class="action-recipe-list">${items.map(item => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`;
 }
 
+function recipeText(value) {
+  return String(value ?? "").replace(/\s+/g, " ").trim();
+}
+
+function recipeTextList(title, items) {
+  const rows = uniqueRecipeItems(items).map(item => `- ${recipeText(item)}`);
+  return [`## ${title}`, ...(rows.length ? rows : ["- Not available."])].join("\n");
+}
+
+function actionRecipeExportText(row, visibleCount, totalCount) {
+  const type = recipeText(row["Action Type"] || "Action");
+  const product = recipeText(row["Product / Listing"] || row.Action || "Selected row");
+  const category = recipeText(row["Target Category"] || "Uncategorized");
+  const score = recipeText(fmt(row["Action Score"], "Action Score") || "n/a");
+  const daily = recipeText(fmt(row["Expected Daily Sales"], "Expected Daily Sales") || "n/a");
+  const exactLink = nextActionShareUrl({ ...nextActionFilterState(), action: nextActionKey(row) }).toString();
+  const sourceNotes = uniqueRecipeItems([
+    `${row["Source Signal"] || "Source signal"} - ${row.Confidence || "confidence pending"}`,
+    row.Evidence || "No evidence note available.",
+    row["Market Listing URL"] ? "Market source link is available for live price, title, and thumbnail validation." : "",
+    row["My Listing URL"] ? "Existing MyMaravia listing is attached for comparison." : "No MyMaravia listing is attached yet."
+  ], 4);
+  return [
+    `# ${type}: ${product}`,
+    "",
+    `Priority: ${recipeText(fmt(row.Priority, "Priority") || "n/a")}`,
+    `Target category: ${category}`,
+    `Action score: ${score}`,
+    `Expected daily sales: ${daily}`,
+    `Visible actions: ${recipeText(fmt(visibleCount, "Listing Count"))} of ${recipeText(fmt(totalCount, "Listing Count"))}`,
+    `Dashboard link: ${exactLink}`,
+    row["Market Listing URL"] ? `Market source: ${recipeText(row["Market Listing URL"])}` : null,
+    row["My Listing URL"] ? `MyMaravia listing: ${recipeText(row["My Listing URL"])}` : null,
+    "",
+    recipeTextList("Title Phrases", actionTitlePhrases(row)),
+    "",
+    recipeTextList("Thumbnail Angle", [actionThumbnailAngle(row)]),
+    "",
+    recipeTextList("Tags To Test", actionTagIdeas(row)),
+    "",
+    recipeTextList("Price", [actionPriceNote(row)]),
+    "",
+    recipeTextList("Personalization", [actionPersonalizationField(row)]),
+    "",
+    recipeTextList("Source Notes", sourceNotes),
+    "",
+    recipeTextList("Blank Notes", [actionBlankNote(row)]),
+    "",
+    recipeTextList("Next Step", [row["Next Step"] || "Review the source row and decide the listing move."]),
+    "",
+    recipeTextList("Evidence", [row.Evidence || "No evidence note available."])
+  ].filter(line => line !== null).join("\n");
+}
+
+async function copyNextActionRecipe(row, visibleCount, totalCount) {
+  const text = actionRecipeExportText(row, visibleCount, totalCount);
+  if (!navigator.clipboard?.writeText) {
+    setNextActionShareStatus("Recipe copy unavailable in this browser.");
+    return;
+  }
+  await navigator.clipboard.writeText(text);
+  setNextActionShareStatus("Recipe copied for listing work.");
+}
+
 function renderNextActionRecipe(row, visibleCount, totalCount) {
   const target = document.getElementById("next-action-recipe");
   if (!target) return;
@@ -4215,6 +4279,7 @@ function renderNextActionRecipe(row, visibleCount, totalCount) {
   const evidence = row.Evidence || "No evidence note available.";
   const nextStep = row["Next Step"] || "Review the source row and decide the listing move.";
   const links = [
+    `<button class="link-button" type="button" data-next-action-recipe-copy="${escapeHtml(nextActionKey(row))}">Copy recipe</button>`,
     row["Market Listing URL"] ? `<a class="link-button" href="${escapeHtml(row["Market Listing URL"])}" target="_blank" rel="noreferrer">Market source</a>` : "",
     row["My Listing URL"] ? `<a class="link-button" href="${escapeHtml(row["My Listing URL"])}" target="_blank" rel="noreferrer">My listing</a>` : ""
   ].filter(Boolean).join("");
@@ -4250,6 +4315,12 @@ function renderNextActionRecipe(row, visibleCount, totalCount) {
         <div class="action-recipe-block"><h3>Evidence</h3>${recipeList([evidence])}</div>
       </div>
     </div>`;
+  const copyRecipe = target.querySelector("[data-next-action-recipe-copy]");
+  if (copyRecipe) {
+    copyRecipe.addEventListener("click", () => {
+      copyNextActionRecipe(row, visibleCount, totalCount).catch(() => setNextActionShareStatus("Recipe copy failed."));
+    });
+  }
 }
 
 function renderOpportunity() {
