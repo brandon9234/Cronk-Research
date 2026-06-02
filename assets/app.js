@@ -17,7 +17,7 @@ let buyerMomentTopListingRowsCache = null;
 let buyerMomentListingCycleRowsCache = new Map();
 let customBuyerMomentRange = null;
 const CUSTOM_BUYER_MOMENT_ID = "custom-date-range";
-const DATA_ASSET_VERSION = "state-recovery-decision-intake-20260602-1";
+const DATA_ASSET_VERSION = "state-recovery-intake-tsv-20260602-1";
 const BUYER_MOMENT_LANE_HEIGHT = 30;
 const BUYER_MOMENT_HIGH_OPPORTUNITY_SCORE = 68;
 const BUYER_MOMENT_BUILD_FIT_ORDER = [
@@ -5956,6 +5956,15 @@ function initListingStateRecoveryFilters() {
     intakeBriefCopy.dataset.bound = "true";
   }
 
+  const intakeTsvCopy = document.getElementById("listing-state-recovery-intake-tsv-copy");
+  if (intakeTsvCopy && intakeTsvCopy.dataset.bound !== "true") {
+    intakeTsvCopy.addEventListener("click", () => {
+      copyListingStateRecoveryDecisionIntakeTsv()
+        .catch(() => setListingStateRecoveryIntakeCopyStatus("Decision intake TSV copy failed."));
+    });
+    intakeTsvCopy.dataset.bound = "true";
+  }
+
   const reset = document.getElementById("listing-state-recovery-reset");
   if (reset && reset.dataset.bound !== "true") {
     reset.addEventListener("click", () => {
@@ -6235,6 +6244,64 @@ function listingStateRecoveryDecisionIntakeBrief(rows = dashboard.operations?.li
   return lines.join("\n").trim();
 }
 
+function listingStateRecoveryDecisionIntakeTsv(rows = dashboard.operations?.listingStateRecoveryDecisionIntake || []) {
+  const headers = [
+    "Worksheet Type",
+    "Decision Status (fill)",
+    "Final Decision (fill)",
+    "Decision Date (fill)",
+    "Decision Owner (fill)",
+    "Decision Notes (fill)",
+    "Review Priority",
+    "Segment",
+    "Listing ID",
+    "Product Title",
+    "Recovery Status",
+    "Previous State",
+    "Resolved State",
+    "Candidate Final Decision",
+    "Final Decision Options",
+    "Decision Status Options",
+    "Candidate Reason",
+    "Review Prompt",
+    "Decision Guard",
+    "Current Etsy Listing URL",
+    "Replacement Lead",
+    "Replacement URL",
+    "Market Evidence",
+    "TSV Fill Reminder"
+  ];
+  const dataRows = rows.map(row => [
+    "Decision intake worksheet - copy confirmed decisions into the Recovery Decision Log TSV",
+    "",
+    "",
+    "",
+    "",
+    "",
+    row["Review Priority"],
+    row.Segment,
+    row["Listing ID"],
+    row["Product Title"],
+    row["Recovery Status"],
+    row["Previous State"],
+    row["Resolved State"],
+    row["Candidate Final Decision"],
+    row["Final Decision Options"],
+    row["Decision Status Options"],
+    row["Candidate Reason"],
+    row["Review Prompt"],
+    row["Decision Guard"],
+    row["Current Etsy Listing URL"],
+    row["Replacement Lead"],
+    row["Replacement URL"],
+    row["Market Evidence"],
+    row["TSV Fill Reminder"]
+  ]);
+  return [headers, ...dataRows]
+    .map(row => row.map(tsvCell).join("\t"))
+    .join("\n");
+}
+
 async function copyListingStateRecoveryDecisionTsv() {
   const rows = filteredListingStateRecoveryQueue();
   const text = listingStateRecoveryDecisionTsv(rows);
@@ -6269,6 +6336,18 @@ async function copyListingStateRecoveryDecisionIntakeBrief() {
     return;
   }
   setListingStateRecoveryIntakeCopyStatus(`${fmt(rows.length, "Listing Count")} decision-intake rows copied.`);
+}
+
+async function copyListingStateRecoveryDecisionIntakeTsv() {
+  const rows = dashboard.operations?.listingStateRecoveryDecisionIntake || [];
+  const text = listingStateRecoveryDecisionIntakeTsv(rows);
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+  } else if (!fallbackCopyText(text)) {
+    setListingStateRecoveryIntakeCopyStatus("Decision intake TSV copy unavailable in this browser.");
+    return;
+  }
+  setListingStateRecoveryIntakeCopyStatus(`${fmt(rows.length, "Listing Count")} decision-intake worksheet rows copied.`);
 }
 
 async function copyListingStateRecoveryBatchHandoff(segment) {
