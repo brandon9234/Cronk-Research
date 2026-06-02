@@ -17,7 +17,7 @@ let buyerMomentTopListingRowsCache = null;
 let buyerMomentListingCycleRowsCache = new Map();
 let customBuyerMomentRange = null;
 const CUSTOM_BUYER_MOMENT_ID = "custom-date-range";
-const DATA_ASSET_VERSION = "state-recovery-batches-20260602-1";
+const DATA_ASSET_VERSION = "state-recovery-filters-20260602-1";
 const BUYER_MOMENT_LANE_HEIGHT = 30;
 const BUYER_MOMENT_HIGH_OPPORTUNITY_SCORE = 68;
 const BUYER_MOMENT_BUILD_FIT_ORDER = [
@@ -5875,6 +5875,65 @@ function initMyMaraviaFilters() {
   });
 }
 
+function initListingStateRecoveryFilters() {
+  const rows = dashboard.operations?.listingStateRecoveryQueue || [];
+  const segmentSelect = document.getElementById("listing-state-recovery-segment-filter");
+  const statusSelect = document.getElementById("listing-state-recovery-status-filter");
+  if (!segmentSelect || !statusSelect) return;
+
+  if (segmentSelect.dataset.ready !== "true") {
+    const segments = [...new Set(rows.map(row => row.Segment).filter(Boolean))]
+      .sort((a, b) => a.localeCompare(b));
+    segments.forEach(segment => {
+      const option = document.createElement("option");
+      option.value = segment;
+      option.textContent = segment;
+      segmentSelect.appendChild(option);
+    });
+    segmentSelect.dataset.ready = "true";
+  }
+
+  if (statusSelect.dataset.ready !== "true") {
+    const statuses = [...new Set(rows.map(row => row["Recovery Status"]).filter(Boolean))]
+      .sort((a, b) => a.localeCompare(b));
+    statuses.forEach(status => {
+      const option = document.createElement("option");
+      option.value = status;
+      option.textContent = status;
+      statusSelect.appendChild(option);
+    });
+    statusSelect.dataset.ready = "true";
+  }
+
+  ["listing-state-recovery-segment-filter", "listing-state-recovery-status-filter"].forEach(id => {
+    const element = document.getElementById(id);
+    if (!element || element.dataset.bound === "true") return;
+    element.addEventListener("change", renderOperations);
+    element.dataset.bound = "true";
+  });
+
+  const reset = document.getElementById("listing-state-recovery-reset");
+  if (reset && reset.dataset.bound !== "true") {
+    reset.addEventListener("click", () => {
+      segmentSelect.value = "";
+      statusSelect.value = "";
+      renderOperations();
+    });
+    reset.dataset.bound = "true";
+  }
+}
+
+function filteredListingStateRecoveryQueue() {
+  const rows = dashboard.operations?.listingStateRecoveryQueue || [];
+  const segment = document.getElementById("listing-state-recovery-segment-filter")?.value || "";
+  const status = document.getElementById("listing-state-recovery-status-filter")?.value || "";
+  return rows.filter(row => {
+    if (segment && row.Segment !== segment) return false;
+    if (status && row["Recovery Status"] !== status) return false;
+    return true;
+  });
+}
+
 function initMarketControlFilters() {
   const segmentSelect = document.getElementById("market-segment-filter");
   if (!segmentSelect) return;
@@ -6017,6 +6076,41 @@ function initCompanyProfile() {
   renderCompanyProfile();
 }
 
+function renderOperations() {
+  renderStatusTable("refresh-priority-table", dashboard.operations.refreshPriorityQueue || [], ["Priority", "Status", "Source", "Freshness Read", "Decision Impact", "Why Now", "Refresh Step"], 6);
+  renderStatusTable("listing-state-alerts-table", dashboard.operations.listingStateAlerts || [], ["Status", "Check", "Finding", "Affected Rows", "Snapshot Read", "Example", "Decision Impact", "Next Action"], 20);
+  renderTable("listing-state-investigation-table", dashboard.operations.listingStateInvestigation || [], [
+    "Priority", "Investigation Status", "Segment", "Dropped Listings", "Previous Active", "Previous Draft",
+    "Newly Visible Same Segment", "Possible Replacement Count", "Replacement Read",
+    "Resolution Read", "Resolved Active", "Resolved Draft", "Resolved Edit", "Resolved Inactive", "Resolved Expired",
+    "Resolved Not Found", "Unresolved", "Resolved At",
+    "Possible Replacement Listing", "Replacement State", "Replacement Match Tokens", "Replacement URL",
+    "Example Dropped Listing", "Dropped Listing IDs", "Recommended Action"
+  ], 40, { preserveOrder: true });
+  renderTable("listing-state-recovery-batches-table", dashboard.operations.listingStateRecoveryBatches || [], [
+    "Batch Priority", "Batch Status", "Segment", "Recovery Decision", "Listings", "Fix Listings",
+    "Review Listings", "Prior Active", "Prior Draft", "Resolved Edit", "Replacement Leads",
+    "Evidence Read", "First Listing IDs", "Top Listing Titles", "Open First Listing URL", "Batch Action"
+  ], 20, { preserveOrder: true });
+
+  const recoveryRows = filteredListingStateRecoveryQueue();
+  const count = document.getElementById("listing-state-recovery-count");
+  if (count) {
+    const total = dashboard.operations?.listingStateRecoveryQueue?.length || 0;
+    count.textContent = `${fmt(recoveryRows.length, "Listing Count")} visible of ${fmt(total, "Listing Count")} recovery rows.`;
+  }
+  renderTable("listing-state-recovery-table", recoveryRows, [
+    "Priority", "Recovery Status", "Recovery Decision", "Segment", "Previous State", "Resolved State",
+    "Listing ID", "Product Title", "Why It Matters", "Next Action",
+    "Possible Replacement Count", "Possible Replacement Listing", "Replacement State", "Replacement Match Tokens", "Replacement URL",
+    "Resolved Listing URL", "Previous Snapshot", "Resolved At"
+  ], 80, { preserveOrder: true });
+  renderStatusTable("data-freshness-table", dashboard.operations.dataFreshness || [], ["Status", "Source", "Freshness Read", "Last Updated", "Data Through", "Record Count", "Decision Impact", "Refresh Step"], 40);
+  renderStatusTable("taxonomy-quality-table", dashboard.operations.taxonomyQuality || [], ["Status", "Check", "Finding", "Affected Rows", "Example", "Decision Impact", "Next Action"], 40);
+  renderTable("coverage-queue", dashboard.operations.coverageQueue, ["Shop", "eRank 7D Sales", "eRank 30D Sales", "Avg Daily Sales (30D)", "Has Tab", "Tab Status", "Review Ledger Rows", "Last Evidence Run", "Last Scrape Status", "Next Action"], 80);
+  renderStatusTable("recent-runs", dashboard.automation.recentRuns, ["Status", "Run Timestamp", "Pipeline / Stage", "Automation Version", "Source / Context", "eRank Sales Date", "Counts / Metrics", "Blocker / Issue", "Next Action"], 60);
+}
+
 function renderAll() {
   document.getElementById("snapshot-note").innerHTML =
     `${escapeHtml(dashboard.meta.source)} Generated ${escapeHtml(dashboard.meta.generatedAt)} from cache modified ${escapeHtml(dashboard.meta.sourceWorkbookModifiedAt)}.`;
@@ -6053,31 +6147,8 @@ function renderAll() {
   renderTable("category-rollup-table", dashboard.listing.categoryRollup, ["Product Substrate Category", "Product Family", "Total Est. Daily Sales", "Total Est. 30D Sales", "Review Corpus Count", "Review Corpus 90D", "Review Corpus 365D", "Review Corpus Listings", "Listing Count", "Shop Count"], 40);
   renderBar("demand-summary-chart", dashboard.listing.demandSummary || [], "Total Est. Daily Sales", "Demand Intent Cluster", 20, "#0f766e");
   renderTable("demand-summary-table", dashboard.listing.demandSummary, ["Demand Intent Cluster", "Total Est. Daily Sales", "Listing Count", "Review Count", "Review Corpus Count", "Review Corpus 90D", "Review Corpus Listings", "Avg Daily Sales / Listing", "Shop Count"], 50);
-  renderStatusTable("refresh-priority-table", dashboard.operations.refreshPriorityQueue || [], ["Priority", "Status", "Source", "Freshness Read", "Decision Impact", "Why Now", "Refresh Step"], 6);
-  renderStatusTable("listing-state-alerts-table", dashboard.operations.listingStateAlerts || [], ["Status", "Check", "Finding", "Affected Rows", "Snapshot Read", "Example", "Decision Impact", "Next Action"], 20);
-  renderTable("listing-state-investigation-table", dashboard.operations.listingStateInvestigation || [], [
-    "Priority", "Investigation Status", "Segment", "Dropped Listings", "Previous Active", "Previous Draft",
-    "Newly Visible Same Segment", "Possible Replacement Count", "Replacement Read",
-    "Resolution Read", "Resolved Active", "Resolved Draft", "Resolved Edit", "Resolved Inactive", "Resolved Expired",
-    "Resolved Not Found", "Unresolved", "Resolved At",
-    "Possible Replacement Listing", "Replacement State", "Replacement Match Tokens", "Replacement URL",
-    "Example Dropped Listing", "Dropped Listing IDs", "Recommended Action"
-  ], 40, { preserveOrder: true });
-  renderTable("listing-state-recovery-batches-table", dashboard.operations.listingStateRecoveryBatches || [], [
-    "Batch Priority", "Batch Status", "Segment", "Recovery Decision", "Listings", "Fix Listings",
-    "Review Listings", "Prior Active", "Prior Draft", "Resolved Edit", "Replacement Leads",
-    "Evidence Read", "First Listing IDs", "Top Listing Titles", "Open First Listing URL", "Batch Action"
-  ], 20, { preserveOrder: true });
-  renderTable("listing-state-recovery-table", dashboard.operations.listingStateRecoveryQueue || [], [
-    "Priority", "Recovery Status", "Recovery Decision", "Segment", "Previous State", "Resolved State",
-    "Listing ID", "Product Title", "Why It Matters", "Next Action",
-    "Possible Replacement Count", "Possible Replacement Listing", "Replacement State", "Replacement Match Tokens", "Replacement URL",
-    "Resolved Listing URL", "Previous Snapshot", "Resolved At"
-  ], 80, { preserveOrder: true });
-  renderStatusTable("data-freshness-table", dashboard.operations.dataFreshness || [], ["Status", "Source", "Freshness Read", "Last Updated", "Data Through", "Record Count", "Decision Impact", "Refresh Step"], 40);
-  renderStatusTable("taxonomy-quality-table", dashboard.operations.taxonomyQuality || [], ["Status", "Check", "Finding", "Affected Rows", "Example", "Decision Impact", "Next Action"], 40);
-  renderTable("coverage-queue", dashboard.operations.coverageQueue, ["Shop", "eRank 7D Sales", "eRank 30D Sales", "Avg Daily Sales (30D)", "Has Tab", "Tab Status", "Review Ledger Rows", "Last Evidence Run", "Last Scrape Status", "Next Action"], 80);
-  renderStatusTable("recent-runs", dashboard.automation.recentRuns, ["Status", "Run Timestamp", "Pipeline / Stage", "Automation Version", "Source / Context", "eRank Sales Date", "Counts / Metrics", "Blocker / Issue", "Next Action"], 60);
+  initListingStateRecoveryFilters();
+  renderOperations();
   renderTable("quality-table", dashboard.market.quality, ["Date", "Raw Rows", "Unique Shops", "Duplicate Shop-Date Pairs", "Raw Market Sales", "Deduped Market Sales", "Potential Inflation", "Likely Partial Final Day", "Source Files"], 120);
   initRawSelect();
 }

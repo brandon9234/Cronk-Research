@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Cronk Research</title>
-  <link rel="stylesheet" href="assets/styles.css?v=state-recovery-batches-20260602-1">
+  <link rel="stylesheet" href="assets/styles.css?v=state-recovery-filters-20260602-1">
   <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
 </head>
 <body>
@@ -650,8 +650,20 @@
           <div id="listing-state-investigation-table"></div>
         </section>
         <section class="panel">
-          <div class="panel-head">
-            <h2>Listing State Recovery Queue</h2>
+          <div class="panel-head with-control">
+            <div>
+              <h2>Listing State Recovery Queue</h2>
+              <p id="listing-state-recovery-count" class="subtle listing-count"></p>
+            </div>
+            <div class="listing-controls">
+              <select id="listing-state-recovery-segment-filter" aria-label="Recovery segment filter">
+                <option value="">All recovery segments</option>
+              </select>
+              <select id="listing-state-recovery-status-filter" aria-label="Recovery status filter">
+                <option value="">All recovery statuses</option>
+              </select>
+              <button id="listing-state-recovery-reset" class="link-button" type="button">Reset</button>
+            </div>
           </div>
           <div id="listing-state-recovery-batches-table"></div>
           <div id="listing-state-recovery-table"></div>
@@ -701,6 +713,6 @@
       </section>
     </main>
   </div>
-  <script src="assets/app.js?v=state-recovery-batches-20260602-1"></script>
+  <script src="assets/app.js?v=state-recovery-filters-20260602-1"></script>
 </body>
 </html>
