@@ -325,7 +325,16 @@ function listingCycleLinkCell(row) {
     return `<span class="no-signal">No local review signal yet</span>`;
   }
   const active = key === selectedListingCycleKey ? " active" : "";
-  return `<button class="cycle-link${active}" type="button" data-cycle-key="${escapeHtml(key)}">Open graph</button>`;
+  return `<a class="cycle-link${active}" href="${escapeHtml(listingCycleUrl(key))}" data-cycle-key="${escapeHtml(key)}">Open graph</a>`;
+}
+
+function listingCycleUrl(cycleKey) {
+  const url = new URL(window.location.href);
+  url.searchParams.set("view", "listings");
+  writeListingUrlState(url.searchParams);
+  setUrlParam(url.searchParams, "listCycle", cycleKey);
+  url.hash = "listing-cycle-panel";
+  return `${url.pathname}${url.search}${url.hash}`;
 }
 
 function visibleColumnsForRows(rows, columns) {
@@ -1339,11 +1348,24 @@ async function loadReviewListingCycle(cycleKey) {
   const manifest = reviewListingManifest();
   const parsed = parseReviewListingCycleKey(cycleKey);
   if (!manifest || !parsed || !manifest.cycleFiles?.[parsed.chunkIndex]) return null;
-  await ensureReviewCycleChunk(parsed.chunkIndex);
-  const payload = reviewListingState.cycleChunks.get(parsed.chunkIndex);
+  const [payload, row] = await Promise.all([
+    ensureReviewCycleChunk(parsed.chunkIndex),
+    ensureReviewListingRowForCycle(cycleKey, parsed)
+  ]);
   const encoded = payload.rows?.[parsed.rowIndex]?.[0] || "";
-  const row = reviewListingState.rowByCycleKey.get(cycleKey) || {};
   return { row, rows: reviewListingCycleWeeks(encoded, manifest, row) };
+}
+
+async function ensureReviewListingRowForCycle(cycleKey, parsed) {
+  const cached = reviewListingState.rowByCycleKey.get(cycleKey);
+  if (cached) return cached;
+  const rows = await fetchReviewListingRows(parsed.chunkIndex, { cacheRows: true, trackRows: true });
+  rows.forEach(row => {
+    if (row["Weekly Cycle Key"]) {
+      reviewListingState.rowByCycleKey.set(row["Weekly Cycle Key"], row);
+    }
+  });
+  return reviewListingState.rowByCycleKey.get(cycleKey) || rows[parsed.rowIndex] || {};
 }
 
 function ensureReviewCycleChunk(chunkIndex) {
@@ -1400,6 +1422,7 @@ function renderReviewListingCycle(cycleKey, target, summary) {
       const { row, rows } = result;
       const title = row["Product Title"] || "Review-sourced listing";
       summary.textContent = `${row.Shop || "Unknown shop"} · ${fmt(row["Review Corpus Count"], "Review Corpus Count")} reviews · ${row["Cycle Confidence"] || row["Evidence Confidence"] || "Review-derived estimate"} · ${row["Trend Source"] || ""}`;
+      target.innerHTML = "";
       Plotly.newPlot("listing-cycle-chart", [{
         type: "bar",
         name: "Estimated daily sales",
@@ -1510,6 +1533,9 @@ function openListingCycle(cycleKey, options = {}) {
     activateView("listings");
   }
   renderListings();
+  if (options.updateUrl !== false) {
+    updateViewUrl("listings");
+  }
   if (options.scroll !== false) {
     requestAnimationFrame(() => {
       document.getElementById("listing-cycle-panel")?.scrollIntoView({ block: "start" });
@@ -4566,6 +4592,7 @@ function writeListingUrlState(params) {
   setUrlParam(params, "listTimeframe", filters.timeframe);
   setUrlParam(params, "listStart", filters.start);
   setUrlParam(params, "listEnd", filters.end);
+  setUrlParam(params, "listCycle", selectedListingCycleKey);
 }
 
 function applyListingUrlState() {
@@ -4577,6 +4604,7 @@ function applyListingUrlState() {
   setSelectIfOption("substrate-filter", params.get("listSubstrate") || "");
   setSelectIfOption("listing-sort", params.get("listSort") || "");
   setSelectIfOption("listing-timeframe-preset", params.get("listTimeframe") || "");
+  selectedListingCycleKey = params.get("listCycle") || selectedListingCycleKey || "";
   setAppliedListingFiltersFromControls();
 }
 
@@ -6511,6 +6539,8 @@ function initCompanyProfile() {
 
       const cycleTarget = event.target.closest(".cycle-link");
       if (cycleTarget) {
+        if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button) return;
+        event.preventDefault();
         openListingCycle(cycleTarget.dataset.cycleKey);
       }
     });
