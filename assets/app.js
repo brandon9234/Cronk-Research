@@ -17,7 +17,7 @@ let buyerMomentTopListingRowsCache = null;
 let buyerMomentListingCycleRowsCache = new Map();
 let customBuyerMomentRange = null;
 const CUSTOM_BUYER_MOMENT_ID = "custom-date-range";
-const DATA_ASSET_VERSION = "shop-discovery-20260604-3";
+const DATA_ASSET_VERSION = "shop-discovery-20260604-4";
 const BUYER_MOMENT_LANE_HEIGHT = 30;
 const BUYER_MOMENT_HIGH_OPPORTUNITY_SCORE = 68;
 const BUYER_MOMENT_BUILD_FIT_ORDER = [
@@ -6574,6 +6574,14 @@ function renderOperations() {
     "Review Count", "Review Average", "Active Listings", "Accepts Custom Requests", "Query Hits",
     "Query Terms", "Recent Review Samples", "Evidence Titles", "Review Snippets", "Next Action"
   ], 80, { preserveOrder: true });
+  renderTable("shop-discovery-tab-status", dashboard.operations.shopDiscoveryTabStatus || [], [
+    "Status", "Source", "Generated At", "Tabs Written", "Payload Ready Tabs", "Latest Payload Dir",
+    "Latest Action", "Current State", "Next Action", "No-Write Guard"
+  ], 1, { preserveOrder: true });
+  renderTable("shop-discovery-tab-rows", dashboard.operations.shopDiscoveryTabRows || [], [
+    "Priority", "Shop", "Sheet Name", "Status", "Discovery Score", "Review Rows", "Review Window",
+    "Sheet URL", "Written At", "No-Write Guard"
+  ], 20, { preserveOrder: true });
   renderTable("next-action-template-gap-decision-sheet-status", dashboard.operations.nextActionTemplateGapDecisionSheet || [], [
     "Status", "Source", "Sheet Rows", "Filled Rows", "Waiting Rows", "Partial Rows", "Validator Problems",
     "Current Sheet State", "QA Gate", "Decision Sheet URL", "Decision QA URL", "Decision TSV URL", "Tabs",
