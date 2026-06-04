@@ -6564,8 +6564,9 @@ function renderOperations() {
   renderStatusTable("refresh-priority-table", dashboard.operations.refreshPriorityQueue || [], ["Priority", "Status", "Source", "Freshness Read", "Decision Impact", "Why Now", "Refresh Step"], 6);
   renderTable("shop-discovery-status", dashboard.operations.shopDiscoveryStatus || [], [
     "Status", "Source", "Generated At", "Candidate Rows", "Unique Candidate Shop IDs", "New To Cronk",
-    "SQL Only", "Existing Workbook", "Query Count", "API Errors", "Current State", "Next Action",
-    "Source Run Folder", "Source TSV", "No-Write Guard"
+    "SQL Only", "Existing Workbook", "Query Count", "API Errors", "SQL Promotion", "Promoted Shops",
+    "Promoted Review Rows", "SQL Backup", "Current State", "Next Action", "Source Run Folder",
+    "Source TSV", "No-Write Guard"
   ], 1, { preserveOrder: true });
   renderTable("shop-discovery-queue", dashboard.operations.shopDiscoveryQueue || [], [
     "Priority", "Priority Score", "Coverage Status", "Shop", "Shop ID", "Shop URL", "Sold Count",
