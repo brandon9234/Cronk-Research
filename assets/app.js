@@ -17,7 +17,7 @@ let buyerMomentTopListingRowsCache = null;
 let buyerMomentListingCycleRowsCache = new Map();
 let customBuyerMomentRange = null;
 const CUSTOM_BUYER_MOMENT_ID = "custom-date-range";
-const DATA_ASSET_VERSION = "nightly-refresh-20260603-1";
+const DATA_ASSET_VERSION = "shop-discovery-20260604-1";
 const BUYER_MOMENT_LANE_HEIGHT = 30;
 const BUYER_MOMENT_HIGH_OPPORTUNITY_SCORE = 68;
 const BUYER_MOMENT_BUILD_FIT_ORDER = [
@@ -6562,6 +6562,16 @@ function initCompanyProfile() {
 
 function renderOperations() {
   renderStatusTable("refresh-priority-table", dashboard.operations.refreshPriorityQueue || [], ["Priority", "Status", "Source", "Freshness Read", "Decision Impact", "Why Now", "Refresh Step"], 6);
+  renderTable("shop-discovery-status", dashboard.operations.shopDiscoveryStatus || [], [
+    "Status", "Source", "Generated At", "Candidate Rows", "Unique Candidate Shop IDs", "New To Cronk",
+    "SQL Only", "Existing Workbook", "Query Count", "API Errors", "Current State", "Next Action",
+    "Source Run Folder", "Source TSV", "No-Write Guard"
+  ], 1, { preserveOrder: true });
+  renderTable("shop-discovery-queue", dashboard.operations.shopDiscoveryQueue || [], [
+    "Priority", "Priority Score", "Coverage Status", "Shop", "Shop ID", "Shop URL", "Sold Count",
+    "Review Count", "Review Average", "Active Listings", "Accepts Custom Requests", "Query Hits",
+    "Query Terms", "Recent Review Samples", "Evidence Titles", "Review Snippets", "Next Action"
+  ], 80, { preserveOrder: true });
   renderTable("next-action-template-gap-decision-sheet-status", dashboard.operations.nextActionTemplateGapDecisionSheet || [], [
     "Status", "Source", "Sheet Rows", "Filled Rows", "Waiting Rows", "Partial Rows", "Validator Problems",
     "Current Sheet State", "QA Gate", "Decision Sheet URL", "Decision QA URL", "Decision TSV URL", "Tabs",
