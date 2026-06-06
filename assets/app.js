@@ -17,7 +17,7 @@ let buyerMomentTopListingRowsCache = null;
 let buyerMomentListingCycleRowsCache = new Map();
 let customBuyerMomentRange = null;
 const CUSTOM_BUYER_MOMENT_ID = "custom-date-range";
-const DATA_ASSET_VERSION = "shop-discovery-20260604-27";
+const DATA_ASSET_VERSION = "mymaravia-tag-rank-20260606-1";
 const BUYER_MOMENT_LANE_HEIGHT = 30;
 const BUYER_MOMENT_HIGH_OPPORTUNITY_SCORE = 68;
 const BUYER_MOMENT_BUILD_FIT_ORDER = [
@@ -126,7 +126,10 @@ const numericColumns = new Set([
   "Preview Daily Sales", "Preview Listing Count", "Taxonomy Confidence",
   "Last Year Timeframe Estimated Sales", "Last Year Timeframe Avg Daily Sales",
   "Last Year Timeframe Review Count", "Last Year Timeframe Weeks", "Last Year Timeframe Weeks With Demand",
-  "Action Score", "Expected Daily Sales"
+  "Action Score", "Expected Daily Sales", "Tag Rows", "Unique Tags Scanned", "Found Within Scan",
+  "Not Found Within Scan", "Tag Count", "Tags Found In Scan", "Tags Not In Scan",
+  "Best API Rank", "Median Found API Rank", "Search Result Count", "Scan Depth", "Results Scanned",
+  "Best Top 20 Tags"
 ]);
 
 const defaultDailySalesSortColumns = [
@@ -203,13 +206,14 @@ const wrappedColumns = new Set([
   "Do Not Reuse", "Next Gate", "Source Audit Checklist", "Fact Capture Fields", "Evidence Targets",
   "Reject If", "Decision Output", "Editable Fields", "Allowed Audit Statuses", "Source Audit URL",
   "Source Queries", "Primary Source Targets", "Field Fill Plan", "Acceptance Criteria",
-  "Adjacent Evidence Link", "Adjacent Evidence Read", "Suggested Fact Status", "Needs Brandon Decision"
+  "Adjacent Evidence Link", "Adjacent Evidence Read", "Suggested Fact Status", "Needs Brandon Decision",
+  "Tag", "Rank Read", "Suggested Tag Action", "Rank Caveat", "Search Method", "Method"
 ]);
 
 const thumbnailColumns = new Set(["Thumbnail", "Listing Thumbnail", "Market Thumbnail", "Top Competitor Thumbnail", "My Thumbnail", "Competitor Thumbnail"]);
 const sourceLinkColumns = new Set(["Blank / Generic Sources"]);
 const companyColumns = new Set(["Shop", "Market Shop", "Top Shop"]);
-const badgeColumns = new Set(["Conquest Status", "Market State", "Opportunity Band", "MyMaravia Build Read", "Local Review Signal", "Action Type", "Confidence", "Change Type", "Investigation Status", "Resolution Status", "Resolved State", "Recovery Status", "Batch Status", "Market Signal", "Execution Status", "Decision Fill State", "Template Readiness", "Top Match Confidence", "Suggested Decision", "Audit Status", "Research Status"]);
+const badgeColumns = new Set(["Conquest Status", "Market State", "Opportunity Band", "MyMaravia Build Read", "Local Review Signal", "Action Type", "Confidence", "Change Type", "Investigation Status", "Resolution Status", "Resolved State", "Recovery Status", "Batch Status", "Market Signal", "Execution Status", "Decision Fill State", "Template Readiness", "Top Match Confidence", "Suggested Decision", "Audit Status", "Research Status", "Rank Status"]);
 const realTagColumns = new Set(["Tags", "Actual Tags", "My Actual Tags"]);
 
 const plotConfig = { responsive: true, displayModeBar: false };
@@ -5582,6 +5586,42 @@ function renderMyMaravia() {
     "Resolved State", "Resolution Status", "Resolution Read", "Resolved At",
     "Decision Impact", "Resolved Listing URL", "Listing URL", "Previous Snapshot", "Current Snapshot"
   ], 120, { preserveOrder: true });
+
+  const tagRank = my.tagRankMonitor || {};
+  const tagSummary = tagRank.summary || {};
+  const tagScanDepth = tagSummary.scanDepth || "";
+  const tagRankText = document.getElementById("mymaravia-tag-rank-summary");
+  if (tagRankText) {
+    if (tagSummary.status === "OK") {
+      tagRankText.textContent =
+        `Generated ${tagSummary.generatedAt || "unknown"} from live Etsy active listings; API score rank scan depth ${tagScanDepth || "unknown"}.`;
+    } else {
+      tagRankText.textContent = tagSummary.rankCaveat || "Tag-rank monitor has not been generated yet.";
+    }
+  }
+  const tagMetricRows = [
+    ["Active listings", fmt(tagSummary.activeListingCount, "Active Listings") || "0"],
+    ["Unique tags scanned", fmt(tagSummary.uniqueTagCount, "Unique Tags Scanned") || "0"],
+    ["Listing-tag rows", fmt(tagSummary.tagRowCount, "Tag Rows") || "0"],
+    ["Found in scan", fmt(tagSummary.foundWithinScan, "Found Within Scan") || "0"],
+    ["Not found", fmt(tagSummary.notFoundWithinScan, "Not Found Within Scan") || "0"],
+    ["Best top-20 tags", fmt(tagSummary.bestTop20TagCount, "Best Top 20 Tags") || "0"]
+  ];
+  const tagRankMetrics = document.getElementById("mymaravia-tag-rank-metrics");
+  if (tagRankMetrics) tagRankMetrics.innerHTML = tagMetricRows.map(([label, value]) => metric(label, value)).join("");
+  const tagRankCaveat = document.getElementById("mymaravia-tag-rank-caveat");
+  if (tagRankCaveat) tagRankCaveat.textContent = tagSummary.rankCaveat || "";
+  renderTable("mymaravia-tag-rank-weak-tags", tagRank.weakTagRows || [], [
+    "Product Title", "Tag", "API Score Rank", "Search Result Count", "Rank Read", "Suggested Tag Action", "Listing URL"
+  ], 80, { preserveOrder: true });
+  renderTable("mymaravia-tag-rank-listings", tagRank.listingRows || [], [
+    "Product Title", "State", "Tag Count", "Tags Found In Scan", "Tags Not In Scan",
+    "Best API Rank", "Median Found API Rank", "Rank Read", "Favorites", "Listing URL", "Tags"
+  ], 120, { preserveOrder: true });
+  renderTable("mymaravia-tag-rank-detail", tagRank.detailRows || [], [
+    "Product Title", "Tag #", "Tag", "API Score Rank", "Rank Status", "Search Result Count",
+    "Results Scanned", "Rank Read", "Suggested Tag Action", "Listing URL"
+  ], 900, { preserveOrder: true });
 
   const diagnosticStatus = document.getElementById("my-listing-status-filter")?.value || "";
   const listingState = document.getElementById("my-listing-state-filter")?.value || "";
