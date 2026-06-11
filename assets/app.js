@@ -6623,6 +6623,10 @@ function renderOperations() {
     "API Deepened Rows", "Unique Listing URLs", "Review Window", "Review Ledger Window",
     "eRank Allocation Status", "eRank 30D Sales", "Sheet URL", "Written At", "No-Write Guard"
   ], 20, { preserveOrder: true });
+  renderStatusTable("review-mapping-health", dashboard.operations.reviewMappingHealth || [], [
+    "Status", "Check", "Finding", "Affected Rows", "Affected Shops", "Record Count", "Coverage",
+    "Example", "Decision Impact", "Next Action"
+  ], 5);
   renderTable("next-action-template-gap-decision-sheet-status", dashboard.operations.nextActionTemplateGapDecisionSheet || [], [
     "Status", "Source", "Sheet Rows", "Filled Rows", "Waiting Rows", "Partial Rows", "Validator Problems",
     "Current Sheet State", "QA Gate", "Decision Sheet URL", "Decision QA URL", "Decision TSV URL", "Tabs",
