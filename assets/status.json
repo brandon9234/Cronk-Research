@@ -5,31 +5,31 @@
       "queued_api_review_capture",
       "queued"
     ],
-    "elapsedSeconds": 128.3,
-    "estimatedRemainingSeconds": 66.1,
-    "lastShop": "PinkPineappleHut",
+    "elapsedSeconds": 186.7,
+    "estimatedRemainingSeconds": 0.0,
+    "lastShop": "FrenchBlissProducts",
     "queuedCandidates": 50,
-    "reviewRowsChanged": 10737,
-    "reviewsFetched": 10737,
+    "reviewRowsChanged": 13954,
+    "reviewsFetched": 13954,
     "reviewsMissingListingMetadata": 0,
-    "runStatus": "running",
-    "secondsPerShop": 3.9,
-    "shopsCompleted": 33,
+    "runStatus": "complete",
+    "secondsPerShop": 3.7,
+    "shopsCompleted": 50,
     "sourceFile": "deepen-write.json",
-    "updatedAt": "2026-06-11T16:56:42Z"
+    "updatedAt": "2026-06-11T16:57:40Z"
   },
-  "activeWriterAlive": false,
+  "activeWriterAlive": true,
   "coverageBacklog": {
     "capped": 168,
     "depthSatisfied": 60,
     "partial": 4003,
     "queued": 123,
-    "queuedApiReviewCapture": 434,
-    "queuedTotal": 557,
-    "windowComplete": 13964
+    "queuedApiReviewCapture": 417,
+    "queuedTotal": 540,
+    "windowComplete": 13981
   },
-  "currentPhase": "dashboard_refresh_complete",
-  "generatedAt": "2026-06-11T16:56:43Z",
+  "currentPhase": "rollup_refresh_complete",
+  "generatedAt": "2026-06-11T17:01:27Z",
   "latestQueryYield": {
     "generatedAt": "2026-06-11T16:50:24Z",
     "queryBank": "wedding_events",
@@ -37,20 +37,20 @@
     "reviewRowsWritten": 20711,
     "shopsPromoted": 60
   },
-  "nextSafeAction": "refresh review rollups before dashboard catch-up; 10,737 ledger rows are stale",
-  "publicCommit": "882921592bb5",
+  "nextSafeAction": "monitor active phase `rollup_refresh_complete`; avoid launching another SQL writer",
+  "publicCommit": "9dfd6faa08b0",
   "publish": {
-    "lastReason": "atomic dashboard refresh promoted",
+    "lastReason": "publish sync pushed 9dfd6faa08b0cfe560b6cfdb120d5e61b13e6c7b",
     "lastStatus": "success",
-    "lastStatusAt": "2026-06-11T16:56:25Z",
-    "lastSuccessfulAt": "2026-06-11T16:56:25Z",
-    "lastSuccessfulPublicCommit": "882921592bb5",
+    "lastStatusAt": "2026-06-11T16:57:15Z",
+    "lastSuccessfulAt": "2026-06-11T16:57:15Z",
+    "lastSuccessfulPublicCommit": "9dfd6faa08b0",
     "lastSuccessfulPublicDataReviewCount": 9391030,
-    "lastSuccessfulReviewLedgerCount": 9400613
+    "lastSuccessfulReviewLedgerCount": 9402949
   },
-  "reviewLedgerCount": 9401767,
+  "reviewLedgerCount": 9404984,
   "reviewListingMapping": {
-    "cacheReviewDelta": 10737,
+    "cacheReviewDelta": 13954,
     "dashboardGeneratedAt": "2026-06-11T12:51:46",
     "distinctListingUrls": 1760750,
     "gapDetailRows": 18,
@@ -61,7 +61,7 @@
     "shopsMissingListingMetadata": 2,
     "source": "dashboard-cache"
   },
-  "rollupFreshnessStatus": "stale",
-  "rollupSourceTotalReviews": 9391030,
-  "rollupStaleReviewRows": 10737
+  "rollupFreshnessStatus": "current",
+  "rollupSourceTotalReviews": 9404984,
+  "rollupStaleReviewRows": 0
 }
