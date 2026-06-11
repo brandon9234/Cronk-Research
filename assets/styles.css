@@ -108,6 +108,72 @@ input {
 .view { display: none; }
 .view.active { display: block; }
 
+.pipeline-status-strip {
+  display: grid;
+  grid-template-columns: minmax(240px, 0.85fr) minmax(0, 2.15fr);
+  gap: 14px;
+  align-items: stretch;
+  margin: 0 0 14px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: var(--shadow);
+}
+
+.pipeline-status-copy {
+  display: grid;
+  align-content: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.pipeline-status-copy strong {
+  font-size: 15px;
+  line-height: 1.25;
+}
+
+.pipeline-status-copy span {
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.status-kicker {
+  color: var(--teal);
+  font-size: 11px;
+  font-weight: 760;
+  text-transform: uppercase;
+}
+
+.pipeline-status-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.pipeline-status-grid > div {
+  min-height: 58px;
+  padding: 8px 9px;
+  border: 1px solid #e2e8e3;
+  border-radius: 6px;
+  background: #f9fbf8;
+}
+
+.pipeline-status-grid span {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+.pipeline-status-grid strong {
+  display: block;
+  font-size: 14px;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
 .grid {
   display: grid;
   gap: 14px;
@@ -898,7 +964,9 @@ input[type="search"] {
   .grid.two,
   .grid.two-wide,
   .metric-grid,
-  .metric-grid.compact {
+  .metric-grid.compact,
+  .pipeline-status-strip,
+  .pipeline-status-grid {
     grid-template-columns: 1fr;
   }
   input[type="search"] {

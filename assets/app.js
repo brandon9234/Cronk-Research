@@ -9,6 +9,7 @@ let selectedImportBuyerMomentId = "";
 let selectedMarketSegment = "";
 let selectedMarketSizeProduct = "";
 let selectedNextActionKey = "";
+let publicStatus = null;
 let nextActionTraceCache = new Map();
 let buyerMomentRowsCache = new Map();
 let buyerMomentSummariesCache = null;
@@ -19,6 +20,7 @@ let customBuyerMomentRange = null;
 let reviewMappingGapControlSignature = "";
 const CUSTOM_BUYER_MOMENT_ID = "custom-date-range";
 const DATA_ASSET_VERSION = "mymaravia-tag-rank-20260606-1";
+const STATUS_ASSET_VERSION = "public-status-20260611-1";
 const BUYER_MOMENT_LANE_HEIGHT = 30;
 const BUYER_MOMENT_HIGH_OPPORTUNITY_SCORE = 68;
 const BUYER_MOMENT_BUILD_FIT_ORDER = [
@@ -232,6 +234,60 @@ function fmt(value, column = "") {
 
 function metric(label, value) {
   return `<div class="metric"><div class="label">${escapeHtml(label)}</div><div class="value">${escapeHtml(String(value ?? "Unavailable"))}</div></div>`;
+}
+
+async function loadPublicStatus() {
+  try {
+    const response = await fetch(`assets/status.json?v=${STATUS_ASSET_VERSION}`, { cache: "no-store" });
+    if (!response.ok) return null;
+    return await response.json();
+  } catch (error) {
+    return null;
+  }
+}
+
+function compactCount(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return "unknown";
+  return new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(number);
+}
+
+function renderPublicStatus() {
+  const target = document.getElementById("pipeline-status-card");
+  if (!target) return;
+  if (!publicStatus) {
+    target.hidden = true;
+    return;
+  }
+  const mapping = publicStatus.reviewListingMapping || {};
+  const backlog = publicStatus.coverageBacklog || {};
+  const active = publicStatus.activeDeepening || {};
+  const publish = publicStatus.publish || {};
+  const activeRunText = publicStatus.activeWriterAlive ? "Running" : "Idle";
+  const changedRows = active.reviewRowsChanged ? `${compactCount(active.reviewRowsChanged)} rows changed` : "No active deepening rows";
+  const shopProgress = active.queuedCandidates
+    ? `${compactCount(active.shopsCompleted)} / ${compactCount(active.queuedCandidates)} shops`
+    : active.shopsCompleted
+      ? `${compactCount(active.shopsCompleted)} shops`
+      : "No active shop count";
+  target.hidden = false;
+  target.innerHTML = `
+    <div class="pipeline-status-copy">
+      <div class="status-kicker">Scrape heartbeat</div>
+      <strong>${escapeHtml(activeRunText)} · ${escapeHtml(publicStatus.currentPhase || "unknown")}</strong>
+      <span>${escapeHtml(publicStatus.nextSafeAction || "")}</span>
+    </div>
+    <div class="pipeline-status-grid">
+      <div><span>Ledger reviews</span><strong>${compactCount(publicStatus.reviewLedgerCount)}</strong></div>
+      <div><span>Rollup</span><strong>${escapeHtml(publicStatus.rollupFreshnessStatus || "unknown")}</strong></div>
+      <div><span>Mapping gaps</span><strong>${compactCount(mapping.rowsMissingListingMetadata || 0)}</strong></div>
+      <div><span>Queued backlog</span><strong>${compactCount(backlog.queuedTotal || 0)}</strong></div>
+      <div><span>Active batch</span><strong>${escapeHtml(shopProgress)}</strong></div>
+      <div><span>Batch rows</span><strong>${escapeHtml(changedRows)}</strong></div>
+      <div><span>Public data reviews</span><strong>${compactCount(publish.lastSuccessfulPublicDataReviewCount)}</strong></div>
+      <div><span>Status updated</span><strong>${escapeHtml(publicStatus.generatedAt || "unknown")}</strong></div>
+    </div>
+  `;
 }
 
 function escapeHtml(value) {
@@ -6891,6 +6947,7 @@ function renderAll() {
   document.getElementById("snapshot-note").innerHTML =
     `${escapeHtml(dashboard.meta.source)} Generated ${escapeHtml(dashboard.meta.generatedAt)} from cache modified ${escapeHtml(dashboard.meta.sourceWorkbookModifiedAt)}.`;
   document.getElementById("workbook-link").href = dashboard.meta.workbookUrl;
+  renderPublicStatus();
   renderOpportunity();
   initMyMaraviaFilters();
   renderMyMaravia();
@@ -6931,7 +6988,11 @@ function renderAll() {
 
 async function boot() {
   setupTabs();
-  const response = await fetch(`assets/data.json?v=${DATA_ASSET_VERSION}`);
+  const [response, statusPayload] = await Promise.all([
+    fetch(`assets/data.json?v=${DATA_ASSET_VERSION}`),
+    loadPublicStatus()
+  ]);
+  publicStatus = statusPayload;
   dashboard = await response.json();
   applyNextActionUrlState();
   renderAll();

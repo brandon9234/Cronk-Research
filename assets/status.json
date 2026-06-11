@@ -1,0 +1,49 @@
+{
+  "activeDeepening": {},
+  "activeWriterAlive": true,
+  "coverageBacklog": {
+    "capped": 217,
+    "depthSatisfied": 60,
+    "partial": 4001,
+    "queued": 123,
+    "queuedApiReviewCapture": 273,
+    "queuedTotal": 396,
+    "windowComplete": 11266
+  },
+  "currentPhase": "discovery_running",
+  "generatedAt": "2026-06-11T07:19:01Z",
+  "latestQueryYield": {
+    "generatedAt": "2026-06-11T07:09:56Z",
+    "queryBank": "wedding_events",
+    "rateLimitErrors": 0,
+    "reviewRowsWritten": 12495,
+    "shopsPromoted": 54
+  },
+  "nextSafeAction": "monitor active phase `discovery_running`; avoid launching another SQL writer",
+  "publicCommit": "bc3bd9a42b08",
+  "publish": {
+    "lastReason": "thresholds not met: 3,763 new reviews since publish, 57s elapsed, 1 runs",
+    "lastStatus": "skipped",
+    "lastStatusAt": "2026-06-11T07:09:47Z",
+    "lastSuccessfulAt": "2026-06-11T07:06:42Z",
+    "lastSuccessfulPublicCommit": "bc3bd9a42b08",
+    "lastSuccessfulPublicDataReviewCount": 8620301,
+    "lastSuccessfulReviewLedgerCount": 8629033
+  },
+  "reviewLedgerCount": 8650035,
+  "reviewListingMapping": {
+    "cacheReviewDelta": 29734,
+    "dashboardGeneratedAt": "2026-06-11T03:02:49",
+    "distinctListingUrls": 1611870,
+    "gapDetailRows": 18,
+    "reviewRows": 8620301,
+    "rowsMissingListingMetadata": 18,
+    "rowsMissingListingTitle": 18,
+    "rowsMissingListingUrl": 0,
+    "shopsMissingListingMetadata": 2,
+    "source": "dashboard-cache"
+  },
+  "rollupFreshnessStatus": "stale",
+  "rollupSourceTotalReviews": 8632796,
+  "rollupStaleReviewRows": 17239
+}
