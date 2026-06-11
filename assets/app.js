@@ -20,7 +20,7 @@ let customBuyerMomentRange = null;
 let reviewMappingGapControlSignature = "";
 let reviewShopCoverageControlSignature = "";
 const CUSTOM_BUYER_MOMENT_ID = "custom-date-range";
-const DATA_ASSET_VERSION = "market-penetration-20260611-3";
+const DATA_ASSET_VERSION = "market-penetration-20260611-4";
 const STATUS_ASSET_VERSION = "public-status-20260611-1";
 const BUYER_MOMENT_LANE_HEIGHT = 30;
 const BUYER_MOMENT_HIGH_OPPORTUNITY_SCORE = 68;
@@ -151,7 +151,8 @@ const numericColumns = new Set([
   "Capped Shops", "Queued Shops", "Untracked Shops", "Other Status Shops",
   "Recent Target Runs", "Recent Discovery Output Rows", "Recent Shops Promoted",
   "Recent Review Rows Written", "Recent Rate Limit Errors", "Candidate Shop IDs",
-  "Discovery Output Rows", "Shops Promoted", "Review Rows Written", "Rate Limit Errors", "Seconds"
+  "Discovery Output Rows", "Shops Promoted", "Review Rows Written", "Rate Limit Errors", "Seconds",
+  "Shop ID", "Top Listing 365D Reviews"
 ]);
 
 const defaultDailySalesSortColumns = [
@@ -4201,6 +4202,11 @@ function renderMarketPenetration() {
     "Depth Satisfied Shops", "Empty / Zero Shops", "Partial Shops", "Capped Shops",
     "Queued Shops", "Untracked Shops", "Other Status Shops", "Freshest Capture"
   ], 20, { preserveOrder: true });
+  renderTable("market-penetration-open-shops", Array.isArray(coverageAudit.topOpenShops) ? coverageAudit.topOpenShops : [], [
+    "Market", "Shop", "Shop ID", "Coverage Status", "Next Action",
+    "Reviewed Listings", "Reviews 365D", "Reviews 90D", "Total Reviews",
+    "Freshest Capture", "Top Listing 365D Reviews", "Top Listing", "Top Listing URL"
+  ], 80, { preserveOrder: true });
   renderTable("market-penetration-yield", Array.isArray(coverageAudit.queryBankYield) ? coverageAudit.queryBankYield : [], [
     "Generated At", "Query Bank", "Market", "Candidate Shop IDs", "Discovery Output Rows",
     "Shops Promoted", "Review Rows Written", "Rate Limit Errors", "Seconds", "Run"
