@@ -2,54 +2,55 @@
   "activeDeepening": {
     "apiErrors": 0,
     "coverageStatuses": [
-      "api_review_capture_capped"
+      "queued_api_review_capture",
+      "queued"
     ],
-    "elapsedSeconds": 332.4,
+    "elapsedSeconds": 282.9,
     "estimatedRemainingSeconds": 0.0,
-    "lastShop": "HoiauCraft",
-    "queuedCandidates": 10,
-    "reviewRowsChanged": 38388,
-    "reviewsFetched": 38388,
+    "lastShop": "HoneyBBakesAndCrafts",
+    "queuedCandidates": 50,
+    "reviewRowsChanged": 23594,
+    "reviewsFetched": 23594,
     "reviewsMissingListingMetadata": 0,
     "runStatus": "complete",
-    "secondsPerShop": 33.2,
-    "shopsCompleted": 10,
-    "sourceFile": "backlog-capped-write.json",
-    "updatedAt": "2026-06-11T15:53:52Z"
+    "secondsPerShop": 5.7,
+    "shopsCompleted": 50,
+    "sourceFile": "deepen-write.json",
+    "updatedAt": "2026-06-11T16:11:37Z"
   },
   "activeWriterAlive": true,
   "coverageBacklog": {
-    "capped": 172,
+    "capped": 174,
     "depthSatisfied": 60,
     "partial": 4001,
     "queued": 123,
-    "queuedApiReviewCapture": 341,
-    "queuedTotal": 464,
-    "windowComplete": 13779
+    "queuedApiReviewCapture": 327,
+    "queuedTotal": 450,
+    "windowComplete": 13874
   },
   "currentPhase": "rollup_refresh_complete",
-  "generatedAt": "2026-06-11T15:56:06Z",
+  "generatedAt": "2026-06-11T16:13:54Z",
   "latestQueryYield": {
-    "generatedAt": "2026-06-11T15:43:35Z",
-    "queryBank": "professional_nameplates",
+    "generatedAt": "2026-06-11T16:02:54Z",
+    "queryBank": "business_signage",
     "rateLimitErrors": 0,
-    "reviewRowsWritten": 1981,
-    "shopsPromoted": 2
+    "reviewRowsWritten": 1884,
+    "shopsPromoted": 10
   },
   "nextSafeAction": "monitor active phase `rollup_refresh_complete`; avoid launching another SQL writer",
-  "publicCommit": "899c58c80e5f",
+  "publicCommit": "6fee344a72da",
   "publish": {
-    "lastReason": "thresholds not met: 26,422 new reviews since publish, 728s elapsed, 2 runs",
+    "lastReason": "thresholds not met: 41,694 new reviews since publish, 1903s elapsed, 4 runs",
     "lastStatus": "skipped",
-    "lastStatusAt": "2026-06-11T15:43:23Z",
+    "lastStatusAt": "2026-06-11T16:02:44Z",
     "lastSuccessfulAt": "2026-06-11T15:28:46Z",
     "lastSuccessfulPublicCommit": "f34e53dce8cf",
     "lastSuccessfulPublicDataReviewCount": 9284192,
     "lastSuccessfulReviewLedgerCount": 9293034
   },
-  "reviewLedgerCount": 9332844,
+  "reviewLedgerCount": 9358322,
   "reviewListingMapping": {
-    "cacheReviewDelta": 48652,
+    "cacheReviewDelta": 74130,
     "dashboardGeneratedAt": "2026-06-11T11:24:43",
     "distinctListingUrls": 1742438,
     "gapDetailRows": 18,
@@ -61,6 +62,6 @@
     "source": "dashboard-cache"
   },
   "rollupFreshnessStatus": "current",
-  "rollupSourceTotalReviews": 9332844,
+  "rollupSourceTotalReviews": 9358322,
   "rollupStaleReviewRows": 0
 }
