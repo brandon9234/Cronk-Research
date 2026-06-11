@@ -18,6 +18,7 @@ let buyerMomentTopListingRowsCache = null;
 let buyerMomentListingCycleRowsCache = new Map();
 let customBuyerMomentRange = null;
 let reviewMappingGapControlSignature = "";
+let reviewShopCoverageControlSignature = "";
 const CUSTOM_BUYER_MOMENT_ID = "custom-date-range";
 const DATA_ASSET_VERSION = "mymaravia-tag-rank-20260606-1";
 const STATUS_ASSET_VERSION = "public-status-20260611-1";
@@ -43,6 +44,7 @@ const REVIEW_LISTING_PREVIEW_CHUNKS = 1;
 const REVIEW_LISTING_RESULT_LIMIT = 5000;
 const REVIEW_LISTING_SEARCH_MIN_CHARS = 2;
 const REVIEW_LISTING_PROGRESS_RENDER_MS = 500;
+const REVIEW_SHOP_COVERAGE_RESULT_LIMIT = 500;
 const LISTING_TIMEFRAME_CUSTOM_ID = "custom";
 const LISTING_TIMEFRAME_PRESETS = {
   "mothers-day": { label: "Mother's Day season", start: "04-15", end: "05-25" },
@@ -69,6 +71,12 @@ const reviewListingState = {
   searchToken: 0,
   searchAbortController: null,
   lastProgressRenderAt: 0
+};
+const reviewShopCoverageState = {
+  rows: [],
+  loaded: false,
+  loading: false,
+  error: ""
 };
 
 const numericColumns = new Set([
@@ -130,6 +138,7 @@ const numericColumns = new Set([
   "Preview Daily Sales", "Preview Listing Count", "Taxonomy Confidence",
   "Last Year Timeframe Estimated Sales", "Last Year Timeframe Avg Daily Sales",
   "Last Year Timeframe Review Count", "Last Year Timeframe Weeks", "Last Year Timeframe Weeks With Demand",
+  "Review-Derived Listings", "Full Identity Listings", "Title Gap Listings", "Identity Gap Listings",
   "Action Score", "Expected Daily Sales", "Tag Rows", "Unique Tags Scanned", "Found Within Scan",
   "Not Found Within Scan", "Tag Count", "Tags Found In Scan", "Tags Not In Scan",
   "Best API Rank", "Median Found API Rank", "Search Result Count", "Scan Depth", "Results Scanned",
@@ -472,6 +481,8 @@ function renderTable(targetId, rows, columns = null, limit = null, options = {})
           ? recoveryBatchHandoffCell(row)
         : targetId === "company-production" && col === "Production Tag"
           ? productionLinkCell(row[col])
+        : targetId === "review-shop-coverage-details" && col === "Listing Detail"
+          ? reviewShopListingDetailCell(row)
         : col === "Weekly Sales Graph"
           ? listingCycleLinkCell(row)
         : companyColumns.has(col)
@@ -6777,6 +6788,217 @@ function renderReviewMappingGapDetails() {
   ], 50, { preserveOrder: true });
 }
 
+function reviewShopCoverageManifest() {
+  return dashboard?.listing?.reviewShopCoverageIndex || null;
+}
+
+function decodeReviewShopCoverageRows(payload) {
+  const manifest = reviewShopCoverageManifest();
+  if (!manifest) return [];
+  const columns = payload.columns || manifest.rowColumns || [];
+  const labels = manifest.columnLabels || {};
+  return (payload.rows || []).map(values => {
+    const row = {};
+    columns.forEach((column, index) => {
+      const label = labels[column] || column;
+      row[label] = values[index];
+    });
+    row["Listing Detail"] = "Search listing sidecar";
+    return row;
+  });
+}
+
+function loadReviewShopCoverageRows() {
+  const manifest = reviewShopCoverageManifest();
+  if (!manifest || reviewShopCoverageState.loaded || reviewShopCoverageState.loading) return;
+  reviewShopCoverageState.loading = true;
+  reviewShopCoverageState.error = "";
+  (async () => {
+    try {
+      const chunks = [];
+      for (const file of manifest.rowFiles || []) {
+        const response = await fetch(reviewListingAssetUrl(file));
+        if (!response.ok) throw new Error(`Shop coverage chunk ${file} failed to load`);
+        chunks.push(...decodeReviewShopCoverageRows(await response.json()));
+      }
+      reviewShopCoverageState.rows = chunks;
+      reviewShopCoverageState.loaded = true;
+    } catch (error) {
+      reviewShopCoverageState.error = error?.message || "Shop coverage failed to load";
+    } finally {
+      reviewShopCoverageState.loading = false;
+      renderReviewShopCoverageDetails();
+    }
+  })();
+}
+
+function reviewShopCoverageControlValues() {
+  return {
+    status: document.getElementById("review-shop-coverage-status")?.value || "",
+    query: (document.getElementById("review-shop-coverage-search")?.value || "").trim().toLowerCase()
+  };
+}
+
+function reviewShopCoverageSearchText(row) {
+  return [
+    row.Status,
+    row.Shop,
+    row["Mapping Priority"],
+    row["Next Action"],
+    row["Full Year Review Coverage"],
+    row["Latest Review ISO"]
+  ].map(value => String(value || "").toLowerCase()).join(" ");
+}
+
+function filteredReviewShopCoverageRows(rows) {
+  const filters = reviewShopCoverageControlValues();
+  return rows.filter(row => {
+    if (filters.status && row.Status !== filters.status) return false;
+    if (filters.query && !reviewShopCoverageSearchText(row).includes(filters.query)) return false;
+    return true;
+  });
+}
+
+function renderReviewShopCoverageControls(rows) {
+  const target = document.getElementById("review-shop-coverage-controls");
+  if (!target) return;
+  const statuses = [...new Set(rows.map(row => row.Status).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+  const signature = JSON.stringify({ statuses });
+  if (reviewShopCoverageControlSignature === signature && target.dataset.bound === "true") return;
+  const current = reviewShopCoverageControlValues();
+  reviewShopCoverageControlSignature = signature;
+  target.innerHTML = `
+    <div class="mapping-gap-controls">
+      <label>
+        <span>Status</span>
+        <select id="review-shop-coverage-status">
+          <option value="">All statuses</option>
+          ${statuses.map(status => `<option value="${escapeHtml(status)}">${escapeHtml(status)}</option>`).join("")}
+        </select>
+      </label>
+      <label>
+        <span>Search</span>
+        <input id="review-shop-coverage-search" type="search" placeholder="shop, coverage state, repair lane">
+      </label>
+    </div>
+  `;
+  const status = document.getElementById("review-shop-coverage-status");
+  const search = document.getElementById("review-shop-coverage-search");
+  if (status) status.value = statuses.includes(current.status) ? current.status : "";
+  if (search) search.value = current.query;
+  status?.addEventListener("change", renderReviewShopCoverageDetails);
+  search?.addEventListener("input", renderReviewShopCoverageDetails);
+  target.dataset.bound = "true";
+}
+
+function reviewShopCoverageTotals(rows) {
+  const manifest = reviewShopCoverageManifest() || {};
+  if (!rows.length) {
+    return {
+      shops: Number(manifest.totalShops || 0),
+      listings: Number(manifest.totalReviewListingUrls || 0),
+      fullIdentity: Number(manifest.fullIdentityListingUrls || 0),
+      titleGaps: Number(manifest.titleGapListingUrls || 0),
+      identityGaps: Number(manifest.identityGapListingUrls || 0)
+    };
+  }
+  return {
+    shops: rows.length,
+    listings: rows.reduce((sum, row) => sum + numericCell(row, "Review-Derived Listings"), 0),
+    fullIdentity: rows.reduce((sum, row) => sum + numericCell(row, "Full Identity Listings"), 0),
+    titleGaps: rows.reduce((sum, row) => sum + numericCell(row, "Title Gap Listings"), 0),
+    identityGaps: rows.reduce((sum, row) => sum + numericCell(row, "Identity Gap Listings"), 0)
+  };
+}
+
+function renderReviewShopCoverageSummary(rows, filteredRows) {
+  const target = document.getElementById("review-shop-coverage-summary");
+  if (!target) return;
+  const totals = reviewShopCoverageTotals(rows);
+  const filteredTotals = reviewShopCoverageTotals(filteredRows);
+  const visibleTotals = rows.length ? filteredTotals : totals;
+  const visibleShops = rows.length ? filteredRows.length : totals.shops;
+  target.innerHTML = [
+    metric("Visible shops", `${fmt(visibleShops, "Shop Count")} / ${fmt(totals.shops, "Shop Count")}`),
+    metric("Reviewed listings", fmt(visibleTotals.listings, "Listing Count")),
+    metric("Full identity", fmt(visibleTotals.fullIdentity, "Listing Count")),
+    metric("Title gaps", fmt(visibleTotals.titleGaps, "Listing Count")),
+    metric("Identity gaps", fmt(visibleTotals.identityGaps, "Listing Count"))
+  ].join("");
+}
+
+function reviewShopListingDetailCell(row) {
+  const shop = String(row.Shop || "").trim();
+  if (!shop || shop === "(missing shop)") return "";
+  return `<button class="review-shop-detail-link" type="button" data-shop="${escapeHtml(shop)}">Open listings</button>`;
+}
+
+function bindReviewShopCoverageActions() {
+  if (document.body.dataset.reviewShopCoverageActionsBound === "true") return;
+  document.addEventListener("click", event => {
+    const target = event.target.closest(".review-shop-detail-link");
+    if (!target) return;
+    const shop = target.dataset.shop || "";
+    if (!shop) return;
+    const listingSearch = document.getElementById("listing-search");
+    const production = document.getElementById("production-filter");
+    const substrate = document.getElementById("substrate-filter");
+    const timeframe = document.getElementById("listing-timeframe-preset");
+    const sort = document.getElementById("listing-sort");
+    if (listingSearch) listingSearch.value = shop;
+    if (production) production.value = "";
+    if (substrate) substrate.value = "";
+    if (timeframe) timeframe.value = "";
+    if (sort) sort.value = "";
+    selectedListingSubstrate = "";
+    selectedListingTimeframePreset = "";
+    listingSearchDirty = false;
+    activateView("listings");
+    applyListingSearch();
+    document.getElementById("listings")?.scrollIntoView({ block: "start" });
+  });
+  document.body.dataset.reviewShopCoverageActionsBound = "true";
+}
+
+function renderReviewShopCoverageDetails() {
+  const manifest = reviewShopCoverageManifest();
+  const details = document.getElementById("review-shop-coverage-details");
+  const count = document.getElementById("review-shop-coverage-count");
+  if (!manifest) {
+    if (details) details.innerHTML = `<div class="empty">No shop coverage sidecar is available in this snapshot.</div>`;
+    if (count) count.textContent = "";
+    return;
+  }
+  bindReviewShopCoverageActions();
+  loadReviewShopCoverageRows();
+  const rows = reviewShopCoverageState.rows;
+  renderReviewShopCoverageControls(rows);
+  const filteredRows = filteredReviewShopCoverageRows(rows);
+  renderReviewShopCoverageSummary(rows, filteredRows);
+  if (count) {
+    if (reviewShopCoverageState.error) {
+      count.textContent = reviewShopCoverageState.error;
+    } else if (reviewShopCoverageState.loading && !reviewShopCoverageState.loaded) {
+      count.textContent = `Loading ${fmt(manifest.totalShops || 0, "Shop Count")} shop coverage rows.`;
+    } else {
+      const capped = filteredRows.length > REVIEW_SHOP_COVERAGE_RESULT_LIMIT
+        ? ` First ${fmt(REVIEW_SHOP_COVERAGE_RESULT_LIMIT, "Shop Count")} shown.`
+        : "";
+      count.textContent = `Showing ${fmt(Math.min(filteredRows.length, REVIEW_SHOP_COVERAGE_RESULT_LIMIT), "Shop Count")} of ${fmt(filteredRows.length, "Shop Count")} matching shops.${capped}`;
+    }
+  }
+  if (reviewShopCoverageState.loading && !rows.length) {
+    if (details) details.innerHTML = `<div class="empty">Loading shop coverage rows.</div>`;
+    return;
+  }
+  renderTable("review-shop-coverage-details", filteredRows, [
+    "Status", "Shop", "Review Corpus Count", "Review Corpus 90D", "Review Corpus 365D",
+    "Review-Derived Listings", "Full Identity Listings", "Title Gap Listings", "Identity Gap Listings",
+    "Latest Review ISO", "Full Year Review Coverage", "eRank 30D Sales", "Active Listings",
+    "Mapping Priority", "Listing Detail", "Next Action"
+  ], REVIEW_SHOP_COVERAGE_RESULT_LIMIT, { preserveOrder: true });
+}
+
 function renderOperations() {
   renderStatusTable("refresh-priority-table", dashboard.operations.refreshPriorityQueue || [], ["Priority", "Status", "Source", "Freshness Read", "Decision Impact", "Why Now", "Refresh Step"], 6);
   renderTable("shop-discovery-status", dashboard.operations.shopDiscoveryStatus || [], [
@@ -6805,6 +7027,11 @@ function renderOperations() {
     "Example", "Decision Impact", "Next Action"
   ], 5);
   renderReviewMappingGapDetails();
+  renderStatusTable("review-shop-coverage-health", dashboard.operations.reviewShopListingCoverageHealth || [], [
+    "Status", "Check", "Finding", "Affected Rows", "Affected Shops", "Record Count", "Coverage",
+    "Example", "Decision Impact", "Next Action"
+  ], 1);
+  renderReviewShopCoverageDetails();
   renderTable("next-action-template-gap-decision-sheet-status", dashboard.operations.nextActionTemplateGapDecisionSheet || [], [
     "Status", "Source", "Sheet Rows", "Filled Rows", "Waiting Rows", "Partial Rows", "Validator Problems",
     "Current Sheet State", "QA Gate", "Decision Sheet URL", "Decision QA URL", "Decision TSV URL", "Tabs",

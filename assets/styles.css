@@ -474,6 +474,21 @@ th.thumbnail-cell {
   color: var(--teal);
 }
 
+.review-shop-detail-link {
+  border: 0;
+  background: transparent;
+  color: var(--blue);
+  cursor: pointer;
+  font-weight: 700;
+  padding: 0;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.review-shop-detail-link:hover {
+  text-decoration: underline;
+}
+
 .badge {
   display: inline-flex;
   align-items: center;
