@@ -20,7 +20,7 @@ let customBuyerMomentRange = null;
 let reviewMappingGapControlSignature = "";
 let reviewShopCoverageControlSignature = "";
 const CUSTOM_BUYER_MOMENT_ID = "custom-date-range";
-const DATA_ASSET_VERSION = "mymaravia-company-accuracy-20260611-2";
+const DATA_ASSET_VERSION = "market-penetration-20260611-1";
 const STATUS_ASSET_VERSION = "public-status-20260611-1";
 const BUYER_MOMENT_LANE_HEIGHT = 30;
 const BUYER_MOMENT_HIGH_OPPORTUNITY_SCORE = 68;
@@ -142,7 +142,11 @@ const numericColumns = new Set([
   "Action Score", "Expected Daily Sales", "Tag Rows", "Unique Tags Scanned", "Found Within Scan",
   "Not Found Within Scan", "Tag Count", "Tags Found In Scan", "Tags Not In Scan",
   "Best API Rank", "Median Found API Rank", "Search Result Count", "Scan Depth", "Results Scanned",
-  "Best Top 20 Tags"
+  "Best Top 20 Tags", "Reviewed Listings", "Competitor Shops", "Competitor Reviews 365D",
+  "Competitor Reviews 90D", "Estimated Competitor Orders 365D", "MyMaravia Active Listings",
+  "MyMaravia All Listings", "MyMaravia Orders 365D", "MyMaravia Reviews 365D",
+  "Estimated Order Share %", "Review Share %", "Reviews 365D", "Reviews 90D", "Total Reviews",
+  "Avg Rating", "Signal"
 ]);
 
 const defaultDailySalesSortColumns = [
@@ -4098,6 +4102,96 @@ function renderMarketSize() {
   ], 80, { preserveOrder: true });
 }
 
+function marketPenetrationFlatRows(segments, key) {
+  return segments.flatMap(segment =>
+    (Array.isArray(segment[key]) ? segment[key] : []).map(row => ({
+      "Market": segment["Market"],
+      ...row
+    }))
+  );
+}
+
+function renderMarketPenetration() {
+  const metricTarget = document.getElementById("market-penetration-metrics");
+  if (!metricTarget) return;
+  const payload = dashboard.marketPenetration || {};
+  const segments = Array.isArray(payload.segments) ? payload.segments : [];
+  const calibration = payload.calibration || {};
+  const totalReviews365 = segments.reduce((sum, row) => sum + numericCell(row, "Competitor Reviews 365D"), 0);
+  const totalReviews90 = segments.reduce((sum, row) => sum + numericCell(row, "Competitor Reviews 90D"), 0);
+  const totalCompetitorOrders = segments.reduce((sum, row) => sum + numericCell(row, "Estimated Competitor Orders 365D"), 0);
+  const totalMyOrders = segments.reduce((sum, row) => sum + numericCell(row, "MyMaravia Orders 365D"), 0);
+  const totalActiveListings = segments.reduce((sum, row) => sum + numericCell(row, "MyMaravia Active Listings"), 0);
+  const orderShare = percentShare(totalMyOrders, totalCompetitorOrders + totalMyOrders);
+  const bestShare = segments
+    .slice()
+    .sort((a, b) => numericCell(b, "Estimated Order Share %") - numericCell(a, "Estimated Order Share %"))[0] || {};
+
+  metricTarget.innerHTML = [
+    ["Markets", fmt(segments.length, "Listing Count") || "0"],
+    ["Competitor reviews 365D", fmt(totalReviews365, "Competitor Reviews 365D") || "0"],
+    ["Competitor reviews 90D", fmt(totalReviews90, "Competitor Reviews 90D") || "0"],
+    ["Est. competitor orders", fmt(Math.round(totalCompetitorOrders), "Estimated Competitor Orders 365D") || "0"],
+    ["MyMaravia orders 365D", fmt(totalMyOrders, "MyMaravia Orders 365D") || "0"],
+    ["My active listings", fmt(totalActiveListings, "MyMaravia Active Listings") || "0"],
+    ["Blended order share", orderShare === null ? "0%" : fmt(orderShare, "Estimated Order Share %")],
+    ["Strongest share", bestShare["Market"] ? `${bestShare["Market"]} ${fmt(bestShare["Estimated Order Share %"], "Estimated Order Share %")}` : "Unavailable"]
+  ].map(([label, value]) => metric(label, value)).join("");
+
+  const summary = document.getElementById("market-penetration-summary");
+  if (summary) {
+    const reviewRate = Number(calibration.reviewOrderRatePercent || 0);
+    summary.innerHTML = segments.length
+      ? `Strict review-backed read across hangers, LED nameplates, and license plates. Competitor orders are directionally estimated from MyMaravia's ${escapeHtml(fmt(reviewRate, "Review Share %"))} 365-day review/order ratio; use the top-shop and listing tables to see where each market is concentrated.`
+      : `No market penetration rows are available in this snapshot.`;
+  }
+
+  const chartTarget = document.getElementById("market-penetration-chart");
+  const chartRows = segments
+    .slice()
+    .sort((a, b) => numericCell(a, "Estimated Order Share %") - numericCell(b, "Estimated Order Share %"));
+  if (chartTarget && chartRows.length) {
+    const maxShare = Math.max(1, ...chartRows.map(row => numericCell(row, "Estimated Order Share %")));
+    Plotly.newPlot("market-penetration-chart", [{
+      type: "bar",
+      orientation: "h",
+      x: chartRows.map(row => numericCell(row, "Estimated Order Share %")),
+      y: chartRows.map(row => row["Market"]),
+      text: chartRows.map(row => `${fmt(row["Estimated Order Share %"], "Estimated Order Share %")} order share`),
+      textposition: "auto",
+      marker: { color: "#0f766e" },
+      hovertemplate: "%{y}<br>Estimated order share: %{x:.1f}%<extra></extra>"
+    }], {
+      margin: { l: 130, r: 20, t: 20, b: 45 },
+      xaxis: { title: "Estimated MyMaravia order share", range: [0, maxShare * 1.25], ticksuffix: "%" },
+      yaxis: { automargin: true },
+      height: Math.max(260, chartRows.length * 70),
+      paper_bgcolor: "rgba(0,0,0,0)",
+      plot_bgcolor: "rgba(0,0,0,0)"
+    }, plotConfig);
+  } else if (chartTarget) {
+    chartTarget.innerHTML = `<div class="empty">No market penetration rows are available in this snapshot.</div>`;
+  }
+
+  renderTable("market-penetration-segments", segments, [
+    "Market", "Read", "Reviewed Listings", "Competitor Shops",
+    "Competitor Reviews 365D", "Competitor Reviews 90D", "Estimated Competitor Orders 365D",
+    "MyMaravia Active Listings", "MyMaravia All Listings", "MyMaravia Orders 365D",
+    "MyMaravia Reviews 365D", "Estimated Order Share %", "Review Share %",
+    "Latest Competitor Review"
+  ], 20, { preserveOrder: true });
+  renderTable("market-penetration-shops", marketPenetrationFlatRows(segments, "Top Shops"), [
+    "Market", "Shop", "Reviewed Listings", "Reviews 365D", "Reviews 90D"
+  ], 60, { preserveOrder: true });
+  renderTable("market-penetration-my-listings", marketPenetrationFlatRows(segments, "MyMaravia Listings"), [
+    "Market", "State", "Subsegment", "Title", "Recent 30D Sales", "Est. Daily Sales", "URL"
+  ], 75, { preserveOrder: true });
+  renderTable("market-penetration-listings", marketPenetrationFlatRows(segments, "Top Listings"), [
+    "Market", "Shop", "Subsegment", "Reviews 365D", "Reviews 90D", "Total Reviews",
+    "Avg Rating", "Title", "URL"
+  ], 90, { preserveOrder: true });
+}
+
 function renderMarketControl() {
   const metricTarget = document.getElementById("market-control-metrics");
   if (!metricTarget) return;
@@ -5906,6 +6000,7 @@ function activateView(viewId) {
     renderCompanyProfile();
   }
   if (viewId === "market-size") renderMarketSize();
+  if (viewId === "market-penetration") renderMarketPenetration();
   updateViewUrl(viewId);
   requestAnimationFrame(updateAllBottomScrollbars);
 }
@@ -7338,6 +7433,7 @@ function renderAll() {
   initMarketSizeFilters();
   applyMarketSizeUrlState();
   renderMarketSize();
+  renderMarketPenetration();
   renderMetrics();
   renderStatusTable("latest-ok", dashboard.automation.latestOk, ["Status", "Run Timestamp", "Pipeline / Stage", "Automation Version", "eRank Sales Date", "Next Action"]);
   renderStatusTable("latest-problem", dashboard.automation.latestProblem, ["Status", "Run Timestamp", "Pipeline / Stage", "Blocker / Issue", "Next Action"]);

@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Cronk Research</title>
-  <link rel="stylesheet" href="assets/styles.css?v=mymaravia-company-accuracy-20260611-2">
+  <link rel="stylesheet" href="assets/styles.css?v=market-penetration-20260611-1">
   <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
 </head>
 <body>
@@ -23,6 +23,7 @@
       <button class="tab" data-view="mymaravia">MyMaravia</button>
       <button class="tab" data-view="market-control">Market Control</button>
       <button class="tab" data-view="market-size">Market Size</button>
+      <button class="tab" data-view="market-penetration">Market Penetration</button>
       <button class="tab" data-view="overview">Overview</button>
       <button class="tab" data-view="comparison">Comparison</button>
       <button class="tab" data-view="company">Company</button>
@@ -333,6 +334,40 @@
             <h2>MyMaravia Coverage</h2>
           </div>
           <div id="market-size-coverage"></div>
+        </section>
+      </section>
+
+      <section id="market-penetration" class="view">
+        <div id="market-penetration-metrics" class="metric-grid"></div>
+        <section class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>Market Penetration</h2>
+              <p id="market-penetration-summary" class="subtle"></p>
+            </div>
+          </div>
+          <div id="market-penetration-chart" class="chart"></div>
+          <div id="market-penetration-segments"></div>
+        </section>
+        <div class="grid two-wide">
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Top Competitor Shops</h2>
+            </div>
+            <div id="market-penetration-shops"></div>
+          </section>
+          <section class="panel">
+            <div class="panel-head">
+              <h2>MyMaravia Footprint</h2>
+            </div>
+            <div id="market-penetration-my-listings"></div>
+          </section>
+        </div>
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Top Review-Proven Listings</h2>
+          </div>
+          <div id="market-penetration-listings"></div>
         </section>
       </section>
 
@@ -861,6 +896,6 @@
       </section>
     </main>
   </div>
-  <script src="assets/app.js?v=mymaravia-company-accuracy-20260611-2"></script>
+  <script src="assets/app.js?v=market-penetration-20260611-1"></script>
 </body>
 </html>
