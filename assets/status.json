@@ -5,18 +5,18 @@
       "queued_api_review_capture",
       "queued"
     ],
-    "elapsedSeconds": 21.7,
-    "estimatedRemainingSeconds": 339.5,
-    "lastShop": "LaserWallaby",
+    "elapsedSeconds": 182.6,
+    "estimatedRemainingSeconds": 0.0,
+    "lastShop": "collectivetextile",
     "queuedCandidates": 50,
-    "reviewRowsChanged": 2972,
-    "reviewsFetched": 2972,
+    "reviewRowsChanged": 13869,
+    "reviewsFetched": 13869,
     "reviewsMissingListingMetadata": 0,
-    "runStatus": "running",
-    "secondsPerShop": 7.2,
-    "shopsCompleted": 3,
+    "runStatus": "complete",
+    "secondsPerShop": 3.7,
+    "shopsCompleted": 50,
     "sourceFile": "deepen-write.json",
-    "updatedAt": "2026-06-11T23:39:14Z"
+    "updatedAt": "2026-06-11T23:41:55Z"
   },
   "activeWriterAlive": true,
   "coverageBacklog": {
@@ -24,12 +24,12 @@
     "depthSatisfied": 60,
     "partial": 4003,
     "queued": 123,
-    "queuedApiReviewCapture": 339,
-    "queuedTotal": 462,
-    "windowComplete": 15739
+    "queuedApiReviewCapture": 291,
+    "queuedTotal": 414,
+    "windowComplete": 15787
   },
-  "currentPhase": "review_deepen_write_running",
-  "generatedAt": "2026-06-11T23:39:15Z",
+  "currentPhase": "rollup_refresh_complete",
+  "generatedAt": "2026-06-11T23:44:29Z",
   "latestQueryYield": {
     "generatedAt": "2026-06-11T23:33:49Z",
     "queryBank": "market_led_nameplates",
@@ -37,20 +37,20 @@
     "reviewRowsWritten": 1571,
     "shopsPromoted": 15
   },
-  "nextSafeAction": "wait for active review deepening and its rollup before dashboard catch-up",
-  "publicCommit": "490364c0bb9c",
+  "nextSafeAction": "monitor active phase `rollup_refresh_complete`; avoid launching another SQL writer",
+  "publicCommit": "4a6fea9052df",
   "publish": {
-    "lastReason": "thresholds not met: 1,571 new reviews since publish, 289s elapsed, 4 runs",
-    "lastStatus": "skipped",
-    "lastStatusAt": "2026-06-11T23:33:37Z",
-    "lastSuccessfulAt": "2026-06-11T23:26:17Z",
-    "lastSuccessfulPublicCommit": "de5bfba9f997",
-    "lastSuccessfulPublicDataReviewCount": 9870019,
-    "lastSuccessfulReviewLedgerCount": 9875435
+    "lastReason": "publish sync pushed 4a6fea9052df3ab8499f1cf92f487aac06edf76c",
+    "lastStatus": "success",
+    "lastStatusAt": "2026-06-11T23:39:44Z",
+    "lastSuccessfulAt": "2026-06-11T23:39:44Z",
+    "lastSuccessfulPublicCommit": "4a6fea9052df",
+    "lastSuccessfulPublicDataReviewCount": 9877006,
+    "lastSuccessfulReviewLedgerCount": 9882187
   },
-  "reviewLedgerCount": 9879240,
+  "reviewLedgerCount": 9890875,
   "reviewListingMapping": {
-    "cacheReviewDelta": 2234,
+    "cacheReviewDelta": 13869,
     "dashboardGeneratedAt": "2026-06-11T19:34:40",
     "distinctListingUrls": 1855720,
     "gapDetailRows": 18,
@@ -61,7 +61,7 @@
     "shopsMissingListingMetadata": 2,
     "source": "dashboard-cache"
   },
-  "rollupFreshnessStatus": "stale",
-  "rollupSourceTotalReviews": 9877006,
-  "rollupStaleReviewRows": 2234
+  "rollupFreshnessStatus": "current",
+  "rollupSourceTotalReviews": 9890875,
+  "rollupStaleReviewRows": 0
 }
