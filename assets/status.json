@@ -2,54 +2,55 @@
   "activeDeepening": {
     "apiErrors": 0,
     "coverageStatuses": [
-      "api_review_capture_capped"
+      "queued_api_review_capture",
+      "queued"
     ],
-    "elapsedSeconds": 407.7,
+    "elapsedSeconds": 234.6,
     "estimatedRemainingSeconds": 0.0,
-    "lastShop": "DOMEDBAZAAR",
-    "queuedCandidates": 10,
-    "reviewRowsChanged": 39147,
-    "reviewsFetched": 39147,
+    "lastShop": "AshleySteeleDesignCo",
+    "queuedCandidates": 50,
+    "reviewRowsChanged": 20822,
+    "reviewsFetched": 20822,
     "reviewsMissingListingMetadata": 0,
     "runStatus": "complete",
-    "secondsPerShop": 40.8,
-    "shopsCompleted": 10,
-    "sourceFile": "backlog-capped-write.json",
-    "updatedAt": "2026-06-11T14:39:44Z"
+    "secondsPerShop": 4.7,
+    "shopsCompleted": 50,
+    "sourceFile": "deepen-write.json",
+    "updatedAt": "2026-06-11T14:50:11Z"
   },
   "activeWriterAlive": true,
   "coverageBacklog": {
-    "capped": 177,
+    "capped": 178,
     "depthSatisfied": 60,
     "partial": 4001,
     "queued": 123,
-    "queuedApiReviewCapture": 292,
-    "queuedTotal": 415,
-    "windowComplete": 13424
+    "queuedApiReviewCapture": 330,
+    "queuedTotal": 453,
+    "windowComplete": 13473
   },
   "currentPhase": "rollup_refresh_complete",
-  "generatedAt": "2026-06-11T14:42:01Z",
+  "generatedAt": "2026-06-11T14:52:30Z",
   "latestQueryYield": {
-    "generatedAt": "2026-06-11T14:28:50Z",
+    "generatedAt": "2026-06-11T14:42:13Z",
     "queryBank": "engraved_gifts",
     "rateLimitErrors": 0,
-    "reviewRowsWritten": 27079,
-    "shopsPromoted": 84
+    "reviewRowsWritten": 39147,
+    "shopsPromoted": null
   },
   "nextSafeAction": "monitor active phase `rollup_refresh_complete`; avoid launching another SQL writer",
-  "publicCommit": "37275f992c91",
+  "publicCommit": "5e039a160b60",
   "publish": {
-    "lastReason": "thresholds not met: 262,068 new reviews since publish, 11415s elapsed, 21 runs",
+    "lastReason": "thresholds not met: 276,215 new reviews since publish, 12230s elapsed, 22 runs",
     "lastStatus": "skipped",
-    "lastStatusAt": "2026-06-11T14:28:39Z",
+    "lastStatusAt": "2026-06-11T14:42:03Z",
     "lastSuccessfulAt": "2026-06-11T11:15:54Z",
     "lastSuccessfulPublicCommit": "a04869c1fdf7",
     "lastSuccessfulPublicDataReviewCount": 8928209,
     "lastSuccessfulReviewLedgerCount": 8943583
   },
-  "reviewLedgerCount": 9219798,
+  "reviewLedgerCount": 9240620,
   "reviewListingMapping": {
-    "cacheReviewDelta": 291589,
+    "cacheReviewDelta": 312411,
     "dashboardGeneratedAt": "2026-06-11T07:12:23",
     "distinctListingUrls": 1673005,
     "gapDetailRows": 18,
@@ -61,6 +62,6 @@
     "source": "dashboard-cache"
   },
   "rollupFreshnessStatus": "current",
-  "rollupSourceTotalReviews": 9219798,
+  "rollupSourceTotalReviews": 9240620,
   "rollupStaleReviewRows": 0
 }
