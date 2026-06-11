@@ -6627,6 +6627,10 @@ function renderOperations() {
     "Status", "Check", "Finding", "Affected Rows", "Affected Shops", "Record Count", "Coverage",
     "Example", "Decision Impact", "Next Action"
   ], 5);
+  renderTable("review-mapping-gap-details", dashboard.operations.reviewMappingGapDetails || [], [
+    "Status", "Shop", "Listing Key", "Listing URL", "Missing Fields", "Review Count", "Review 90D",
+    "Review 365D", "Latest Review ISO", "Repair Read", "Next Action"
+  ], 50, { preserveOrder: true });
   renderTable("next-action-template-gap-decision-sheet-status", dashboard.operations.nextActionTemplateGapDecisionSheet || [], [
     "Status", "Source", "Sheet Rows", "Filled Rows", "Waiting Rows", "Partial Rows", "Validator Problems",
     "Current Sheet State", "QA Gate", "Decision Sheet URL", "Decision QA URL", "Decision TSV URL", "Tabs",
