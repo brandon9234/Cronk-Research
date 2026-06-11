@@ -1,17 +1,35 @@
 {
-  "activeDeepening": {},
+  "activeDeepening": {
+    "apiErrors": 0,
+    "coverageStatuses": [
+      "queued_api_review_capture",
+      "queued"
+    ],
+    "elapsedSeconds": 271.0,
+    "estimatedRemainingSeconds": 0.0,
+    "lastShop": "VictoriaLucyArt",
+    "queuedCandidates": 50,
+    "reviewRowsChanged": 25601,
+    "reviewsFetched": 25601,
+    "reviewsMissingListingMetadata": 0,
+    "runStatus": "complete",
+    "secondsPerShop": 5.4,
+    "shopsCompleted": 50,
+    "sourceFile": "deepen-write.json",
+    "updatedAt": "2026-06-11T07:46:33Z"
+  },
   "activeWriterAlive": true,
   "coverageBacklog": {
-    "capped": 218,
+    "capped": 219,
     "depthSatisfied": 60,
     "partial": 4001,
     "queued": 123,
-    "queuedApiReviewCapture": 205,
-    "queuedTotal": 328,
-    "windowComplete": 11415
+    "queuedApiReviewCapture": 255,
+    "queuedTotal": 378,
+    "windowComplete": 11464
   },
-  "currentPhase": "discovery_running",
-  "generatedAt": "2026-06-11T07:40:34Z",
+  "currentPhase": "rollup_refresh_complete",
+  "generatedAt": "2026-06-11T07:48:55Z",
   "latestQueryYield": {
     "generatedAt": "2026-06-11T07:38:44Z",
     "queryBank": "business_signage",
@@ -19,20 +37,20 @@
     "reviewRowsWritten": 2072,
     "shopsPromoted": 9
   },
-  "nextSafeAction": "monitor active phase `discovery_running`; avoid launching another SQL writer",
-  "publicCommit": "e3bb081bac48",
+  "nextSafeAction": "monitor active phase `rollup_refresh_complete`; avoid launching another SQL writer",
+  "publicCommit": "8e7025a4a22d",
   "publish": {
-    "lastReason": "thresholds not met: 19,216 new reviews since publish, 1037s elapsed, 3 runs",
-    "lastStatus": "skipped",
-    "lastStatusAt": "2026-06-11T07:38:34Z",
-    "lastSuccessfulAt": "2026-06-11T07:19:05Z",
-    "lastSuccessfulPublicCommit": "d8b4f2581a3e",
-    "lastSuccessfulPublicDataReviewCount": 8620301,
-    "lastSuccessfulReviewLedgerCount": 8650035
+    "lastReason": "publish sync pushed 8e7025a4a22d100fad573bf13572265f889fc32b",
+    "lastStatus": "success",
+    "lastStatusAt": "2026-06-11T07:41:01Z",
+    "lastSuccessfulAt": "2026-06-11T07:41:01Z",
+    "lastSuccessfulPublicCommit": "8e7025a4a22d",
+    "lastSuccessfulPublicDataReviewCount": 8667179,
+    "lastSuccessfulReviewLedgerCount": 8669251
   },
-  "reviewLedgerCount": 8669251,
+  "reviewLedgerCount": 8694852,
   "reviewListingMapping": {
-    "cacheReviewDelta": 2072,
+    "cacheReviewDelta": 27673,
     "dashboardGeneratedAt": "2026-06-11T03:35:03",
     "distinctListingUrls": 1621728,
     "gapDetailRows": 18,
@@ -44,6 +62,6 @@
     "source": "dashboard-cache"
   },
   "rollupFreshnessStatus": "current",
-  "rollupSourceTotalReviews": 8669251,
+  "rollupSourceTotalReviews": 8694852,
   "rollupStaleReviewRows": 0
 }
