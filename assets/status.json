@@ -5,52 +5,52 @@
       "queued_api_review_capture",
       "queued"
     ],
-    "elapsedSeconds": 153.3,
+    "elapsedSeconds": 314.0,
     "estimatedRemainingSeconds": 0.0,
-    "lastShop": "A1PrintAuraCo",
+    "lastShop": "CUSTOMIZATION68",
     "queuedCandidates": 50,
-    "reviewRowsChanged": 9635,
-    "reviewsFetched": 9635,
+    "reviewRowsChanged": 25426,
+    "reviewsFetched": 25426,
     "reviewsMissingListingMetadata": 0,
     "runStatus": "complete",
-    "secondsPerShop": 3.1,
+    "secondsPerShop": 6.3,
     "shopsCompleted": 50,
     "sourceFile": "deepen-write.json",
-    "updatedAt": "2026-06-11T22:18:20Z"
+    "updatedAt": "2026-06-11T22:47:15Z"
   },
   "activeWriterAlive": true,
   "coverageBacklog": {
-    "capped": 138,
+    "capped": 139,
     "depthSatisfied": 60,
     "partial": 4003,
     "queued": 123,
-    "queuedApiReviewCapture": 262,
-    "queuedTotal": 385,
-    "windowComplete": 15389
+    "queuedApiReviewCapture": 308,
+    "queuedTotal": 431,
+    "windowComplete": 15492
   },
   "currentPhase": "rollup_refresh_complete",
-  "generatedAt": "2026-06-11T22:20:35Z",
+  "generatedAt": "2026-06-11T22:49:43Z",
   "latestQueryYield": {
-    "generatedAt": "2026-06-11T22:12:25Z",
-    "queryBank": "home_pet_memorial",
+    "generatedAt": "2026-06-11T22:34:40Z",
+    "queryBank": "professional_nameplates",
     "rateLimitErrors": 0,
-    "reviewRowsWritten": 8478,
-    "shopsPromoted": 45
+    "reviewRowsWritten": 613,
+    "shopsPromoted": 7
   },
   "nextSafeAction": "monitor active phase `rollup_refresh_complete`; avoid launching another SQL writer",
-  "publicCommit": "a4fbfc0c2b48",
+  "publicCommit": "d4e158ef4831",
   "publish": {
-    "lastReason": "thresholds not met: 94,029 new reviews since publish, 4248s elapsed, 9 runs",
+    "lastReason": "thresholds not met: 109,926 new reviews since publish, 5557s elapsed, 12 runs",
     "lastStatus": "skipped",
-    "lastStatusAt": "2026-06-11T22:12:15Z",
+    "lastStatusAt": "2026-06-11T22:34:27Z",
     "lastSuccessfulAt": "2026-06-11T20:59:14Z",
     "lastSuccessfulPublicCommit": "8d89ffb5bc49",
     "lastSuccessfulPublicDataReviewCount": 9679609,
     "lastSuccessfulReviewLedgerCount": 9693669
   },
-  "reviewLedgerCount": 9797333,
+  "reviewLedgerCount": 9829021,
   "reviewListingMapping": {
-    "cacheReviewDelta": 117724,
+    "cacheReviewDelta": 149412,
     "dashboardGeneratedAt": "2026-06-11T16:55:47",
     "distinctListingUrls": 1813484,
     "gapDetailRows": 18,
@@ -62,6 +62,6 @@
     "source": "dashboard-cache"
   },
   "rollupFreshnessStatus": "current",
-  "rollupSourceTotalReviews": 9797333,
+  "rollupSourceTotalReviews": 9829021,
   "rollupStaleReviewRows": 0
 }
