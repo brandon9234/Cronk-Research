@@ -28,8 +28,8 @@
     "queuedTotal": 535,
     "windowComplete": 13931
   },
-  "currentPhase": "rollup_refresh_running",
-  "generatedAt": "2026-06-11T16:49:59Z",
+  "currentPhase": "rollup_refresh_complete",
+  "generatedAt": "2026-06-11T16:50:07Z",
   "latestQueryYield": {
     "generatedAt": "2026-06-11T16:38:18Z",
     "queryBank": "business_signage",
@@ -37,16 +37,16 @@
     "reviewRowsWritten": 200,
     "shopsPromoted": 13
   },
-  "nextSafeAction": "wait for rollup refresh to finish before starting any dashboard catch-up",
-  "publicCommit": "c1ec93382198",
+  "nextSafeAction": "monitor active phase `rollup_refresh_complete`; avoid launching another SQL writer",
+  "publicCommit": "e4c1b2502946",
   "publish": {
-    "lastReason": "publish sync pushed c1ec933821980bf038c054539ae554ad508b5987",
+    "lastReason": "publish sync pushed e4c1b25029464f81eb81d0325fa2e2c062a1e06d",
     "lastStatus": "success",
-    "lastStatusAt": "2026-06-11T16:44:51Z",
-    "lastSuccessfulAt": "2026-06-11T16:44:51Z",
-    "lastSuccessfulPublicCommit": "c1ec93382198",
+    "lastStatusAt": "2026-06-11T16:50:04Z",
+    "lastSuccessfulAt": "2026-06-11T16:50:04Z",
+    "lastSuccessfulPublicCommit": "e4c1b2502946",
     "lastSuccessfulPublicDataReviewCount": 9370319,
-    "lastSuccessfulReviewLedgerCount": 9385499
+    "lastSuccessfulReviewLedgerCount": 9391030
   },
   "reviewLedgerCount": 9391030,
   "reviewListingMapping": {
@@ -61,7 +61,7 @@
     "shopsMissingListingMetadata": 2,
     "source": "dashboard-cache"
   },
-  "rollupFreshnessStatus": "stale",
-  "rollupSourceTotalReviews": 9370319,
-  "rollupStaleReviewRows": 20711
+  "rollupFreshnessStatus": "current",
+  "rollupSourceTotalReviews": 9391030,
+  "rollupStaleReviewRows": 0
 }
