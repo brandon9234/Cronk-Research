@@ -2,55 +2,54 @@
   "activeDeepening": {
     "apiErrors": 0,
     "coverageStatuses": [
-      "queued_api_review_capture",
-      "queued"
+      "api_review_capture_capped"
     ],
-    "elapsedSeconds": 132.5,
+    "elapsedSeconds": 359.0,
     "estimatedRemainingSeconds": 0.0,
-    "lastShop": "MillaJewelryDesign",
-    "queuedCandidates": 50,
-    "reviewRowsChanged": 8512,
-    "reviewsFetched": 8512,
+    "lastShop": "CatsAndCantrips",
+    "queuedCandidates": 10,
+    "reviewRowsChanged": 34135,
+    "reviewsFetched": 34135,
     "reviewsMissingListingMetadata": 0,
     "runStatus": "complete",
-    "secondsPerShop": 2.6,
-    "shopsCompleted": 50,
-    "sourceFile": "deepen-write.json",
-    "updatedAt": "2026-06-11T19:12:01Z"
+    "secondsPerShop": 35.9,
+    "shopsCompleted": 10,
+    "sourceFile": "backlog-capped-write.json",
+    "updatedAt": "2026-06-11T19:38:17Z"
   },
   "activeWriterAlive": true,
   "coverageBacklog": {
-    "capped": 164,
+    "capped": 155,
     "depthSatisfied": 60,
     "partial": 4003,
     "queued": 123,
-    "queuedApiReviewCapture": 353,
-    "queuedTotal": 476,
-    "windowComplete": 14650
+    "queuedApiReviewCapture": 257,
+    "queuedTotal": 380,
+    "windowComplete": 14694
   },
   "currentPhase": "rollup_refresh_complete",
-  "generatedAt": "2026-06-11T19:14:36Z",
+  "generatedAt": "2026-06-11T19:40:42Z",
   "latestQueryYield": {
-    "generatedAt": "2026-06-11T19:06:26Z",
-    "queryBank": "business_signage",
+    "generatedAt": "2026-06-11T19:27:08Z",
+    "queryBank": "professional_nameplates",
     "rateLimitErrors": 0,
-    "reviewRowsWritten": 2511,
-    "shopsPromoted": 6
+    "reviewRowsWritten": 4,
+    "shopsPromoted": 1
   },
   "nextSafeAction": "monitor active phase `rollup_refresh_complete`; avoid launching another SQL writer",
-  "publicCommit": "807d68a5c394",
+  "publicCommit": "a1710e891c7d",
   "publish": {
-    "lastReason": "thresholds not met: 157,682 new reviews since publish, 6887s elapsed, 13 runs",
+    "lastReason": "thresholds not met: 166,451 new reviews since publish, 8140s elapsed, 16 runs",
     "lastStatus": "skipped",
-    "lastStatusAt": "2026-06-11T19:06:14Z",
+    "lastStatusAt": "2026-06-11T19:26:57Z",
     "lastSuccessfulAt": "2026-06-11T17:08:53Z",
     "lastSuccessfulPublicCommit": "a030e7f98ebc",
     "lastSuccessfulPublicDataReviewCount": 9404984,
     "lastSuccessfulReviewLedgerCount": 9409648
   },
-  "reviewLedgerCount": 9575842,
+  "reviewLedgerCount": 9585259,
   "reviewListingMapping": {
-    "cacheReviewDelta": 170858,
+    "cacheReviewDelta": 180275,
     "dashboardGeneratedAt": "2026-06-11T13:03:34",
     "distinctListingUrls": 1763200,
     "gapDetailRows": 18,
@@ -62,6 +61,6 @@
     "source": "dashboard-cache"
   },
   "rollupFreshnessStatus": "current",
-  "rollupSourceTotalReviews": 9575842,
+  "rollupSourceTotalReviews": 9585259,
   "rollupStaleReviewRows": 0
 }
