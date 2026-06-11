@@ -1,67 +1,67 @@
 {
   "activeDeepening": {
-    "apiErrors": 50,
+    "apiErrors": 0,
     "coverageStatuses": [
       "queued_api_review_capture",
       "queued"
     ],
-    "elapsedSeconds": 21.7,
-    "estimatedRemainingSeconds": 0.0,
-    "lastShop": "MANUSSAYHAPORN",
+    "elapsedSeconds": 147.8,
+    "estimatedRemainingSeconds": 90.6,
+    "lastShop": "WanderingWoodsDesign",
     "queuedCandidates": 50,
-    "reviewRowsChanged": 200,
-    "reviewsFetched": 200,
+    "reviewRowsChanged": 12199,
+    "reviewsFetched": 12199,
     "reviewsMissingListingMetadata": 0,
-    "runStatus": "complete",
-    "secondsPerShop": 0.4,
-    "shopsCompleted": 50,
+    "runStatus": "running",
+    "secondsPerShop": 4.8,
+    "shopsCompleted": 31,
     "sourceFile": "deepen-write.json",
-    "updatedAt": "2026-06-11T16:35:12Z"
+    "updatedAt": "2026-06-11T16:44:16Z"
   },
-  "activeWriterAlive": true,
+  "activeWriterAlive": false,
   "coverageBacklog": {
     "capped": 168,
     "depthSatisfied": 60,
     "partial": 4003,
     "queued": 123,
-    "queuedApiReviewCapture": 402,
-    "queuedTotal": 525,
-    "windowComplete": 13881
+    "queuedApiReviewCapture": 431,
+    "queuedTotal": 554,
+    "windowComplete": 13912
   },
-  "currentPhase": "rollup_refresh_complete",
-  "generatedAt": "2026-06-11T16:38:02Z",
+  "currentPhase": "dashboard_refresh_complete",
+  "generatedAt": "2026-06-11T16:44:19Z",
   "latestQueryYield": {
-    "generatedAt": "2026-06-11T16:32:35Z",
-    "queryBank": "wedding_events",
+    "generatedAt": "2026-06-11T16:38:18Z",
+    "queryBank": "business_signage",
     "rateLimitErrors": 0,
-    "reviewRowsWritten": 23,
-    "shopsPromoted": 65
+    "reviewRowsWritten": 200,
+    "shopsPromoted": 13
   },
-  "nextSafeAction": "monitor active phase `rollup_refresh_complete`; avoid launching another SQL writer",
-  "publicCommit": "957f3f7eb0b3",
+  "nextSafeAction": "refresh review rollups before dashboard catch-up; 12,199 ledger rows are stale",
+  "publicCommit": "a19fd3bba9b0",
   "publish": {
     "lastReason": "atomic dashboard refresh promoted",
     "lastStatus": "success",
-    "lastStatusAt": "2026-06-11T16:33:37Z",
-    "lastSuccessfulAt": "2026-06-11T16:33:37Z",
-    "lastSuccessfulPublicCommit": "957f3f7eb0b3",
-    "lastSuccessfulPublicDataReviewCount": 9370096,
-    "lastSuccessfulReviewLedgerCount": 9370119
+    "lastStatusAt": "2026-06-11T16:43:41Z",
+    "lastSuccessfulAt": "2026-06-11T16:43:41Z",
+    "lastSuccessfulPublicCommit": "a19fd3bba9b0",
+    "lastSuccessfulPublicDataReviewCount": 9370319,
+    "lastSuccessfulReviewLedgerCount": 9379973
   },
-  "reviewLedgerCount": 9370319,
+  "reviewLedgerCount": 9382518,
   "reviewListingMapping": {
-    "cacheReviewDelta": 223,
-    "dashboardGeneratedAt": "2026-06-11T12:29:16",
-    "distinctListingUrls": 1756819,
+    "cacheReviewDelta": 12199,
+    "dashboardGeneratedAt": "2026-06-11T12:39:26",
+    "distinctListingUrls": 1756882,
     "gapDetailRows": 18,
-    "reviewRows": 9370096,
+    "reviewRows": 9370319,
     "rowsMissingListingMetadata": 18,
     "rowsMissingListingTitle": 18,
     "rowsMissingListingUrl": 0,
     "shopsMissingListingMetadata": 2,
     "source": "dashboard-cache"
   },
-  "rollupFreshnessStatus": "current",
+  "rollupFreshnessStatus": "stale",
   "rollupSourceTotalReviews": 9370319,
-  "rollupStaleReviewRows": 0
+  "rollupStaleReviewRows": 12199
 }

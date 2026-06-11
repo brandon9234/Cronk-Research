@@ -20,7 +20,7 @@ let customBuyerMomentRange = null;
 let reviewMappingGapControlSignature = "";
 let reviewShopCoverageControlSignature = "";
 const CUSTOM_BUYER_MOMENT_ID = "custom-date-range";
-const DATA_ASSET_VERSION = "mymaravia-tag-rank-20260606-1";
+const DATA_ASSET_VERSION = "mymaravia-company-accuracy-20260611-1";
 const STATUS_ASSET_VERSION = "public-status-20260611-1";
 const BUYER_MOMENT_LANE_HEIGHT = 30;
 const BUYER_MOMENT_HIGH_OPPORTUNITY_SCORE = 68;
@@ -481,6 +481,8 @@ function renderTable(targetId, rows, columns = null, limit = null, options = {})
           ? recoveryBatchHandoffCell(row)
         : targetId === "company-production" && col === "Production Tag"
           ? productionLinkCell(row[col])
+        : targetId === "company-snapshot" && col === "Listing Detail"
+          ? companySidecarDetailCell(row)
         : targetId === "review-shop-coverage-details" && col === "Listing Detail"
           ? reviewShopListingDetailCell(row)
         : col === "Weekly Sales Graph"
@@ -1322,6 +1324,10 @@ function getListingRows() {
     ...(dashboard.listing.myShopListings || [])
   ];
   const byKey = new Map();
+  const isMyApiRow = row =>
+    companyName(row.Shop).toLowerCase() === "mymaravia" &&
+    /etsy api|mymaravia etsy/i.test(String(row.Source || row["Evidence Confidence"] || ""));
+  const shouldPreferIncoming = (existing, incoming) => isMyApiRow(incoming) && !isMyApiRow(existing);
   rows.forEach(row => {
     const key = `${row.Shop || ""}|${row["Listing URL"] || row["Product Title"] || ""}`;
     const existing = byKey.get(key);
@@ -1329,8 +1335,11 @@ function getListingRows() {
       byKey.set(key, { ...row });
       return;
     }
-    const merged = { ...existing };
-    Object.entries(row).forEach(([column, value]) => {
+    const preferIncoming = shouldPreferIncoming(existing, row);
+    const base = preferIncoming ? row : existing;
+    const secondary = preferIncoming ? existing : row;
+    const merged = { ...base };
+    Object.entries(secondary).forEach(([column, value]) => {
       if (value === null || value === undefined || value === "") return;
       if (merged[column] === null || merged[column] === undefined || merged[column] === "") {
         merged[column] = value;
@@ -4203,7 +4212,7 @@ function companyStats() {
     const clean = companyName(name);
     if (!clean) return null;
     if (!stats.has(clean)) {
-      stats.set(clean, { name: clean, listings: 0, daily: 0, thirty: 0, eRank30: 0, score: 0 });
+      stats.set(clean, { name: clean, listings: 0, reviewListings: 0, daily: 0, thirty: 0, eRank30: 0, score: 0 });
     }
     return stats.get(clean);
   };
@@ -4230,11 +4239,31 @@ function companyStats() {
     if (!stat) return;
     stat.score = Math.max(stat.score, numericCell(row, "Total Daily Sales In Range"));
   });
+  reviewShopCoverageState.rows.forEach(row => {
+    const stat = ensure(row.Shop);
+    if (!stat) return;
+    stat.reviewListings = Math.max(stat.reviewListings, numericCell(row, "Review-Derived Listings"));
+    stat.score = Math.max(stat.score, numericCell(row, "Review Corpus Count"));
+  });
 
   stats.forEach(stat => {
     stat.score = Math.max(stat.thirty, stat.eRank30, stat.score);
   });
   return stats;
+}
+
+function reviewShopCoverageLookup() {
+  return companyLookup(reviewShopCoverageState.rows || []);
+}
+
+function reviewShopCoverageRowForCompany(company) {
+  return reviewShopCoverageLookup().get(companyName(company)) || {};
+}
+
+function companyOptionSuffix(stat) {
+  if (stat.listings) return `${fmt(stat.listings, "Listing Count")} inline listings`;
+  if (stat.reviewListings) return `${fmt(stat.reviewListings, "Listing Count")} reviewed listings`;
+  return `${fmt(stat.eRank30, "30D Sales")} eRank 30D`;
 }
 
 function companyOptions(filter = "") {
@@ -4244,6 +4273,7 @@ function companyOptions(filter = "") {
     .sort((a, b) => {
       const priority = name => /^(mymaravia|cronk research)$/i.test(name) ? 0 : 1;
       return priority(a.name) - priority(b.name) ||
+        Number(b.score || 0) - Number(a.score || 0) ||
         a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
     });
 }
@@ -4272,8 +4302,7 @@ function renderCompanyOptions() {
   options.forEach(stat => {
     const option = document.createElement("option");
     option.value = stat.name;
-    const suffix = stat.listings ? `${fmt(stat.listings, "Listing Count")} listings` : `${fmt(stat.eRank30, "30D Sales")} eRank 30D`;
-    option.textContent = `${stat.name} (${suffix})`;
+    option.textContent = `${stat.name} (${companyOptionSuffix(stat)})`;
     select.appendChild(option);
   });
   if (selectedCompany && [...select.options].some(option => option.value === selectedCompany)) {
@@ -4308,8 +4337,7 @@ function renderCompanySuggestions() {
     button.className = "company-suggestion";
     button.setAttribute("role", "option");
     button.setAttribute("aria-selected", index === 0 ? "true" : "false");
-    const suffix = stat.listings ? `${fmt(stat.listings, "Listing Count")} listings` : `${fmt(stat.eRank30, "30D Sales")} eRank 30D`;
-    button.textContent = `${stat.name} (${suffix})`;
+    button.textContent = `${stat.name} (${companyOptionSuffix(stat)})`;
     button.addEventListener("mousedown", event => event.preventDefault());
     button.addEventListener("click", () => selectCompanyProfile(stat.name, { searchValue: stat.name }));
     list.appendChild(button);
@@ -4407,6 +4435,8 @@ function buildCompanyProductionRows(rows) {
 }
 
 function renderCompanyProfile() {
+  bindReviewShopCoverageActions();
+  loadReviewShopCoverageRows();
   const select = document.getElementById("company-select");
   const company = selectedCompany || select?.value || "MyMaravia";
   selectedCompany = company;
@@ -4425,6 +4455,7 @@ function renderCompanyProfile() {
   const coverage = companyLookup(dashboard.operations.coverageQueue || []).get(company) || {};
   const trend = companyLookup(dashboard.comparison.shopTrends || []).get(company) || {};
   const corpusShop = companyLookup(dashboard.reviewCorpus?.shopRollup || []).get(company) || {};
+  const shopCoverage = reviewShopCoverageRowForCompany(company);
   const chartRows = (dashboard.comparison.shopTrendChart || []).filter(row => companyName(row.Shop) === company);
   const trackedDaily = listings.reduce((sum, row) => sum + numericCell(row, "Est. Daily Sales"), 0);
   const trackedThirty = listings.reduce((sum, row) => sum + numericCell(row, "Est. 30D Sales"), 0);
@@ -4440,6 +4471,7 @@ function renderCompanyProfile() {
     ["Tracked 30D sales", fmt(trackedThirty, "Tracked Est. 30D Sales")],
     ["Tracked daily sales", fmt(trackedDaily, "Tracked Est. Daily Sales")],
     ["Product categories", fmt(categories.size, "Tracked Product Categories")],
+    ["Reviewed listings", fmt(shopCoverage["Review-Derived Listings"], "Review-Derived Listings") || "0"],
     ["Corpus reviews", fmt(corpusShop["Review Corpus Count"], "Review Corpus Count") || "0"],
     ["Review months", fmt(corpusShop["Review Corpus Months Covered"], "Review Corpus Months Covered") || "0"],
     ["Full-year history", corpusShop["Full Year Review Coverage"] || "No"]
@@ -4457,6 +4489,13 @@ function renderCompanyProfile() {
       `${fmt(corpusShop["Review Corpus Count"], "Review Corpus Count")} full-corpus reviews, ${fmt(corpusShop["Review Corpus 90D"], "Review Corpus 90D")} in the latest 90 days`
     );
   }
+  if (numericCell(shopCoverage, "Review-Derived Listings")) {
+    calloutBits.push(
+      `${fmt(shopCoverage["Review-Derived Listings"], "Review-Derived Listings")} reviewed listing URLs in shop coverage, ${fmt(shopCoverage["Full Identity Listings"], "Full Identity Listings")} with full identity`
+    );
+  } else if (reviewShopCoverageState.loading) {
+    calloutBits.push("loading all-shop coverage sidecar");
+  }
   if (corpusShop["Full Year Review Coverage"] === "Yes") {
     calloutBits.push(
       `full-year review coverage from ${corpusShop["Review Corpus Earliest ISO"] || "unknown"} to ${corpusShop["Review Corpus Latest ISO"] || "unknown"}`
@@ -4469,6 +4508,9 @@ function renderCompanyProfile() {
     calloutBits.push(`${fmt(views, "Views")} views, ${fmt(favorites, "Favorites")} favorites, ${fmt(recentReviews, "Recent Reviews")} recent reviews in visible listing data`);
   }
   document.getElementById("company-callout").textContent = calloutBits.join(" · ");
+  renderStatusTable("company-accuracy-health", dashboard.operations?.companyProfileAccuracyHealth || [], [
+    "Status", "Check", "Finding", "Expected", "Decision Impact", "Next Action"
+  ], 6);
 
   renderTable("company-snapshot", [{
     "Company": company,
@@ -4482,6 +4524,10 @@ function renderCompanyProfile() {
     "eRank 30D Sales": coverage["eRank 30D Sales"] ?? topShop["30D Sales"] ?? "",
     "Avg Daily Sales (30D)": coverage["Avg Daily Sales (30D)"] ?? topShop["Avg Daily Sales (30D)"] ?? "",
     "Active Listings": topShop["Active Listings"] ?? "",
+    "Review-Derived Listings": shopCoverage["Review-Derived Listings"] ?? "",
+    "Full Identity Listings": shopCoverage["Full Identity Listings"] ?? "",
+    "Title Gap Listings": shopCoverage["Title Gap Listings"] ?? "",
+    "Identity Gap Listings": shopCoverage["Identity Gap Listings"] ?? "",
     "Review Corpus Count": corpusShop["Review Corpus Count"] ?? "",
     "Review Corpus 90D": corpusShop["Review Corpus 90D"] ?? "",
     "Review Corpus 365D": corpusShop["Review Corpus 365D"] ?? "",
@@ -4511,6 +4557,7 @@ function renderCompanyProfile() {
     "Review Ledger Rows": coverage["Review Ledger Rows"] ?? "",
     "Last Evidence Run": coverage["Last Evidence Run"] ?? "",
     "Last Scrape Status": coverage["Last Scrape Status"] ?? "",
+    "Listing Detail": company,
     "Next Action": coverage["Next Action"] ?? ""
   }]);
 
@@ -4725,10 +4772,14 @@ function writeCompanyUrlState(params) {
 function applyCompanyUrlState() {
   const params = new URLSearchParams(window.location.search);
   const company = companyName(params.get("company") || "");
-  if (company && companyStats().has(company)) {
-    selectedCompany = company;
+  const stats = companyStats();
+  const companyMatch = company
+    ? [...stats.keys()].find(name => name.toLowerCase() === company.toLowerCase())
+    : "";
+  if (companyMatch) {
+    selectedCompany = companyMatch;
     const search = document.getElementById("company-search");
-    if (search) search.value = company;
+    if (search) search.value = companyMatch;
   }
   selectedCompanyProduction = params.get("companyProduction") || "";
 }
@@ -5588,6 +5639,9 @@ function renderMyMaravia() {
   ];
 
   document.getElementById("mymaravia-metrics").innerHTML = metricRows.map(([label, value]) => metric(label, value)).join("");
+  renderStatusTable("mymaravia-accuracy-health", my.accuracyHealth || [], [
+    "Status", "Check", "Finding", "Expected", "Decision Impact", "Next Action"
+  ], 8);
   document.getElementById("mymaravia-method").textContent = my.method || "";
   document.getElementById("mymaravia-summary").innerHTML =
     `<strong>${fmt(metrics["Active Listings"], "Active Listings") || 0} active listings</strong> are competing against ${fmt(metrics["Current Market Daily Sales"], "Current Market Daily Sales") || 0} estimated daily market sales across current categories. The priority queue below is sorted toward conversion problems, leader gaps, and crowded markets first.`;
@@ -5697,7 +5751,7 @@ function renderMyMaravia() {
   const listingQuery = (document.getElementById("my-listing-search")?.value || "").trim().toLowerCase();
   const allDiagnostics = my.listingDiagnostics || [];
   let diagnosticRows = allDiagnostics;
-  if (diagnosticStatus) diagnosticRows = diagnosticRows.filter(row => row["Conquest Status"] === diagnosticStatus);
+  if (diagnosticStatus) diagnosticRows = diagnosticRows.filter(row => String(row["Conquest Status"] || "").toLowerCase() === diagnosticStatus.toLowerCase());
   if (listingState) diagnosticRows = diagnosticRows.filter(row => String(row.State || "").toLowerCase() === listingState);
   if (listingQuery) diagnosticRows = diagnosticRows.filter(row => Object.values(row).join(" ").toLowerCase().includes(listingQuery));
   document.getElementById("mymaravia-listing-count").textContent =
@@ -5718,7 +5772,7 @@ function renderMyMaravia() {
   let rows = allRows;
 
   if (category) rows = rows.filter(row => row["Product Category"] === category);
-  if (status) rows = rows.filter(row => row.Status === status);
+  if (status) rows = rows.filter(row => String(row.Status || "").toLowerCase() === status.toLowerCase());
   if (query) rows = rows.filter(row => Object.values(row).join(" ").toLowerCase().includes(query));
 
   const count = fmt(rows.length, "Listing Count");
@@ -5831,6 +5885,10 @@ function activateView(viewId) {
   });
   window.dispatchEvent(new Event("resize"));
   if (viewId === "listings") renderListings();
+  if (viewId === "company") {
+    renderCompanyOptions();
+    renderCompanyProfile();
+  }
   if (viewId === "market-size") renderMarketSize();
   updateViewUrl(viewId);
   requestAnimationFrame(updateAllBottomScrollbars);
@@ -6013,6 +6071,56 @@ function initMyMaraviaFilters() {
       categorySelect.appendChild(option);
       existingValues.add(category);
     });
+
+  const syncCountedOptions = (select, counts) => {
+    if (!select) return;
+    [...select.options].forEach(option => {
+      if (option.dataset.generated === "true") option.remove();
+    });
+    const normalizedCounts = new Map(
+      [...counts.entries()].map(([value, count]) => [String(value).toLowerCase(), { value, count }])
+    );
+    const existing = new Set();
+    [...select.options].forEach(option => {
+      if (!option.dataset.baseLabel) option.dataset.baseLabel = option.textContent;
+      const normalizedValue = String(option.value || "").toLowerCase();
+      if (normalizedValue) existing.add(normalizedValue);
+      const match = normalizedCounts.get(normalizedValue);
+      if (normalizedValue && !match) {
+        option.hidden = true;
+        option.disabled = true;
+      } else {
+        option.hidden = false;
+        option.disabled = false;
+      }
+      option.textContent = match
+        ? `${option.dataset.baseLabel} (${match.count.toLocaleString()})`
+        : option.dataset.baseLabel;
+    });
+    if (select.selectedOptions[0]?.disabled) select.value = "";
+    [...counts.entries()]
+      .filter(([value]) => value && !existing.has(String(value).toLowerCase()))
+      .sort((a, b) => b[1] - a[1] || String(a[0]).localeCompare(String(b[0])))
+      .forEach(([value, count]) => {
+        const option = document.createElement("option");
+        option.value = value;
+        option.textContent = `${value} (${count.toLocaleString()})`;
+        option.dataset.generated = "true";
+        select.appendChild(option);
+      });
+  };
+  const diagnosticCounts = new Map();
+  (dashboard.myMaravia?.listingDiagnostics || []).forEach(row => {
+    const status = String(row["Conquest Status"] || "").trim();
+    if (status) diagnosticCounts.set(status, (diagnosticCounts.get(status) || 0) + 1);
+  });
+  const queueStatusCounts = new Map();
+  (dashboard.myMaravia?.longTailQueue || []).forEach(row => {
+    const status = String(row.Status || "").trim();
+    if (status) queueStatusCounts.set(status, (queueStatusCounts.get(status) || 0) + 1);
+  });
+  syncCountedOptions(document.getElementById("my-listing-status-filter"), diagnosticCounts);
+  syncCountedOptions(document.getElementById("my-status-filter"), queueStatusCounts);
 
   [
     "my-category-filter", "my-status-filter", "my-long-tail-search",
@@ -6810,7 +6918,7 @@ function decodeReviewShopCoverageRows(payload) {
 
 function loadReviewShopCoverageRows() {
   const manifest = reviewShopCoverageManifest();
-  if (!manifest || reviewShopCoverageState.loaded || reviewShopCoverageState.loading) return;
+  if (!manifest || reviewShopCoverageState.loaded || reviewShopCoverageState.loading || reviewShopCoverageState.error) return;
   reviewShopCoverageState.loading = true;
   reviewShopCoverageState.error = "";
   (async () => {
@@ -6828,8 +6936,21 @@ function loadReviewShopCoverageRows() {
     } finally {
       reviewShopCoverageState.loading = false;
       renderReviewShopCoverageDetails();
+      if (document.getElementById("company")?.classList.contains("active")) {
+        renderCompanyOptions();
+        renderCompanyProfile();
+      }
     }
   })();
+}
+
+function retryReviewShopCoverageRows() {
+  reviewShopCoverageState.error = "";
+  reviewShopCoverageState.loaded = false;
+  reviewShopCoverageState.loading = false;
+  reviewShopCoverageState.rows = [];
+  loadReviewShopCoverageRows();
+  renderReviewShopCoverageDetails();
 }
 
 function reviewShopCoverageControlValues() {
@@ -6933,29 +7054,47 @@ function reviewShopListingDetailCell(row) {
   return `<button class="review-shop-detail-link" type="button" data-shop="${escapeHtml(shop)}">Open listings</button>`;
 }
 
+function companySidecarDetailCell(row) {
+  const shop = String(row.Company || row.Shop || "").trim();
+  if (!shop) return "";
+  const label = numericCell(row, "Review-Derived Listings")
+    ? "Open review listings"
+    : "Search listing sidecar";
+  return `<button class="review-shop-detail-link" type="button" data-shop="${escapeHtml(shop)}">${escapeHtml(label)}</button>`;
+}
+
+function openReviewListingSearchForShop(shop) {
+  const listingSearch = document.getElementById("listing-search");
+  const production = document.getElementById("production-filter");
+  const substrate = document.getElementById("substrate-filter");
+  const timeframe = document.getElementById("listing-timeframe-preset");
+  const sort = document.getElementById("listing-sort");
+  if (listingSearch) listingSearch.value = shop;
+  if (production) production.value = "";
+  if (substrate) substrate.value = "";
+  if (timeframe) timeframe.value = "";
+  if (sort) sort.value = "";
+  selectedListingSubstrate = "";
+  selectedListingTimeframePreset = "";
+  listingSearchDirty = false;
+  activateView("listings");
+  applyListingSearch();
+  document.getElementById("listings")?.scrollIntoView({ block: "start" });
+}
+
 function bindReviewShopCoverageActions() {
   if (document.body.dataset.reviewShopCoverageActionsBound === "true") return;
   document.addEventListener("click", event => {
+    const retry = event.target.closest(".review-shop-coverage-retry");
+    if (retry) {
+      retryReviewShopCoverageRows();
+      return;
+    }
     const target = event.target.closest(".review-shop-detail-link");
     if (!target) return;
     const shop = target.dataset.shop || "";
     if (!shop) return;
-    const listingSearch = document.getElementById("listing-search");
-    const production = document.getElementById("production-filter");
-    const substrate = document.getElementById("substrate-filter");
-    const timeframe = document.getElementById("listing-timeframe-preset");
-    const sort = document.getElementById("listing-sort");
-    if (listingSearch) listingSearch.value = shop;
-    if (production) production.value = "";
-    if (substrate) substrate.value = "";
-    if (timeframe) timeframe.value = "";
-    if (sort) sort.value = "";
-    selectedListingSubstrate = "";
-    selectedListingTimeframePreset = "";
-    listingSearchDirty = false;
-    activateView("listings");
-    applyListingSearch();
-    document.getElementById("listings")?.scrollIntoView({ block: "start" });
+    openReviewListingSearchForShop(shop);
   });
   document.body.dataset.reviewShopCoverageActionsBound = "true";
 }
@@ -6977,7 +7116,7 @@ function renderReviewShopCoverageDetails() {
   renderReviewShopCoverageSummary(rows, filteredRows);
   if (count) {
     if (reviewShopCoverageState.error) {
-      count.textContent = reviewShopCoverageState.error;
+      count.innerHTML = `${escapeHtml(reviewShopCoverageState.error)} <button class="link-button review-shop-coverage-retry" type="button">Retry</button>`;
     } else if (reviewShopCoverageState.loading && !reviewShopCoverageState.loaded) {
       count.textContent = `Loading ${fmt(manifest.totalShops || 0, "Shop Count")} shop coverage rows.`;
     } else {
