@@ -2,54 +2,55 @@
   "activeDeepening": {
     "apiErrors": 0,
     "coverageStatuses": [
-      "api_review_capture_capped"
+      "queued_api_review_capture",
+      "queued"
     ],
-    "elapsedSeconds": 269.6,
+    "elapsedSeconds": 189.9,
     "estimatedRemainingSeconds": 0.0,
-    "lastShop": "DooDM",
-    "queuedCandidates": 10,
-    "reviewRowsChanged": 36587,
-    "reviewsFetched": 36587,
+    "lastShop": "ValkyrieForgedCo",
+    "queuedCandidates": 50,
+    "reviewRowsChanged": 16436,
+    "reviewsFetched": 16436,
     "reviewsMissingListingMetadata": 0,
     "runStatus": "complete",
-    "secondsPerShop": 27.0,
-    "shopsCompleted": 10,
-    "sourceFile": "backlog-capped-write.json",
-    "updatedAt": "2026-06-11T20:24:55Z"
+    "secondsPerShop": 3.8,
+    "shopsCompleted": 50,
+    "sourceFile": "deepen-write.json",
+    "updatedAt": "2026-06-11T20:34:23Z"
   },
   "activeWriterAlive": true,
   "coverageBacklog": {
-    "capped": 148,
+    "capped": 149,
     "depthSatisfied": 60,
     "partial": 4003,
     "queued": 123,
-    "queuedApiReviewCapture": 272,
-    "queuedTotal": 395,
-    "windowComplete": 14892
+    "queuedApiReviewCapture": 288,
+    "queuedTotal": 411,
+    "windowComplete": 14941
   },
   "currentPhase": "rollup_refresh_complete",
-  "generatedAt": "2026-06-11T20:27:30Z",
+  "generatedAt": "2026-06-11T20:36:54Z",
   "latestQueryYield": {
-    "generatedAt": "2026-06-11T20:16:23Z",
+    "generatedAt": "2026-06-11T20:27:42Z",
     "queryBank": "engraved_gifts",
     "rateLimitErrors": 0,
-    "reviewRowsWritten": 15377,
-    "shopsPromoted": 57
+    "reviewRowsWritten": 36587,
+    "shopsPromoted": null
   },
   "nextSafeAction": "monitor active phase `rollup_refresh_complete`; avoid launching another SQL writer",
-  "publicCommit": "ec1d514209dd",
+  "publicCommit": "ed2638b37e7b",
   "publish": {
-    "lastReason": "thresholds not met: 227,588 new reviews since publish, 11094s elapsed, 21 runs",
+    "lastReason": "thresholds not met: 239,181 new reviews since publish, 11762s elapsed, 22 runs",
     "lastStatus": "skipped",
-    "lastStatusAt": "2026-06-11T20:16:13Z",
+    "lastStatusAt": "2026-06-11T20:27:32Z",
     "lastSuccessfulAt": "2026-06-11T17:08:53Z",
     "lastSuccessfulPublicCommit": "a030e7f98ebc",
     "lastSuccessfulPublicDataReviewCount": 9404984,
     "lastSuccessfulReviewLedgerCount": 9409648
   },
-  "reviewLedgerCount": 9648829,
+  "reviewLedgerCount": 9665265,
   "reviewListingMapping": {
-    "cacheReviewDelta": 243845,
+    "cacheReviewDelta": 260281,
     "dashboardGeneratedAt": "2026-06-11T13:03:34",
     "distinctListingUrls": 1763200,
     "gapDetailRows": 18,
@@ -61,6 +62,6 @@
     "source": "dashboard-cache"
   },
   "rollupFreshnessStatus": "current",
-  "rollupSourceTotalReviews": 9648829,
+  "rollupSourceTotalReviews": 9665265,
   "rollupStaleReviewRows": 0
 }
