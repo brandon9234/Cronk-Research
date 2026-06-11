@@ -5,18 +5,18 @@
       "queued_api_review_capture",
       "queued"
     ],
-    "elapsedSeconds": 223.8,
+    "elapsedSeconds": 184.9,
     "estimatedRemainingSeconds": 0.0,
-    "lastShop": "Kyleeeartworkshop",
+    "lastShop": "henrietteandco",
     "queuedCandidates": 50,
-    "reviewRowsChanged": 19288,
-    "reviewsFetched": 19288,
+    "reviewRowsChanged": 12419,
+    "reviewsFetched": 12419,
     "reviewsMissingListingMetadata": 0,
     "runStatus": "complete",
-    "secondsPerShop": 4.5,
+    "secondsPerShop": 3.7,
     "shopsCompleted": 50,
     "sourceFile": "deepen-write.json",
-    "updatedAt": "2026-06-11T08:56:01Z"
+    "updatedAt": "2026-06-11T09:04:44Z"
   },
   "activeWriterAlive": true,
   "coverageBacklog": {
@@ -24,33 +24,33 @@
     "depthSatisfied": 60,
     "partial": 4001,
     "queued": 123,
-    "queuedApiReviewCapture": 325,
-    "queuedTotal": 448,
-    "windowComplete": 11909
+    "queuedApiReviewCapture": 355,
+    "queuedTotal": 478,
+    "windowComplete": 11959
   },
   "currentPhase": "rollup_refresh_complete",
-  "generatedAt": "2026-06-11T08:58:23Z",
+  "generatedAt": "2026-06-11T09:06:56Z",
   "latestQueryYield": {
-    "generatedAt": "2026-06-11T08:48:06Z",
-    "queryBank": "wedding_events",
+    "generatedAt": "2026-06-11T08:58:34Z",
+    "queryBank": "core",
     "rateLimitErrors": 0,
-    "reviewRowsWritten": 16353,
-    "shopsPromoted": 65
+    "reviewRowsWritten": 19288,
+    "shopsPromoted": 96
   },
   "nextSafeAction": "monitor active phase `rollup_refresh_complete`; avoid launching another SQL writer",
-  "publicCommit": "1d613f1a87e7",
+  "publicCommit": "d06caed350a6",
   "publish": {
-    "lastReason": "thresholds not met: 72,535 new reviews since publish, 3068s elapsed, 7 runs",
+    "lastReason": "thresholds not met: 91,823 new reviews since publish, 3688s elapsed, 8 runs",
     "lastStatus": "skipped",
-    "lastStatusAt": "2026-06-11T08:47:56Z",
+    "lastStatusAt": "2026-06-11T08:58:24Z",
     "lastSuccessfulAt": "2026-06-11T07:54:33Z",
     "lastSuccessfulPublicCommit": "18384a4e4b8c",
     "lastSuccessfulPublicDataReviewCount": 8694852,
     "lastSuccessfulReviewLedgerCount": 8699170
   },
-  "reviewLedgerCount": 8790993,
+  "reviewLedgerCount": 8803412,
   "reviewListingMapping": {
-    "cacheReviewDelta": 96141,
+    "cacheReviewDelta": 108560,
     "dashboardGeneratedAt": "2026-06-11T03:50:32",
     "distinctListingUrls": 1626998,
     "gapDetailRows": 18,
@@ -62,6 +62,6 @@
     "source": "dashboard-cache"
   },
   "rollupFreshnessStatus": "current",
-  "rollupSourceTotalReviews": 8790993,
+  "rollupSourceTotalReviews": 8803412,
   "rollupStaleReviewRows": 0
 }
