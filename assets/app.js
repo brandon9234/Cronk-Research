@@ -20,7 +20,7 @@ let customBuyerMomentRange = null;
 let reviewMappingGapControlSignature = "";
 let reviewShopCoverageControlSignature = "";
 const CUSTOM_BUYER_MOMENT_ID = "custom-date-range";
-const DATA_ASSET_VERSION = "mymaravia-company-accuracy-20260611-1";
+const DATA_ASSET_VERSION = "mymaravia-company-accuracy-20260611-2";
 const STATUS_ASSET_VERSION = "public-status-20260611-1";
 const BUYER_MOMENT_LANE_HEIGHT = 30;
 const BUYER_MOMENT_HIGH_OPPORTUNITY_SCORE = 68;
@@ -4434,6 +4434,20 @@ function buildCompanyProductionRows(rows) {
   }).sort((a, b) => numericCell(b, "Est. Daily Sales") - numericCell(a, "Est. Daily Sales"));
 }
 
+function companyReviewEvidence(corpusShop, shopCoverage) {
+  const evidence = { ...(shopCoverage || {}) };
+  Object.entries(corpusShop || {}).forEach(([key, value]) => {
+    if (value !== null && value !== undefined && value !== "") evidence[key] = value;
+  });
+  if (!evidence["Review Corpus Listings"] && evidence["Review-Derived Listings"]) {
+    evidence["Review Corpus Listings"] = evidence["Review-Derived Listings"];
+  }
+  if (!evidence["Review Corpus Latest ISO"] && evidence["Latest Review ISO"]) {
+    evidence["Review Corpus Latest ISO"] = evidence["Latest Review ISO"];
+  }
+  return evidence;
+}
+
 function renderCompanyProfile() {
   bindReviewShopCoverageActions();
   loadReviewShopCoverageRows();
@@ -4456,6 +4470,7 @@ function renderCompanyProfile() {
   const trend = companyLookup(dashboard.comparison.shopTrends || []).get(company) || {};
   const corpusShop = companyLookup(dashboard.reviewCorpus?.shopRollup || []).get(company) || {};
   const shopCoverage = reviewShopCoverageRowForCompany(company);
+  const reviewEvidence = companyReviewEvidence(corpusShop, shopCoverage);
   const chartRows = (dashboard.comparison.shopTrendChart || []).filter(row => companyName(row.Shop) === company);
   const trackedDaily = listings.reduce((sum, row) => sum + numericCell(row, "Est. Daily Sales"), 0);
   const trackedThirty = listings.reduce((sum, row) => sum + numericCell(row, "Est. 30D Sales"), 0);
@@ -4472,9 +4487,9 @@ function renderCompanyProfile() {
     ["Tracked daily sales", fmt(trackedDaily, "Tracked Est. Daily Sales")],
     ["Product categories", fmt(categories.size, "Tracked Product Categories")],
     ["Reviewed listings", fmt(shopCoverage["Review-Derived Listings"], "Review-Derived Listings") || "0"],
-    ["Corpus reviews", fmt(corpusShop["Review Corpus Count"], "Review Corpus Count") || "0"],
-    ["Review months", fmt(corpusShop["Review Corpus Months Covered"], "Review Corpus Months Covered") || "0"],
-    ["Full-year history", corpusShop["Full Year Review Coverage"] || "No"]
+    ["Corpus reviews", fmt(reviewEvidence["Review Corpus Count"], "Review Corpus Count") || "0"],
+    ["Review months", fmt(reviewEvidence["Review Corpus Months Covered"], "Review Corpus Months Covered") || "0"],
+    ["Full-year history", reviewEvidence["Full Year Review Coverage"] || "No"]
   ].map(([label, value]) => metric(label, value)).join("");
 
   const eRank30 = numericCell(coverage, "eRank 30D Sales") || numericCell(topShop, "30D Sales");
@@ -4484,9 +4499,10 @@ function renderCompanyProfile() {
     `${fmt(productionRows.length, "Listing Count")} production methods`
   ];
   if (eRank30) calloutBits.push(`${fmt(eRank30, "30D Sales")} eRank 30-day sales`);
-  if (numericCell(corpusShop, "Review Corpus Count")) {
+  if (numericCell(reviewEvidence, "Review Corpus Count")) {
+    const sourceRead = numericCell(corpusShop, "Review Corpus Count") ? "full-corpus" : "sidecar";
     calloutBits.push(
-      `${fmt(corpusShop["Review Corpus Count"], "Review Corpus Count")} full-corpus reviews, ${fmt(corpusShop["Review Corpus 90D"], "Review Corpus 90D")} in the latest 90 days`
+      `${fmt(reviewEvidence["Review Corpus Count"], "Review Corpus Count")} ${sourceRead} reviews, ${fmt(reviewEvidence["Review Corpus 90D"], "Review Corpus 90D")} in the latest 90 days`
     );
   }
   if (numericCell(shopCoverage, "Review-Derived Listings")) {
@@ -4496,9 +4512,9 @@ function renderCompanyProfile() {
   } else if (reviewShopCoverageState.loading) {
     calloutBits.push("loading all-shop coverage sidecar");
   }
-  if (corpusShop["Full Year Review Coverage"] === "Yes") {
+  if (reviewEvidence["Full Year Review Coverage"] === "Yes") {
     calloutBits.push(
-      `full-year review coverage from ${corpusShop["Review Corpus Earliest ISO"] || "unknown"} to ${corpusShop["Review Corpus Latest ISO"] || "unknown"}`
+      `full-year review coverage from ${reviewEvidence["Review Corpus Earliest ISO"] || "unknown"} to ${reviewEvidence["Review Corpus Latest ISO"] || "unknown"}`
     );
   }
   if (trend["Trend Source"]) {
@@ -4528,19 +4544,19 @@ function renderCompanyProfile() {
     "Full Identity Listings": shopCoverage["Full Identity Listings"] ?? "",
     "Title Gap Listings": shopCoverage["Title Gap Listings"] ?? "",
     "Identity Gap Listings": shopCoverage["Identity Gap Listings"] ?? "",
-    "Review Corpus Count": corpusShop["Review Corpus Count"] ?? "",
-    "Review Corpus 90D": corpusShop["Review Corpus 90D"] ?? "",
-    "Review Corpus 365D": corpusShop["Review Corpus 365D"] ?? "",
-    "Review Corpus Listings": corpusShop["Review Corpus Listings"] ?? "",
-    "Review Corpus Avg Rating": corpusShop["Review Corpus Avg Rating"] ?? "",
-    "Review Corpus Earliest ISO": corpusShop["Review Corpus Earliest ISO"] ?? "",
-    "Review Corpus Latest ISO": corpusShop["Review Corpus Latest ISO"] ?? "",
-    "Review Corpus Span Days": corpusShop["Review Corpus Span Days"] ?? "",
-    "Review Corpus Months Covered": corpusShop["Review Corpus Months Covered"] ?? "",
-    "Full Year Review Coverage": corpusShop["Full Year Review Coverage"] ?? "",
-    "Peak Review Month": corpusShop["Peak Review Month"] ?? "",
-    "Peak Review Month Count": corpusShop["Peak Review Month Count"] ?? "",
-    "Seasonality Index": corpusShop["Seasonality Index"] ?? "",
+    "Review Corpus Count": reviewEvidence["Review Corpus Count"] ?? "",
+    "Review Corpus 90D": reviewEvidence["Review Corpus 90D"] ?? "",
+    "Review Corpus 365D": reviewEvidence["Review Corpus 365D"] ?? "",
+    "Review Corpus Listings": reviewEvidence["Review Corpus Listings"] ?? "",
+    "Review Corpus Avg Rating": reviewEvidence["Review Corpus Avg Rating"] ?? "",
+    "Review Corpus Earliest ISO": reviewEvidence["Review Corpus Earliest ISO"] ?? "",
+    "Review Corpus Latest ISO": reviewEvidence["Review Corpus Latest ISO"] ?? "",
+    "Review Corpus Span Days": reviewEvidence["Review Corpus Span Days"] ?? "",
+    "Review Corpus Months Covered": reviewEvidence["Review Corpus Months Covered"] ?? "",
+    "Full Year Review Coverage": reviewEvidence["Full Year Review Coverage"] ?? "",
+    "Peak Review Month": reviewEvidence["Peak Review Month"] ?? "",
+    "Peak Review Month Count": reviewEvidence["Peak Review Month Count"] ?? "",
+    "Seasonality Index": reviewEvidence["Seasonality Index"] ?? "",
     "Trend": trend.Trend || "",
     "Recent Avg Daily Sales": trend["Recent Avg Daily Sales"] ?? "",
     "Prior Avg Daily Sales": trend["Prior Avg Daily Sales"] ?? "",
