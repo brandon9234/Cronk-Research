@@ -20,7 +20,7 @@ let customBuyerMomentRange = null;
 let reviewMappingGapControlSignature = "";
 let reviewShopCoverageControlSignature = "";
 const CUSTOM_BUYER_MOMENT_ID = "custom-date-range";
-const DATA_ASSET_VERSION = "market-penetration-20260611-2";
+const DATA_ASSET_VERSION = "market-penetration-20260611-3";
 const STATUS_ASSET_VERSION = "public-status-20260611-1";
 const BUYER_MOMENT_LANE_HEIGHT = 30;
 const BUYER_MOMENT_HIGH_OPPORTUNITY_SCORE = 68;
@@ -146,7 +146,12 @@ const numericColumns = new Set([
   "Competitor Reviews 90D", "Estimated Competitor Orders 365D", "MyMaravia Active Listings",
   "MyMaravia All Listings", "MyMaravia Orders 365D", "MyMaravia Reviews 365D",
   "Estimated Order Share %", "Review Share %", "Reviews 365D", "Reviews 90D", "Total Reviews",
-  "Avg Rating", "Signal"
+  "Avg Rating", "Signal", "Reviewed Shops", "Resolved Shops", "Open Shops", "Resolved %",
+  "Window Complete Shops", "Depth Satisfied Shops", "Empty / Zero Shops", "Partial Shops",
+  "Capped Shops", "Queued Shops", "Untracked Shops", "Other Status Shops",
+  "Recent Target Runs", "Recent Discovery Output Rows", "Recent Shops Promoted",
+  "Recent Review Rows Written", "Recent Rate Limit Errors", "Candidate Shop IDs",
+  "Discovery Output Rows", "Shops Promoted", "Review Rows Written", "Rate Limit Errors", "Seconds"
 ]);
 
 const defaultDailySalesSortColumns = [
@@ -4117,6 +4122,8 @@ function renderMarketPenetration() {
   const payload = dashboard.marketPenetration || {};
   const segments = Array.isArray(payload.segments) ? payload.segments : [];
   const calibration = payload.calibration || {};
+  const coverageAudit = payload.coverageAudit || {};
+  const coverageSummary = coverageAudit.summary || {};
   const totalReviews365 = segments.reduce((sum, row) => sum + numericCell(row, "Competitor Reviews 365D"), 0);
   const totalReviews90 = segments.reduce((sum, row) => sum + numericCell(row, "Competitor Reviews 90D"), 0);
   const totalCompetitorOrders = segments.reduce((sum, row) => sum + numericCell(row, "Estimated Competitor Orders 365D"), 0);
@@ -4135,7 +4142,11 @@ function renderMarketPenetration() {
     ["MyMaravia orders 365D", fmt(totalMyOrders, "MyMaravia Orders 365D") || "0"],
     ["My active listings", fmt(totalActiveListings, "MyMaravia Active Listings") || "0"],
     ["Blended order share", orderShare === null ? "0%" : fmt(orderShare, "Estimated Order Share %")],
-    ["Strongest share", bestShare["Market"] ? `${bestShare["Market"]} ${fmt(bestShare["Estimated Order Share %"], "Estimated Order Share %")}` : "Unavailable"]
+    ["Strongest share", bestShare["Market"] ? `${bestShare["Market"]} ${fmt(bestShare["Estimated Order Share %"], "Estimated Order Share %")}` : "Unavailable"],
+    ["Recent target runs", fmt(coverageSummary["Recent Target Runs"], "Recent Target Runs") || "0"],
+    ["Recent shops promoted", fmt(coverageSummary["Recent Shops Promoted"], "Recent Shops Promoted") || "0"],
+    ["Recent review rows", fmt(coverageSummary["Recent Review Rows Written"], "Recent Review Rows Written") || "0"],
+    ["Rate-limit errors", fmt(coverageSummary["Recent Rate Limit Errors"], "Recent Rate Limit Errors") || "0"]
   ].map(([label, value]) => metric(label, value)).join("");
 
   const summary = document.getElementById("market-penetration-summary");
@@ -4180,6 +4191,20 @@ function renderMarketPenetration() {
     "MyMaravia Reviews 365D", "Estimated Order Share %", "Review Share %",
     "Latest Competitor Review"
   ], 20, { preserveOrder: true });
+  const coverageSummaryTarget = document.getElementById("market-penetration-coverage-summary");
+  if (coverageSummaryTarget) {
+    coverageSummaryTarget.textContent = coverageAudit.read || "No indexing coverage audit is available in this snapshot.";
+  }
+  renderTable("market-penetration-coverage", Array.isArray(coverageAudit.segmentCoverage) ? coverageAudit.segmentCoverage : [], [
+    "Market", "Coverage Read", "Reviewed Listings", "Reviewed Shops",
+    "Resolved Shops", "Open Shops", "Resolved %", "Window Complete Shops",
+    "Depth Satisfied Shops", "Empty / Zero Shops", "Partial Shops", "Capped Shops",
+    "Queued Shops", "Untracked Shops", "Other Status Shops", "Freshest Capture"
+  ], 20, { preserveOrder: true });
+  renderTable("market-penetration-yield", Array.isArray(coverageAudit.queryBankYield) ? coverageAudit.queryBankYield : [], [
+    "Generated At", "Query Bank", "Market", "Candidate Shop IDs", "Discovery Output Rows",
+    "Shops Promoted", "Review Rows Written", "Rate Limit Errors", "Seconds", "Run"
+  ], 12, { preserveOrder: true });
   renderTable("market-penetration-shops", marketPenetrationFlatRows(segments, "Top Shops"), [
     "Market", "Shop", "Reviewed Listings", "Reviews 365D", "Reviews 90D"
   ], 60, { preserveOrder: true });
