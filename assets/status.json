@@ -28,8 +28,8 @@
     "queuedTotal": 399,
     "windowComplete": 15690
   },
-  "currentPhase": "rollup_refresh_running",
-  "generatedAt": "2026-06-11T23:25:48Z",
+  "currentPhase": "rollup_refresh_complete",
+  "generatedAt": "2026-06-11T23:26:44Z",
   "latestQueryYield": {
     "generatedAt": "2026-06-11T23:19:16Z",
     "queryBank": "professional_nameplates",
@@ -37,16 +37,16 @@
     "reviewRowsWritten": 6069,
     "shopsPromoted": 5
   },
-  "nextSafeAction": "wait for rollup refresh to finish before starting any dashboard catch-up",
-  "publicCommit": "0ac0458ba5e2",
+  "nextSafeAction": "monitor active phase `rollup_refresh_complete`; avoid launching another SQL writer",
+  "publicCommit": "de5bfba9f997",
   "publish": {
-    "lastReason": "thresholds not met: 12,266 new reviews since publish, 538s elapsed, 2 runs",
-    "lastStatus": "skipped",
-    "lastStatusAt": "2026-06-11T23:19:03Z",
-    "lastSuccessfulAt": "2026-06-11T23:07:23Z",
-    "lastSuccessfulPublicCommit": "6b16b582c822",
-    "lastSuccessfulPublicDataReviewCount": 9847192,
-    "lastSuccessfulReviewLedgerCount": 9857753
+    "lastReason": "publish sync pushed de5bfba9f997fa63fb0977c09ef45585fa511f18",
+    "lastStatus": "success",
+    "lastStatusAt": "2026-06-11T23:26:17Z",
+    "lastSuccessfulAt": "2026-06-11T23:26:17Z",
+    "lastSuccessfulPublicCommit": "de5bfba9f997",
+    "lastSuccessfulPublicDataReviewCount": 9870019,
+    "lastSuccessfulReviewLedgerCount": 9875435
   },
   "reviewLedgerCount": 9875435,
   "reviewListingMapping": {
@@ -61,7 +61,7 @@
     "shopsMissingListingMetadata": 2,
     "source": "dashboard-cache"
   },
-  "rollupFreshnessStatus": "stale",
-  "rollupSourceTotalReviews": 9870019,
-  "rollupStaleReviewRows": 5416
+  "rollupFreshnessStatus": "current",
+  "rollupSourceTotalReviews": 9875435,
+  "rollupStaleReviewRows": 0
 }
