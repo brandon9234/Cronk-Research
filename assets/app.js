@@ -16,6 +16,7 @@ let buyerMomentCatalogCache = null;
 let buyerMomentTopListingRowsCache = null;
 let buyerMomentListingCycleRowsCache = new Map();
 let customBuyerMomentRange = null;
+let reviewMappingGapControlSignature = "";
 const CUSTOM_BUYER_MOMENT_ID = "custom-date-range";
 const DATA_ASSET_VERSION = "mymaravia-tag-rank-20260606-1";
 const BUYER_MOMENT_LANE_HEIGHT = 30;
@@ -90,6 +91,7 @@ const numericColumns = new Set([
   "Recent Reviews", "Recent Avg Rating", "Tracked Listings", "Tracked Product Categories",
   "Tracked Production Methods", "Tracked Est. Daily Sales", "Tracked Est. 30D Sales",
   "Review Corpus Count", "Review Corpus 90D", "Review Corpus 365D", "Review Corpus Listings",
+  "Affected Rows", "Affected Shops", "Record Count", "Review 90D", "Review 365D",
   "Review Corpus Avg Rating", "Review Evidence Count", "Review Corpus Span Days",
   "Review Corpus Months Covered", "Peak Review Month Count", "Seasonality Index",
   "eRank Avg Daily Sales (30D)", "eRank Total Sales",
@@ -6600,6 +6602,125 @@ function initCompanyProfile() {
   renderCompanyProfile();
 }
 
+function reviewMappingGapRows() {
+  return Array.isArray(dashboard.operations?.reviewMappingGapDetails)
+    ? dashboard.operations.reviewMappingGapDetails
+    : [];
+}
+
+function reviewMappingGapControlValues() {
+  return {
+    status: document.getElementById("review-mapping-gap-status")?.value || "",
+    shop: document.getElementById("review-mapping-gap-shop")?.value || "",
+    query: (document.getElementById("review-mapping-gap-search")?.value || "").trim().toLowerCase()
+  };
+}
+
+function reviewMappingGapSearchText(row) {
+  return [
+    row.Status,
+    row.Shop,
+    row["Listing ID"],
+    row["Listing URL"],
+    row["Missing Fields"],
+    row["Mapping State"],
+    row["Repair Priority"],
+    row["Repair Read"],
+    row["Evidence Safety"],
+    row["Next Action"]
+  ].map(value => String(value || "").toLowerCase()).join(" ");
+}
+
+function filteredReviewMappingGapRows(rows) {
+  const filters = reviewMappingGapControlValues();
+  return rows.filter(row => {
+    if (filters.status && row.Status !== filters.status) return false;
+    if (filters.shop && row.Shop !== filters.shop) return false;
+    if (filters.query && !reviewMappingGapSearchText(row).includes(filters.query)) return false;
+    return true;
+  });
+}
+
+function renderReviewMappingGapControls(rows) {
+  const target = document.getElementById("review-mapping-gap-controls");
+  if (!target) return;
+  const shops = [...new Set(rows.map(row => row.Shop).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+  const statuses = [...new Set(rows.map(row => row.Status).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+  const signature = JSON.stringify({ shops, statuses });
+  if (reviewMappingGapControlSignature === signature && target.dataset.bound === "true") return;
+  const current = reviewMappingGapControlValues();
+  reviewMappingGapControlSignature = signature;
+  target.innerHTML = `
+    <div class="mapping-gap-controls">
+      <label>
+        <span>Status</span>
+        <select id="review-mapping-gap-status">
+          <option value="">All statuses</option>
+          ${statuses.map(status => `<option value="${escapeHtml(status)}">${escapeHtml(status)}</option>`).join("")}
+        </select>
+      </label>
+      <label>
+        <span>Shop</span>
+        <select id="review-mapping-gap-shop">
+          <option value="">All shops</option>
+          ${shops.map(shop => `<option value="${escapeHtml(shop)}">${escapeHtml(shop)}</option>`).join("")}
+        </select>
+      </label>
+      <label>
+        <span>Search</span>
+        <input id="review-mapping-gap-search" type="search" placeholder="listing, shop, repair lane">
+      </label>
+    </div>
+  `;
+  const status = document.getElementById("review-mapping-gap-status");
+  const shop = document.getElementById("review-mapping-gap-shop");
+  const search = document.getElementById("review-mapping-gap-search");
+  if (status) status.value = statuses.includes(current.status) ? current.status : "";
+  if (shop) shop.value = shops.includes(current.shop) ? current.shop : "";
+  if (search) search.value = current.query;
+  [status, shop].forEach(control => control?.addEventListener("change", renderReviewMappingGapDetails));
+  search?.addEventListener("input", renderReviewMappingGapDetails);
+  target.dataset.bound = "true";
+}
+
+function renderReviewMappingGapSummary(rows, filteredRows) {
+  const target = document.getElementById("review-mapping-gap-summary");
+  if (!target) return;
+  if (!rows.length) {
+    target.innerHTML = "";
+    return;
+  }
+  const shops = new Set(filteredRows.map(row => row.Shop).filter(Boolean));
+  const titleOnly = filteredRows.filter(row => String(row["Missing Fields"] || "") === "Product Title").length;
+  const reviews = filteredRows.reduce((sum, row) => sum + numericCell(row, "Review Count"), 0);
+  const recent = filteredRows.reduce((sum, row) => sum + numericCell(row, "Review 365D"), 0);
+  target.innerHTML = [
+    metric("Visible gaps", `${fmt(filteredRows.length, "Listing Count")} / ${fmt(rows.length, "Listing Count")}`),
+    metric("Title-only gaps", fmt(titleOnly, "Listing Count")),
+    metric("Affected shops", fmt(shops.size, "Shop Count")),
+    metric("Reviews represented", fmt(reviews, "Review Count")),
+    metric("365D reviews", fmt(recent, "Review 365D"))
+  ].join("");
+}
+
+function renderReviewMappingGapDetails() {
+  const rows = reviewMappingGapRows();
+  renderReviewMappingGapControls(rows);
+  const filteredRows = filteredReviewMappingGapRows(rows);
+  renderReviewMappingGapSummary(rows, filteredRows);
+  const count = document.getElementById("review-mapping-gap-count");
+  if (count) {
+    count.textContent = rows.length
+      ? `Showing ${fmt(filteredRows.length, "Listing Count")} of ${fmt(rows.length, "Listing Count")} mapping-gap rows.`
+      : "";
+  }
+  renderTable("review-mapping-gap-details", filteredRows, [
+    "Status", "Shop", "Listing ID", "Mapping State", "Listing URL", "Missing Fields",
+    "Review Count", "Review 90D", "Review 365D", "Latest Review ISO",
+    "Repair Priority", "Repair Read", "Evidence Safety", "Next Action"
+  ], 50, { preserveOrder: true });
+}
+
 function renderOperations() {
   renderStatusTable("refresh-priority-table", dashboard.operations.refreshPriorityQueue || [], ["Priority", "Status", "Source", "Freshness Read", "Decision Impact", "Why Now", "Refresh Step"], 6);
   renderTable("shop-discovery-status", dashboard.operations.shopDiscoveryStatus || [], [
@@ -6627,10 +6748,7 @@ function renderOperations() {
     "Status", "Check", "Finding", "Affected Rows", "Affected Shops", "Record Count", "Coverage",
     "Example", "Decision Impact", "Next Action"
   ], 5);
-  renderTable("review-mapping-gap-details", dashboard.operations.reviewMappingGapDetails || [], [
-    "Status", "Shop", "Listing Key", "Listing URL", "Missing Fields", "Review Count", "Review 90D",
-    "Review 365D", "Latest Review ISO", "Repair Read", "Next Action"
-  ], 50, { preserveOrder: true });
+  renderReviewMappingGapDetails();
   renderTable("next-action-template-gap-decision-sheet-status", dashboard.operations.nextActionTemplateGapDecisionSheet || [], [
     "Status", "Source", "Sheet Rows", "Filled Rows", "Waiting Rows", "Partial Rows", "Validator Problems",
     "Current Sheet State", "QA Gate", "Decision Sheet URL", "Decision QA URL", "Decision TSV URL", "Tabs",

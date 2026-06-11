@@ -150,6 +150,10 @@ input {
   grid-template-columns: repeat(5, minmax(0, 1fr));
 }
 
+.operation-metrics {
+  margin-top: 12px;
+}
+
 .metric {
   background: #fff;
   border: 1px solid var(--line);
@@ -629,6 +633,30 @@ input[type="search"] {
 
 .listing-count {
   margin: 4px 0 0;
+}
+
+.mapping-gap-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px;
+  margin: 10px 0 8px;
+}
+
+.mapping-gap-controls label {
+  display: grid;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.mapping-gap-controls select {
+  min-width: 170px;
+}
+
+.mapping-gap-controls input[type="search"] {
+  min-width: 260px;
 }
 
 .buyer-moment-range-controls {
