@@ -147,6 +147,8 @@ const numericColumns = new Set([
   "MyMaravia All Listings", "MyMaravia Orders 365D", "MyMaravia Reviews 365D",
   "Estimated Order Share %", "Review Share %", "Orders To 1% Share", "Orders To 3% Share",
   "Orders To 5% Share", "Reviews 365D", "Reviews 90D", "Total Reviews",
+  "Leader Reviews 365D", "Est. Leader Orders 365D", "My vs Leader %",
+  "Leader Market Share %", "Orders To Match Leader",
   "Avg Rating", "Signal", "Signal Share %", "Reviewed Shops", "Resolved Shops", "Open Shops", "Resolved %",
   "Window Complete Shops", "Depth Satisfied Shops", "Empty / Zero Shops", "Partial Shops",
   "Capped Shops", "Queued Shops", "Untracked Shops", "Other Status Shops",
@@ -4201,6 +4203,38 @@ function marketPenetrationSubsegmentRows(segments) {
   });
 }
 
+function marketPenetrationLeaderGapRows(segments) {
+  return segments.map(segment => {
+    const topShops = Array.isArray(segment["Top Shops"]) ? segment["Top Shops"].slice() : [];
+    const leader = topShops.sort((a, b) => numericCell(b, "Reviews 365D") - numericCell(a, "Reviews 365D"))[0] || {};
+    const leaderReviews = numericCell(leader, "Reviews 365D");
+    const competitorReviews = numericCell(segment, "Competitor Reviews 365D");
+    const competitorOrders = numericCell(segment, "Estimated Competitor Orders 365D");
+    const myOrders = numericCell(segment, "MyMaravia Orders 365D");
+    const ordersPerReview = competitorReviews > 0 && competitorOrders > 0 ? competitorOrders / competitorReviews : 0;
+    const leaderOrders = leaderReviews > 0 && ordersPerReview > 0 ? leaderReviews * ordersPerReview : 0;
+    const myVsLeader = percentShare(myOrders, leaderOrders);
+    let competitiveRead = "No leader estimate";
+    if (leaderOrders > 0) {
+      if (myVsLeader >= 100) competitiveRead = "Ahead of leader";
+      else if (myVsLeader >= 50) competitiveRead = "Within striking distance";
+      else if (myVsLeader >= 10) competitiveRead = "Meaningful leader gap";
+      else competitiveRead = "Large leader gap";
+    }
+    return {
+      "Market": segment["Market"],
+      "Leader Shop": leader["Shop"] || "",
+      "Leader Reviews 365D": leaderReviews,
+      "Est. Leader Orders 365D": Math.round(leaderOrders),
+      "MyMaravia Orders 365D": myOrders,
+      "My vs Leader %": myVsLeader,
+      "Leader Market Share %": percentShare(leaderOrders, competitorOrders + myOrders),
+      "Orders To Match Leader": Math.max(0, Math.ceil(leaderOrders - myOrders)),
+      "Competitive Read": competitiveRead
+    };
+  }).filter(row => row["Leader Shop"]);
+}
+
 function renderMarketPenetration() {
   const metricTarget = document.getElementById("market-penetration-metrics");
   if (!metricTarget) return;
@@ -4271,6 +4305,11 @@ function renderMarketPenetration() {
     chartTarget.innerHTML = `<div class="empty">No market penetration rows are available in this snapshot.</div>`;
   }
 
+  renderTable("market-penetration-leader-gap", marketPenetrationLeaderGapRows(segments), [
+    "Market", "Leader Shop", "Leader Reviews 365D", "Est. Leader Orders 365D",
+    "MyMaravia Orders 365D", "My vs Leader %", "Leader Market Share %",
+    "Orders To Match Leader", "Competitive Read"
+  ], 10, { preserveOrder: true });
   renderTable("market-penetration-segments", segments, [
     "Market", "Read", "Reviewed Listings", "Competitor Shops",
     "Competitor Reviews 365D", "Competitor Reviews 90D", "Estimated Competitor Orders 365D",
