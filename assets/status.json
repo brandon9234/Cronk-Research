@@ -18,7 +18,7 @@
     "sourceFile": "deepen-write.json",
     "updatedAt": "2026-06-12T18:13:50Z"
   },
-  "activeWriterAlive": true,
+  "activeWriterAlive": false,
   "coverageBacklog": {
     "capped": 0,
     "depthSatisfied": 144,
@@ -28,36 +28,36 @@
     "queuedTotal": 586,
     "windowComplete": 16488
   },
-  "currentPhase": "rollup_refresh_complete",
-  "generatedAt": "2026-06-12T18:16:37Z",
+  "currentPhase": "dashboard_refresh_complete",
+  "generatedAt": "2026-06-12T18:23:33Z",
   "latestQueryYield": {
-    "generatedAt": "2026-06-12T17:53:00Z",
-    "queryBank": "market_hangers",
+    "generatedAt": "2026-06-12T18:16:51Z",
+    "queryBank": "market_penetration",
     "rateLimitErrors": 0,
-    "reviewRowsWritten": 53,
+    "reviewRowsWritten": 87,
     "shopsPromoted": 1
   },
-  "nextSafeAction": "monitor active phase `rollup_refresh_complete`; avoid launching another SQL writer",
-  "publicCommit": "2a106dc0e1a1",
+  "nextSafeAction": "dashboard cache matches ledger; continue monitoring the background scrape",
+  "publicCommit": "792f9726c9e8",
   "publish": {
-    "lastReason": "publish sync pushed 9d5ffdf6ca24155b731062c289bcead7011334b6",
+    "lastReason": "atomic dashboard refresh promoted",
     "lastStatus": "success",
-    "lastStatusAt": "2026-06-12T17:59:55Z",
-    "lastSuccessfulAt": "2026-06-12T17:59:55Z",
-    "lastSuccessfulPublicCommit": "9d5ffdf6ca24",
-    "lastSuccessfulPublicDataReviewCount": 10127796,
-    "lastSuccessfulReviewLedgerCount": 10127796
+    "lastStatusAt": "2026-06-12T18:23:15Z",
+    "lastSuccessfulAt": "2026-06-12T18:23:15Z",
+    "lastSuccessfulPublicCommit": "792f9726c9e8",
+    "lastSuccessfulPublicDataReviewCount": 10127883,
+    "lastSuccessfulReviewLedgerCount": 10127883
   },
   "rateLimitCooldown": {
     "active": false
   },
   "reviewLedgerCount": 10127883,
   "reviewListingMapping": {
-    "cacheReviewDelta": 87,
-    "dashboardGeneratedAt": "2026-06-12T13:55:12",
-    "distinctListingUrls": 1899997,
+    "cacheReviewDelta": 0,
+    "dashboardGeneratedAt": "2026-06-12T14:19:28",
+    "distinctListingUrls": 1900020,
     "gapDetailRows": 18,
-    "reviewRows": 10127796,
+    "reviewRows": 10127883,
     "rowsMissingListingMetadata": 18,
     "rowsMissingListingTitle": 18,
     "rowsMissingListingUrl": 0,
