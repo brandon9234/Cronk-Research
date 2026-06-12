@@ -17,7 +17,7 @@
     "sourceFile": "backlog-capped-write.json",
     "updatedAt": "2026-06-12T09:12:51Z"
   },
-  "activeWriterAlive": true,
+  "activeWriterAlive": false,
   "coverageBacklog": {
     "capped": 22,
     "depthSatisfied": 129,
@@ -27,21 +27,21 @@
     "queuedTotal": 711,
     "windowComplete": 16258
   },
-  "currentPhase": "rollup_refresh_complete",
-  "generatedAt": "2026-06-12T09:15:35Z",
+  "currentPhase": "indexing_complete",
+  "generatedAt": "2026-06-12T09:19:27Z",
   "latestQueryYield": {
-    "generatedAt": "2026-06-12T08:59:16Z",
+    "generatedAt": "2026-06-12T09:15:49Z",
     "queryBank": "market_penetration",
     "rateLimitErrors": 0,
-    "reviewRowsWritten": 81,
-    "shopsPromoted": 1
+    "reviewRowsWritten": 34428,
+    "shopsPromoted": null
   },
-  "nextSafeAction": "monitor active phase `rollup_refresh_complete`; avoid launching another SQL writer",
-  "publicCommit": "d805a1df1a51",
+  "nextSafeAction": "dashboard cache matches ledger; continue monitoring the background scrape",
+  "publicCommit": "5d9bacbe1c70",
   "publish": {
-    "lastReason": "thresholds not met: 819 new reviews since publish, 1073s elapsed, 2 runs",
+    "lastReason": "thresholds not met: 10,286 new reviews since publish, 2061s elapsed, 3 runs",
     "lastStatus": "skipped",
-    "lastStatusAt": "2026-06-12T08:59:04Z",
+    "lastStatusAt": "2026-06-12T09:15:37Z",
     "lastSuccessfulAt": "2026-06-12T08:38:30Z",
     "lastSuccessfulPublicCommit": "3f9fb2344e89",
     "lastSuccessfulPublicDataReviewCount": 10081101,
@@ -52,11 +52,11 @@
   },
   "reviewLedgerCount": 10091387,
   "reviewListingMapping": {
-    "cacheReviewDelta": 10286,
-    "dashboardGeneratedAt": "2026-06-12T04:37:38",
-    "distinctListingUrls": 1889655,
+    "cacheReviewDelta": 0,
+    "dashboardGeneratedAt": "2026-06-12T05:18:43",
+    "distinctListingUrls": 1890591,
     "gapDetailRows": 18,
-    "reviewRows": 10081101,
+    "reviewRows": 10091387,
     "rowsMissingListingMetadata": 18,
     "rowsMissingListingTitle": 18,
     "rowsMissingListingUrl": 0,
