@@ -1,24 +1,24 @@
 {
   "activeDeepening": {
-    "apiErrors": 9,
+    "apiErrors": 44,
     "coverageStatuses": [
       "queued_api_review_capture",
       "queued"
     ],
-    "elapsedSeconds": 10.7,
+    "elapsedSeconds": 16.8,
     "estimatedRemainingSeconds": 0.0,
-    "lastShop": "TimelessHandicraftCo",
+    "lastShop": "SimplyMagnoliaMarket",
     "queuedCandidates": 50,
-    "reviewRowsChanged": 0,
-    "reviewsFetched": 0,
+    "reviewRowsChanged": 413,
+    "reviewsFetched": 413,
     "reviewsMissingListingMetadata": 0,
     "runStatus": "complete",
-    "secondsPerShop": 0.2,
+    "secondsPerShop": 0.3,
     "shopsCompleted": 50,
-    "sourceFile": "backlog-queued-write.json",
-    "updatedAt": "2026-06-12T17:19:31Z"
+    "sourceFile": "deepen-write.json",
+    "updatedAt": "2026-06-12T17:40:46Z"
   },
-  "activeWriterAlive": false,
+  "activeWriterAlive": true,
   "coverageBacklog": {
     "capped": 0,
     "depthSatisfied": 144,
@@ -26,10 +26,10 @@
     "queued": 123,
     "queuedApiReviewCapture": 463,
     "queuedTotal": 586,
-    "windowComplete": 16481
+    "windowComplete": 16486
   },
-  "currentPhase": "dashboard_refresh_complete",
-  "generatedAt": "2026-06-12T17:27:05Z",
+  "currentPhase": "rollup_refresh_complete",
+  "generatedAt": "2026-06-12T17:43:38Z",
   "latestQueryYield": {
     "generatedAt": "2026-06-12T17:19:44Z",
     "queryBank": "market_led_nameplates",
@@ -37,8 +37,8 @@
     "reviewRowsWritten": 0,
     "shopsPromoted": null
   },
-  "nextSafeAction": "status is safe to inspect; no write action is recommended without fresh context",
-  "publicCommit": "322f61106e0d",
+  "nextSafeAction": "monitor active phase `rollup_refresh_complete`; avoid launching another SQL writer",
+  "publicCommit": "0406537d72bc",
   "publish": {
     "lastReason": "publish sync pushed 322f61106e0d106ec7ff885f20616616520dd481",
     "lastStatus": "success",
@@ -51,20 +51,20 @@
   "rateLimitCooldown": {
     "active": false
   },
-  "reviewLedgerCount": 10127330,
+  "reviewLedgerCount": 10127743,
   "reviewListingMapping": {
-    "cacheReviewDelta": null,
-    "dashboardGeneratedAt": "",
-    "distinctListingUrls": 1900129,
-    "gapDetailRows": null,
+    "cacheReviewDelta": 413,
+    "dashboardGeneratedAt": "2026-06-12T13:21:45",
+    "distinctListingUrls": 1899916,
+    "gapDetailRows": 18,
     "reviewRows": 10127330,
-    "rowsMissingListingMetadata": 169,
-    "rowsMissingListingTitle": 45,
-    "rowsMissingListingUrl": 126,
-    "shopsMissingListingMetadata": 19,
-    "source": "live-audit"
+    "rowsMissingListingMetadata": 18,
+    "rowsMissingListingTitle": 18,
+    "rowsMissingListingUrl": 0,
+    "shopsMissingListingMetadata": 2,
+    "source": "dashboard-cache"
   },
   "rollupFreshnessStatus": "current",
-  "rollupSourceTotalReviews": 10127330,
+  "rollupSourceTotalReviews": 10127743,
   "rollupStaleReviewRows": 0
 }
