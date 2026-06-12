@@ -29,7 +29,7 @@
     "windowComplete": 16488
   },
   "currentPhase": "dashboard_refresh_complete",
-  "generatedAt": "2026-06-12T18:24:21Z",
+  "generatedAt": "2026-06-12T18:31:05Z",
   "latestQueryYield": {
     "generatedAt": "2026-06-12T18:16:51Z",
     "queryBank": "market_penetration",
@@ -37,14 +37,14 @@
     "reviewRowsWritten": 87,
     "shopsPromoted": 1
   },
-  "nextSafeAction": "status is safe to inspect; no write action is recommended without fresh context",
-  "publicCommit": "7bb4adc099ab",
+  "nextSafeAction": "dashboard cache matches ledger; continue monitoring the background scrape",
+  "publicCommit": "9013f20cc5cf",
   "publish": {
-    "lastReason": "publish sync pushed 7bb4adc099ab5b822075a66e18dfec18101b0681",
+    "lastReason": "atomic dashboard refresh promoted",
     "lastStatus": "success",
-    "lastStatusAt": "2026-06-12T18:24:01Z",
-    "lastSuccessfulAt": "2026-06-12T18:24:01Z",
-    "lastSuccessfulPublicCommit": "7bb4adc099ab",
+    "lastStatusAt": "2026-06-12T18:30:52Z",
+    "lastSuccessfulAt": "2026-06-12T18:30:52Z",
+    "lastSuccessfulPublicCommit": "9013f20cc5cf",
     "lastSuccessfulPublicDataReviewCount": 10127883,
     "lastSuccessfulReviewLedgerCount": 10127883
   },
@@ -53,16 +53,16 @@
   },
   "reviewLedgerCount": 10127883,
   "reviewListingMapping": {
-    "cacheReviewDelta": null,
-    "dashboardGeneratedAt": "",
-    "distinctListingUrls": 1900233,
-    "gapDetailRows": null,
+    "cacheReviewDelta": 0,
+    "dashboardGeneratedAt": "2026-06-12T14:27:04",
+    "distinctListingUrls": 1900020,
+    "gapDetailRows": 18,
     "reviewRows": 10127883,
-    "rowsMissingListingMetadata": 169,
-    "rowsMissingListingTitle": 45,
-    "rowsMissingListingUrl": 126,
-    "shopsMissingListingMetadata": 19,
-    "source": "live-audit"
+    "rowsMissingListingMetadata": 18,
+    "rowsMissingListingTitle": 18,
+    "rowsMissingListingUrl": 0,
+    "shopsMissingListingMetadata": 2,
+    "source": "dashboard-cache"
   },
   "rollupFreshnessStatus": "current",
   "rollupSourceTotalReviews": 10127883,
