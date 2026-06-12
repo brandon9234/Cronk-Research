@@ -11,7 +11,7 @@
     "windowComplete": 15981
   },
   "currentPhase": "discovery_running",
-  "generatedAt": "2026-06-12T03:46:44Z",
+  "generatedAt": "2026-06-12T03:47:01Z",
   "latestQueryYield": {
     "generatedAt": "2026-06-12T03:44:48Z",
     "queryBank": "market_license_plates",
@@ -20,15 +20,15 @@
     "shopsPromoted": 53
   },
   "nextSafeAction": "monitor active phase `discovery_running`; avoid launching another SQL writer",
-  "publicCommit": "c190074e40aa",
+  "publicCommit": "abcb614669bb",
   "publish": {
-    "lastReason": "thresholds not met: 8,470 new reviews since publish, 237s elapsed, 1 runs",
-    "lastStatus": "skipped",
-    "lastStatusAt": "2026-06-12T03:44:36Z",
-    "lastSuccessfulAt": "2026-06-12T03:38:03Z",
-    "lastSuccessfulPublicCommit": "8c6d8f07fd6e",
-    "lastSuccessfulPublicDataReviewCount": 9956193,
-    "lastSuccessfulReviewLedgerCount": 9956193
+    "lastReason": "publish sync pushed abcb614669bb783c6702899c884baa701170f2e1",
+    "lastStatus": "success",
+    "lastStatusAt": "2026-06-12T03:46:54Z",
+    "lastSuccessfulAt": "2026-06-12T03:46:54Z",
+    "lastSuccessfulPublicCommit": "abcb614669bb",
+    "lastSuccessfulPublicDataReviewCount": 9964663,
+    "lastSuccessfulReviewLedgerCount": 9964663
   },
   "rateLimitCooldown": {
     "active": false
