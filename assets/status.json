@@ -1,23 +1,5 @@
 {
-  "activeDeepening": {
-    "apiErrors": 15,
-    "coverageStatuses": [
-      "queued_api_review_capture",
-      "queued"
-    ],
-    "elapsedSeconds": 235.1,
-    "estimatedRemainingSeconds": 0.0,
-    "lastShop": "WestCentralGraphics",
-    "queuedCandidates": 50,
-    "reviewRowsChanged": 18201,
-    "reviewsFetched": 18201,
-    "reviewsMissingListingMetadata": 0,
-    "runStatus": "complete",
-    "secondsPerShop": 4.7,
-    "shopsCompleted": 50,
-    "sourceFile": "deepen-write.json",
-    "updatedAt": "2026-06-12T03:32:30Z"
-  },
+  "activeDeepening": {},
   "activeWriterAlive": true,
   "coverageBacklog": {
     "capped": 125,
@@ -28,21 +10,21 @@
     "queuedTotal": 793,
     "windowComplete": 15948
   },
-  "currentPhase": "rollup_refresh_complete",
-  "generatedAt": "2026-06-12T03:35:27Z",
+  "currentPhase": "discovery_running",
+  "generatedAt": "2026-06-12T03:37:54Z",
   "latestQueryYield": {
-    "generatedAt": "2026-06-12T03:23:37Z",
-    "queryBank": "market_led_nameplates",
+    "generatedAt": "2026-06-12T03:35:47Z",
+    "queryBank": "market_license_plates",
     "rateLimitErrors": 0,
-    "reviewRowsWritten": 2939,
-    "shopsPromoted": 5
+    "reviewRowsWritten": 18201,
+    "shopsPromoted": 100
   },
-  "nextSafeAction": "monitor active phase `rollup_refresh_complete`; avoid launching another SQL writer",
-  "publicCommit": "5433c2d5e8dd",
+  "nextSafeAction": "monitor active phase `discovery_running`; avoid launching another SQL writer",
+  "publicCommit": "14cac7f1d90c",
   "publish": {
-    "lastReason": "thresholds not met: 19,552 new reviews since publish, 2869s elapsed, 2 runs",
+    "lastReason": "thresholds not met: 37,753 new reviews since publish, 3582s elapsed, 3 runs",
     "lastStatus": "skipped",
-    "lastStatusAt": "2026-06-12T03:23:23Z",
+    "lastStatusAt": "2026-06-12T03:35:35Z",
     "lastSuccessfulAt": "2026-06-12T02:32:48Z",
     "lastSuccessfulPublicCommit": "73912f5957f1",
     "lastSuccessfulPublicDataReviewCount": 9918440,
@@ -53,11 +35,11 @@
   },
   "reviewLedgerCount": 9956193,
   "reviewListingMapping": {
-    "cacheReviewDelta": 18201,
-    "dashboardGeneratedAt": "2026-06-11T23:24:46",
-    "distinctListingUrls": 1867166,
+    "cacheReviewDelta": 0,
+    "dashboardGeneratedAt": "2026-06-11T23:36:45",
+    "distinctListingUrls": 1871601,
     "gapDetailRows": 18,
-    "reviewRows": 9937992,
+    "reviewRows": 9956193,
     "rowsMissingListingMetadata": 18,
     "rowsMissingListingTitle": 18,
     "rowsMissingListingUrl": 0,
