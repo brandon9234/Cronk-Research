@@ -1,23 +1,24 @@
 {
   "activeDeepening": {
-    "apiErrors": 0,
+    "apiErrors": 49,
     "coverageStatuses": [
-      "api_review_capture_capped"
+      "queued_api_review_capture",
+      "queued"
     ],
-    "elapsedSeconds": 0.0,
+    "elapsedSeconds": 11.3,
     "estimatedRemainingSeconds": 0.0,
-    "lastShop": "LoveStitchesCo",
-    "queuedCandidates": 1,
+    "lastShop": "ClayHiveCo",
+    "queuedCandidates": 50,
     "reviewRowsChanged": 0,
     "reviewsFetched": 0,
     "reviewsMissingListingMetadata": 0,
     "runStatus": "complete",
-    "secondsPerShop": 0.0,
-    "shopsCompleted": 1,
-    "sourceFile": "backlog-capped-write.json",
-    "updatedAt": "2026-06-12T13:55:14Z"
+    "secondsPerShop": 0.2,
+    "shopsCompleted": 50,
+    "sourceFile": "deepen-write.json",
+    "updatedAt": "2026-06-12T14:10:37Z"
   },
-  "activeWriterAlive": false,
+  "activeWriterAlive": true,
   "coverageBacklog": {
     "capped": 5,
     "depthSatisfied": 139,
@@ -25,10 +26,10 @@
     "queued": 123,
     "queuedApiReviewCapture": 587,
     "queuedTotal": 710,
-    "windowComplete": 16419
+    "windowComplete": 16420
   },
-  "currentPhase": "dashboard_refresh_complete",
-  "generatedAt": "2026-06-12T14:02:17Z",
+  "currentPhase": "review_deepen_write_running",
+  "generatedAt": "2026-06-12T14:10:37Z",
   "latestQueryYield": {
     "generatedAt": "2026-06-12T13:55:28Z",
     "queryBank": "market_hangers",
@@ -36,14 +37,14 @@
     "reviewRowsWritten": 0,
     "shopsPromoted": null
   },
-  "nextSafeAction": "dashboard cache matches ledger; continue monitoring the background scrape",
-  "publicCommit": "a88144fe25ad",
+  "nextSafeAction": "wait for active review deepening and its rollup before dashboard catch-up",
+  "publicCommit": "cb1d719ac2bd",
   "publish": {
-    "lastReason": "atomic dashboard refresh promoted",
+    "lastReason": "publish sync pushed cb1d719ac2bdf2d87bf973341116b914dee0de3b",
     "lastStatus": "success",
-    "lastStatusAt": "2026-06-12T14:01:50Z",
-    "lastSuccessfulAt": "2026-06-12T14:01:50Z",
-    "lastSuccessfulPublicCommit": "a88144fe25ad",
+    "lastStatusAt": "2026-06-12T14:02:27Z",
+    "lastSuccessfulAt": "2026-06-12T14:02:27Z",
+    "lastSuccessfulPublicCommit": "cb1d719ac2bd",
     "lastSuccessfulPublicDataReviewCount": 10117923,
     "lastSuccessfulReviewLedgerCount": 10117923
   },
