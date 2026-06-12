@@ -11,7 +11,7 @@
     "windowComplete": 15854
   },
   "currentPhase": "rate_limit_cooldown",
-  "generatedAt": "2026-06-12T02:27:13Z",
+  "generatedAt": "2026-06-12T02:32:39Z",
   "latestQueryYield": {
     "generatedAt": "2026-06-12T02:18:35Z",
     "queryBank": "market_license_plates",
@@ -19,14 +19,14 @@
     "reviewRowsWritten": 0,
     "shopsPromoted": null
   },
-  "nextSafeAction": "wait for target-market Etsy rate-limit cooldown until 2026-06-12T03:03:35Z (36.4m remaining)",
-  "publicCommit": "9f622b4d5500",
+  "nextSafeAction": "wait for target-market Etsy rate-limit cooldown until 2026-06-12T03:03:35Z (30.9m remaining)",
+  "publicCommit": "acf6fb8b4555",
   "publish": {
     "lastReason": "recent target-market Etsy API rate limit",
     "lastStatus": "skipped",
-    "lastStatusAt": "2026-06-12T02:19:41Z",
-    "lastSuccessfulAt": "2026-06-12T01:45:27Z",
-    "lastSuccessfulPublicCommit": "d2ac3b8e379f",
+    "lastStatusAt": "2026-06-12T02:29:47Z",
+    "lastSuccessfulAt": "2026-06-12T02:27:22Z",
+    "lastSuccessfulPublicCommit": "acf6fb8b4555",
     "lastSuccessfulPublicDataReviewCount": 9918440,
     "lastSuccessfulReviewLedgerCount": 9918440
   },
@@ -36,14 +36,14 @@
     "cooldownUntil": "2026-06-12T03:03:35Z",
     "queryBank": "market_led_nameplates",
     "reason": "recent target-market Etsy API rate limit",
-    "remainingSeconds": 2181,
+    "remainingSeconds": 1855,
     "sourceQueryBank": "market_license_plates",
     "sourceRateLimitErrors": 3
   },
   "reviewLedgerCount": 9918440,
   "reviewListingMapping": {
     "cacheReviewDelta": 0,
-    "dashboardGeneratedAt": "2026-06-11T22:26:17",
+    "dashboardGeneratedAt": "2026-06-11T22:31:48",
     "distinctListingUrls": 1861335,
     "gapDetailRows": 18,
     "reviewRows": 9918440,
