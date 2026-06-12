@@ -20,7 +20,7 @@ let customBuyerMomentRange = null;
 let reviewMappingGapControlSignature = "";
 let reviewShopCoverageControlSignature = "";
 const CUSTOM_BUYER_MOMENT_ID = "custom-date-range";
-const DATA_ASSET_VERSION = "market-penetration-20260611-6";
+const DATA_ASSET_VERSION = "market-penetration-20260612-2";
 const STATUS_ASSET_VERSION = "public-status-20260611-1";
 const BUYER_MOMENT_LANE_HEIGHT = 30;
 const BUYER_MOMENT_HIGH_OPPORTUNITY_SCORE = 68;
@@ -147,7 +147,7 @@ const numericColumns = new Set([
   "MyMaravia All Listings", "MyMaravia Orders 365D", "MyMaravia Reviews 365D",
   "Estimated Order Share %", "Review Share %", "Orders To 1% Share", "Orders To 3% Share",
   "Orders To 5% Share", "Reviews 365D", "Reviews 90D", "Total Reviews",
-  "Avg Rating", "Signal", "Reviewed Shops", "Resolved Shops", "Open Shops", "Resolved %",
+  "Avg Rating", "Signal", "Signal Share %", "Reviewed Shops", "Resolved Shops", "Open Shops", "Resolved %",
   "Window Complete Shops", "Depth Satisfied Shops", "Empty / Zero Shops", "Partial Shops",
   "Capped Shops", "Queued Shops", "Untracked Shops", "Other Status Shops",
   "Recent Target Runs", "Recent Discovery Output Rows", "Recent Shops Promoted",
@@ -4189,6 +4189,18 @@ function marketPenetrationFlatRows(segments, key) {
   );
 }
 
+function marketPenetrationSubsegmentRows(segments) {
+  return segments.flatMap(segment => {
+    const rows = Array.isArray(segment["Subsegments"]) ? segment["Subsegments"] : [];
+    const totalSignal = rows.reduce((sum, row) => sum + numericCell(row, "Signal"), 0);
+    return rows.map(row => ({
+      "Market": segment["Market"],
+      ...row,
+      "Signal Share %": percentShare(numericCell(row, "Signal"), totalSignal)
+    }));
+  });
+}
+
 function renderMarketPenetration() {
   const metricTarget = document.getElementById("market-penetration-metrics");
   if (!metricTarget) return;
@@ -4267,6 +4279,9 @@ function renderMarketPenetration() {
     "Orders To 1% Share", "Orders To 3% Share", "Orders To 5% Share",
     "Latest Competitor Review"
   ], 20, { preserveOrder: true });
+  renderTable("market-penetration-subsegments", marketPenetrationSubsegmentRows(segments), [
+    "Market", "Subsegment", "Signal", "Signal Share %"
+  ], 30, { preserveOrder: true });
   const coverageSummaryTarget = document.getElementById("market-penetration-coverage-summary");
   if (coverageSummaryTarget) {
     coverageSummaryTarget.textContent = coverageAudit.read || "No indexing coverage audit is available in this snapshot.";
