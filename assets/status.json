@@ -29,7 +29,7 @@
     "windowComplete": 16438
   },
   "currentPhase": "dashboard_refresh_complete",
-  "generatedAt": "2026-06-12T15:16:52Z",
+  "generatedAt": "2026-06-12T15:17:40Z",
   "latestQueryYield": {
     "generatedAt": "2026-06-12T15:10:21Z",
     "queryBank": "market_hangers",
@@ -37,14 +37,14 @@
     "reviewRowsWritten": 2021,
     "shopsPromoted": 9
   },
-  "nextSafeAction": "dashboard cache matches ledger; continue monitoring the background scrape",
-  "publicCommit": "e84966bb0786",
+  "nextSafeAction": "status is safe to inspect; no write action is recommended without fresh context",
+  "publicCommit": "edf1a351d1cf",
   "publish": {
-    "lastReason": "atomic dashboard refresh promoted",
+    "lastReason": "publish sync pushed edf1a351d1cf3c894d025276c6048b5bf6a0e04e",
     "lastStatus": "success",
-    "lastStatusAt": "2026-06-12T15:16:10Z",
-    "lastSuccessfulAt": "2026-06-12T15:16:10Z",
-    "lastSuccessfulPublicCommit": "e84966bb0786",
+    "lastStatusAt": "2026-06-12T15:17:21Z",
+    "lastSuccessfulAt": "2026-06-12T15:17:21Z",
+    "lastSuccessfulPublicCommit": "edf1a351d1cf",
     "lastSuccessfulPublicDataReviewCount": 10120751,
     "lastSuccessfulReviewLedgerCount": 10120751
   },
@@ -53,16 +53,16 @@
   },
   "reviewLedgerCount": 10120751,
   "reviewListingMapping": {
-    "cacheReviewDelta": 0,
-    "dashboardGeneratedAt": "2026-06-12T11:12:13",
-    "distinctListingUrls": 1897211,
-    "gapDetailRows": 18,
+    "cacheReviewDelta": null,
+    "dashboardGeneratedAt": "",
+    "distinctListingUrls": 1897424,
+    "gapDetailRows": null,
     "reviewRows": 10120751,
-    "rowsMissingListingMetadata": 18,
-    "rowsMissingListingTitle": 18,
-    "rowsMissingListingUrl": 0,
-    "shopsMissingListingMetadata": 2,
-    "source": "dashboard-cache"
+    "rowsMissingListingMetadata": 169,
+    "rowsMissingListingTitle": 45,
+    "rowsMissingListingUrl": 126,
+    "shopsMissingListingMetadata": 19,
+    "source": "live-audit"
   },
   "rollupFreshnessStatus": "current",
   "rollupSourceTotalReviews": 10120751,
