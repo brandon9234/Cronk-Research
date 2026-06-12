@@ -238,6 +238,8 @@ const sourceLinkColumns = new Set(["Blank / Generic Sources"]);
 const companyColumns = new Set(["Shop", "Market Shop", "Top Shop"]);
 const badgeColumns = new Set(["Conquest Status", "Market State", "Opportunity Band", "MyMaravia Build Read", "Local Review Signal", "Action Type", "Confidence", "Change Type", "Investigation Status", "Resolution Status", "Resolved State", "Recovery Status", "Batch Status", "Market Signal", "Execution Status", "Decision Fill State", "Template Readiness", "Top Match Confidence", "Suggested Decision", "Audit Status", "Research Status", "Rank Status"]);
 const realTagColumns = new Set(["Tags", "Actual Tags", "My Actual Tags"]);
+const recentDailySalesSortOptions = { sortableColumns: ["Recent Daily Sales"] };
+const tableSortState = new Map();
 
 const plotConfig = { responsive: true, displayModeBar: false };
 
@@ -443,6 +445,46 @@ function defaultSalesSortColumn(rows, columns) {
   return defaultWeeklySalesSortColumns.find(column => cols.has(column) && hasMetricValue(rows, column)) || "";
 }
 
+function tableSortKey(targetId, options = {}) {
+  return options.sortKey || targetId;
+}
+
+function sortableColumnSet(options = {}) {
+  return new Set(options.sortableColumns || []);
+}
+
+function activeTableSort(targetId, options = {}) {
+  const sort = tableSortState.get(tableSortKey(targetId, options));
+  if (!sort || !sortableColumnSet(options).has(sort.column)) return null;
+  return sort;
+}
+
+function tableSortFallback(a, b) {
+  return numericCell(a, "Priority") - numericCell(b, "Priority") ||
+    numericCell(a, "Overall Rank") - numericCell(b, "Overall Rank") ||
+    numericCell(a, "Launch Priority") - numericCell(b, "Launch Priority") ||
+    String(a.Shop || a["Market Shop"] || "").localeCompare(String(b.Shop || b["Market Shop"] || "")) ||
+    String(a["Product Title"] || a["Market Long Tail"] || a["Product / Listing"] || "").localeCompare(String(b["Product Title"] || b["Market Long Tail"] || b["Product / Listing"] || ""));
+}
+
+function sortRowsForTableColumn(rows, sort) {
+  const { column, direction } = sort;
+  return rows.slice().sort((a, b) => {
+    if (numericColumns.has(column)) {
+      const missingA = a[column] === null || a[column] === undefined || a[column] === "";
+      const missingB = b[column] === null || b[column] === undefined || b[column] === "";
+      if (missingA !== missingB) return missingA ? 1 : -1;
+      const delta = numericCell(a, column) - numericCell(b, column);
+      const ordered = direction === "asc" ? delta : -delta;
+      if (ordered) return ordered;
+      return tableSortFallback(a, b);
+    }
+    const delta = String(a[column] || "").localeCompare(String(b[column] || ""));
+    const ordered = direction === "asc" ? delta : -delta;
+    return ordered || tableSortFallback(a, b);
+  });
+}
+
 function sortRowsForDefaultSales(rows, columns, options = {}) {
   if (options.preserveOrder) return rows;
   const column = options.sortColumn || defaultSalesSortColumn(rows, columns);
@@ -450,11 +492,7 @@ function sortRowsForDefaultSales(rows, columns, options = {}) {
   return rows.slice().sort((a, b) => {
     const delta = numericCell(b, column) - numericCell(a, column);
     if (delta) return delta;
-    return numericCell(a, "Priority") - numericCell(b, "Priority") ||
-      numericCell(a, "Overall Rank") - numericCell(b, "Overall Rank") ||
-      numericCell(a, "Launch Priority") - numericCell(b, "Launch Priority") ||
-      String(a.Shop || a["Market Shop"] || "").localeCompare(String(b.Shop || b["Market Shop"] || "")) ||
-      String(a["Product Title"] || a["Market Long Tail"] || a["Product / Listing"] || "").localeCompare(String(b["Product Title"] || b["Market Long Tail"] || b["Product / Listing"] || ""));
+    return tableSortFallback(a, b);
   });
 }
 
@@ -463,19 +501,31 @@ function renderTable(targetId, rows, columns = null, limit = null, options = {})
   if (!target) return;
   const baseRows = Array.isArray(rows) ? rows : [];
   const requestedCols = columns || Object.keys(baseRows[0] || {});
-  const sortedRows = sortRowsForDefaultSales(baseRows, requestedCols, options);
+  const activeSort = activeTableSort(targetId, options);
+  const sortedRows = activeSort
+    ? sortRowsForTableColumn(baseRows, activeSort)
+    : sortRowsForDefaultSales(baseRows, requestedCols, options);
   const data = limit ? sortedRows.slice(0, limit) : sortedRows;
   if (!data || data.length === 0) {
     target.innerHTML = `<div class="empty">No rows available in this snapshot.</div>`;
     return;
   }
   const cols = visibleColumnsForRows(data, columns);
+  const sortableColumns = sortableColumnSet(options);
   const header = cols.map(col => {
+    const isSortable = sortableColumns.has(col);
+    const sortDirection = activeSort?.column === col ? activeSort.direction : "";
     const cls = [
       wrappedColumns.has(col) ? "wrap" : "",
-      thumbnailColumns.has(col) ? "thumbnail-cell" : ""
+      thumbnailColumns.has(col) ? "thumbnail-cell" : "",
+      isSortable ? "sortable" : "",
+      sortDirection ? "sorted" : ""
     ].filter(Boolean).join(" ");
-    return `<th class="${cls}">${escapeHtml(col)}</th>`;
+    if (!isSortable) return `<th class="${cls}">${escapeHtml(col)}</th>`;
+    const nextDirection = sortDirection === "desc" ? "asc" : "desc";
+    const nextLabel = nextDirection === "desc" ? "high to low" : "low to high";
+    const ariaSort = sortDirection === "asc" ? "ascending" : sortDirection === "desc" ? "descending" : "none";
+    return `<th class="${cls}" aria-sort="${ariaSort}"><button class="table-sort-button" type="button" data-sort-column="${escapeHtml(col)}" aria-label="Sort ${escapeHtml(col)} ${nextLabel}"><span>${escapeHtml(col)}</span><span class="sort-caret ${sortDirection || "idle"}" aria-hidden="true"></span></button></th>`;
   }).join("");
   const body = data.map(row => {
     const cells = cols.map(col => {
@@ -509,6 +559,15 @@ function renderTable(targetId, rows, columns = null, limit = null, options = {})
     return `<tr>${cells}</tr>`;
   }).join("");
   target.innerHTML = tableShell(header, body);
+  target.querySelectorAll("[data-sort-column]").forEach(button => {
+    button.addEventListener("click", () => {
+      const column = button.dataset.sortColumn || "";
+      const current = tableSortState.get(tableSortKey(targetId, options));
+      const direction = current?.column === column && current.direction === "desc" ? "asc" : "desc";
+      tableSortState.set(tableSortKey(targetId, options), { column, direction });
+      renderTable(targetId, baseRows, columns, limit, options);
+    });
+  });
   syncBottomScrollbar(target);
 }
 
@@ -4780,7 +4839,7 @@ function renderCompanyProfile() {
     "Recent 180D Sales", "Recent 30D Revenue", "Recent 180D Revenue", "Sales Rate Window Days", "Recent Reviews",
     "Recent Avg Rating", "Review Corpus Count", "Review Corpus 90D", "Review Corpus 365D",
     "Review Corpus Avg Rating", "Review Corpus Latest ISO", "Blank / Generic Sources", "Listing URL"
-  ], 300);
+  ], 300, recentDailySalesSortOptions);
 
   requestAnimationFrame(updateAllBottomScrollbars);
 }
@@ -5932,7 +5991,7 @@ function renderMyMaravia() {
     "Recent 7D Sales", "Recent 30D Sales", "Recent 90D Sales", "Recent 180D Sales",
     "Recent Reviews", "Recent Avg Rating", "Review Corpus Count", "Review Corpus 90D", "Sales Rate Window Days",
     "Views", "Favorites", "Tags Count", "Listing URL"
-  ], 500);
+  ], 500, recentDailySalesSortOptions);
 }
 
 function handleListingInputChange() {
@@ -5995,7 +6054,7 @@ function renderListings() {
     "Production Tag", "Customization Tag", "Tag Confidence", "Tag Evidence",
     "Review Corpus Count", "Review Corpus 90D", "Review Corpus 365D",
     "Review Corpus Avg Rating", "Review Corpus Latest ISO", "Evidence Confidence", "Last Review ISO", "Listing URL"
-  ], LISTING_RENDER_LIMIT);
+  ], LISTING_RENDER_LIMIT, recentDailySalesSortOptions);
   renderListingCycle(selectedListingCycleKey);
 }
 

@@ -362,6 +362,57 @@ th {
   font-weight: 700;
 }
 
+th.sortable {
+  padding: 0;
+}
+
+th.sorted {
+  color: #244c66;
+}
+
+.table-sort-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-height: 34px;
+  padding: 8px 9px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.table-sort-button:hover,
+.table-sort-button:focus-visible {
+  color: #0f766e;
+  outline: none;
+}
+
+.sort-caret {
+  flex: 0 0 auto;
+  width: 0;
+  height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+}
+
+.sort-caret.idle,
+.sort-caret.desc {
+  border-top: 6px solid currentColor;
+}
+
+.sort-caret.asc {
+  border-bottom: 6px solid currentColor;
+}
+
+.sort-caret.idle {
+  opacity: 0.38;
+}
+
 td.wrap,
 th.wrap {
   white-space: normal;
