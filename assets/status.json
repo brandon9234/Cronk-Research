@@ -1,22 +1,22 @@
 {
   "activeDeepening": {
-    "apiErrors": 50,
+    "apiErrors": 45,
     "coverageStatuses": [
       "queued_api_review_capture",
       "queued"
     ],
-    "elapsedSeconds": 10.5,
+    "elapsedSeconds": 17.6,
     "estimatedRemainingSeconds": 0.0,
-    "lastShop": "12ElevenAtelier",
+    "lastShop": "TheTStoreDesign",
     "queuedCandidates": 50,
-    "reviewRowsChanged": 0,
-    "reviewsFetched": 0,
+    "reviewRowsChanged": 110,
+    "reviewsFetched": 110,
     "reviewsMissingListingMetadata": 0,
     "runStatus": "complete",
-    "secondsPerShop": 0.2,
+    "secondsPerShop": 0.4,
     "shopsCompleted": 50,
-    "sourceFile": "backlog-queued-write.json",
-    "updatedAt": "2026-06-12T20:10:11Z"
+    "sourceFile": "deepen-write.json",
+    "updatedAt": "2026-06-12T20:23:50Z"
   },
   "activeWriterAlive": true,
   "coverageBacklog": {
@@ -26,23 +26,23 @@
     "queued": 123,
     "queuedApiReviewCapture": 334,
     "queuedTotal": 457,
-    "windowComplete": 16506
+    "windowComplete": 16512
   },
-  "currentPhase": "review_backlog_fallback_running",
-  "generatedAt": "2026-06-12T20:10:11Z",
+  "currentPhase": "rollup_refresh_complete",
+  "generatedAt": "2026-06-12T20:26:08Z",
   "latestQueryYield": {
-    "generatedAt": "2026-06-12T19:55:55Z",
-    "queryBank": "market_license_plates",
+    "generatedAt": "2026-06-12T20:18:10Z",
+    "queryBank": "market_hangers",
     "rateLimitErrors": 0,
-    "reviewRowsWritten": 598,
-    "shopsPromoted": 5
+    "reviewRowsWritten": 0,
+    "shopsPromoted": 1
   },
-  "nextSafeAction": "monitor active phase `review_backlog_fallback_running`; avoid launching another SQL writer",
-  "publicCommit": "d3fe2c4eabf1",
+  "nextSafeAction": "monitor active phase `rollup_refresh_complete`; avoid launching another SQL writer",
+  "publicCommit": "66e41f38d494",
   "publish": {
-    "lastReason": "thresholds not met: 598 new reviews since publish, 338s elapsed, 1 runs",
+    "lastReason": "thresholds not met: 598 new reviews since publish, 1835s elapsed, 3 runs",
     "lastStatus": "skipped",
-    "lastStatusAt": "2026-06-12T19:55:42Z",
+    "lastStatusAt": "2026-06-12T20:18:00Z",
     "lastSuccessfulAt": "2026-06-12T19:47:24Z",
     "lastSuccessfulPublicCommit": "1db4420bfcad",
     "lastSuccessfulPublicDataReviewCount": 10128567,
@@ -51,9 +51,9 @@
   "rateLimitCooldown": {
     "active": false
   },
-  "reviewLedgerCount": 10129165,
+  "reviewLedgerCount": 10129275,
   "reviewListingMapping": {
-    "cacheReviewDelta": 598,
+    "cacheReviewDelta": 708,
     "dashboardGeneratedAt": "2026-06-12T15:42:44",
     "distinctListingUrls": 1900280,
     "gapDetailRows": 18,
@@ -65,6 +65,6 @@
     "source": "dashboard-cache"
   },
   "rollupFreshnessStatus": "current",
-  "rollupSourceTotalReviews": 10129165,
+  "rollupSourceTotalReviews": 10129275,
   "rollupStaleReviewRows": 0
 }
