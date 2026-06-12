@@ -11,7 +11,7 @@
     "windowComplete": 15854
   },
   "currentPhase": "rate_limit_cooldown",
-  "generatedAt": "2026-06-12T01:45:17Z",
+  "generatedAt": "2026-06-12T01:47:16Z",
   "latestQueryYield": {
     "generatedAt": "2026-06-12T01:32:50Z",
     "queryBank": "market_led_nameplates",
@@ -19,14 +19,14 @@
     "reviewRowsWritten": 0,
     "shopsPromoted": null
   },
-  "nextSafeAction": "wait for target-market Etsy rate-limit cooldown until 2026-06-12T02:17:50Z (32.5m remaining)",
-  "publicCommit": "63e936a56ea1",
+  "nextSafeAction": "wait for target-market Etsy rate-limit cooldown until 2026-06-12T02:17:50Z (30.6m remaining)",
+  "publicCommit": "d2ac3b8e379f",
   "publish": {
-    "lastReason": "recent target-market Etsy API rate limit",
-    "lastStatus": "skipped",
-    "lastStatusAt": "2026-06-12T01:44:04Z",
-    "lastSuccessfulAt": "2026-06-12T01:41:53Z",
-    "lastSuccessfulPublicCommit": "63e936a56ea1",
+    "lastReason": "publish sync pushed d2ac3b8e379fd468f6aec0ffc451b6c0f9999924",
+    "lastStatus": "success",
+    "lastStatusAt": "2026-06-12T01:45:27Z",
+    "lastSuccessfulAt": "2026-06-12T01:45:27Z",
+    "lastSuccessfulPublicCommit": "d2ac3b8e379f",
     "lastSuccessfulPublicDataReviewCount": 9918440,
     "lastSuccessfulReviewLedgerCount": 9918440
   },
@@ -36,7 +36,7 @@
     "cooldownUntil": "2026-06-12T02:17:50Z",
     "queryBank": "market_license_plates",
     "reason": "recent target-market Etsy API rate limit",
-    "remainingSeconds": 1952,
+    "remainingSeconds": 1833,
     "sourceQueryBank": "market_led_nameplates",
     "sourceRateLimitErrors": 3
   },
