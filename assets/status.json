@@ -1,17 +1,34 @@
 {
-  "activeDeepening": {},
+  "activeDeepening": {
+    "apiErrors": 0,
+    "coverageStatuses": [
+      "api_review_capture_capped"
+    ],
+    "elapsedSeconds": 398.4,
+    "estimatedRemainingSeconds": 0.0,
+    "lastShop": "HugsandMemories",
+    "queuedCandidates": 10,
+    "reviewRowsChanged": 40940,
+    "reviewsFetched": 40940,
+    "reviewsMissingListingMetadata": 0,
+    "runStatus": "complete",
+    "secondsPerShop": 39.8,
+    "shopsCompleted": 10,
+    "sourceFile": "backlog-capped-write.json",
+    "updatedAt": "2026-06-12T03:56:50Z"
+  },
   "activeWriterAlive": true,
   "coverageBacklog": {
-    "capped": 125,
+    "capped": 119,
     "depthSatisfied": 96,
     "partial": 4003,
     "queued": 123,
     "queuedApiReviewCapture": 690,
     "queuedTotal": 813,
-    "windowComplete": 15981
+    "windowComplete": 15987
   },
-  "currentPhase": "discovery_running",
-  "generatedAt": "2026-06-12T03:47:01Z",
+  "currentPhase": "rollup_refresh_complete",
+  "generatedAt": "2026-06-12T03:59:27Z",
   "latestQueryYield": {
     "generatedAt": "2026-06-12T03:44:48Z",
     "queryBank": "market_license_plates",
@@ -19,8 +36,8 @@
     "reviewRowsWritten": 8470,
     "shopsPromoted": 53
   },
-  "nextSafeAction": "monitor active phase `discovery_running`; avoid launching another SQL writer",
-  "publicCommit": "abcb614669bb",
+  "nextSafeAction": "monitor active phase `rollup_refresh_complete`; avoid launching another SQL writer",
+  "publicCommit": "3bc666f14c82",
   "publish": {
     "lastReason": "publish sync pushed abcb614669bb783c6702899c884baa701170f2e1",
     "lastStatus": "success",
@@ -33,9 +50,9 @@
   "rateLimitCooldown": {
     "active": false
   },
-  "reviewLedgerCount": 9964663,
+  "reviewLedgerCount": 9980604,
   "reviewListingMapping": {
-    "cacheReviewDelta": 0,
+    "cacheReviewDelta": 15941,
     "dashboardGeneratedAt": "2026-06-11T23:45:53",
     "distinctListingUrls": 1873990,
     "gapDetailRows": 18,
@@ -47,6 +64,6 @@
     "source": "dashboard-cache"
   },
   "rollupFreshnessStatus": "current",
-  "rollupSourceTotalReviews": 9964663,
+  "rollupSourceTotalReviews": 9980604,
   "rollupStaleReviewRows": 0
 }
