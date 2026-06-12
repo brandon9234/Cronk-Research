@@ -1,48 +1,47 @@
 {
   "activeDeepening": {
-    "apiErrors": 37,
+    "apiErrors": 0,
     "coverageStatuses": [
-      "queued_api_review_capture",
-      "queued"
+      "api_review_capture_capped"
     ],
-    "elapsedSeconds": 37.1,
+    "elapsedSeconds": 0.0,
     "estimatedRemainingSeconds": 0.0,
-    "lastShop": "AutoProShop",
-    "queuedCandidates": 50,
-    "reviewRowsChanged": 1995,
-    "reviewsFetched": 1995,
+    "lastShop": "printsinapickle",
+    "queuedCandidates": 3,
+    "reviewRowsChanged": 0,
+    "reviewsFetched": 0,
     "reviewsMissingListingMetadata": 0,
     "runStatus": "complete",
-    "secondsPerShop": 0.7,
-    "shopsCompleted": 50,
-    "sourceFile": "deepen-write.json",
-    "updatedAt": "2026-06-12T11:19:13Z"
+    "secondsPerShop": 0.0,
+    "shopsCompleted": 3,
+    "sourceFile": "backlog-capped-write.json",
+    "updatedAt": "2026-06-12T11:39:44Z"
   },
   "activeWriterAlive": true,
   "coverageBacklog": {
-    "capped": 11,
-    "depthSatisfied": 133,
+    "capped": 8,
+    "depthSatisfied": 136,
     "partial": 4003,
     "queued": 123,
-    "queuedApiReviewCapture": 587,
-    "queuedTotal": 710,
-    "windowComplete": 16323
+    "queuedApiReviewCapture": 586,
+    "queuedTotal": 709,
+    "windowComplete": 16324
   },
-  "currentPhase": "rollup_refresh_complete",
-  "generatedAt": "2026-06-12T11:21:59Z",
+  "currentPhase": "review_backlog_fallback_running",
+  "generatedAt": "2026-06-12T11:39:45Z",
   "latestQueryYield": {
-    "generatedAt": "2026-06-12T11:14:29Z",
+    "generatedAt": "2026-06-12T11:32:26Z",
     "queryBank": "market_penetration",
     "rateLimitErrors": 0,
-    "reviewRowsWritten": 94,
-    "shopsPromoted": 2
+    "reviewRowsWritten": 1,
+    "shopsPromoted": 1
   },
-  "nextSafeAction": "monitor active phase `rollup_refresh_complete`; avoid launching another SQL writer",
-  "publicCommit": "0d25b871f100",
+  "nextSafeAction": "monitor active phase `review_backlog_fallback_running`; avoid launching another SQL writer",
+  "publicCommit": "560a312f6901",
   "publish": {
-    "lastReason": "thresholds not met: 11,892 new reviews since publish, 6707s elapsed, 13 runs",
+    "lastReason": "thresholds not met: 13,888 new reviews since publish, 7792s elapsed, 15 runs",
     "lastStatus": "skipped",
-    "lastStatusAt": "2026-06-12T11:14:16Z",
+    "lastStatusAt": "2026-06-12T11:32:13Z",
     "lastSuccessfulAt": "2026-06-12T09:19:37Z",
     "lastSuccessfulPublicCommit": "74f73bed0d11",
     "lastSuccessfulPublicDataReviewCount": 10091387,
@@ -51,9 +50,9 @@
   "rateLimitCooldown": {
     "active": false
   },
-  "reviewLedgerCount": 10105274,
+  "reviewLedgerCount": 10105275,
   "reviewListingMapping": {
-    "cacheReviewDelta": 13887,
+    "cacheReviewDelta": 13888,
     "dashboardGeneratedAt": "2026-06-12T05:18:43",
     "distinctListingUrls": 1890591,
     "gapDetailRows": 18,
@@ -65,6 +64,6 @@
     "source": "dashboard-cache"
   },
   "rollupFreshnessStatus": "current",
-  "rollupSourceTotalReviews": 10105274,
+  "rollupSourceTotalReviews": 10105275,
   "rollupStaleReviewRows": 0
 }
