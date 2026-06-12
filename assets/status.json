@@ -9,16 +9,16 @@
     "estimatedRemainingSeconds": 0.0,
     "lastShop": "ClayHiveCo",
     "queuedCandidates": 50,
-    "reviewRowsChanged": 53,
-    "reviewsFetched": 53,
+    "reviewRowsChanged": 87,
+    "reviewsFetched": 87,
     "reviewsMissingListingMetadata": 0,
     "runStatus": "complete",
     "secondsPerShop": 0.2,
     "shopsCompleted": 50,
     "sourceFile": "deepen-write.json",
-    "updatedAt": "2026-06-12T17:49:58Z"
+    "updatedAt": "2026-06-12T18:13:50Z"
   },
-  "activeWriterAlive": false,
+  "activeWriterAlive": true,
   "coverageBacklog": {
     "capped": 0,
     "depthSatisfied": 144,
@@ -26,10 +26,10 @@
     "queued": 123,
     "queuedApiReviewCapture": 463,
     "queuedTotal": 586,
-    "windowComplete": 16487
+    "windowComplete": 16488
   },
-  "currentPhase": "dashboard_refresh_complete",
-  "generatedAt": "2026-06-12T18:00:16Z",
+  "currentPhase": "rollup_refresh_complete",
+  "generatedAt": "2026-06-12T18:16:37Z",
   "latestQueryYield": {
     "generatedAt": "2026-06-12T17:53:00Z",
     "queryBank": "market_hangers",
@@ -37,8 +37,8 @@
     "reviewRowsWritten": 53,
     "shopsPromoted": 1
   },
-  "nextSafeAction": "status is safe to inspect; no write action is recommended without fresh context",
-  "publicCommit": "9d5ffdf6ca24",
+  "nextSafeAction": "monitor active phase `rollup_refresh_complete`; avoid launching another SQL writer",
+  "publicCommit": "2a106dc0e1a1",
   "publish": {
     "lastReason": "publish sync pushed 9d5ffdf6ca24155b731062c289bcead7011334b6",
     "lastStatus": "success",
@@ -51,20 +51,20 @@
   "rateLimitCooldown": {
     "active": false
   },
-  "reviewLedgerCount": 10127796,
+  "reviewLedgerCount": 10127883,
   "reviewListingMapping": {
-    "cacheReviewDelta": null,
-    "dashboardGeneratedAt": "",
-    "distinctListingUrls": 1900210,
-    "gapDetailRows": null,
+    "cacheReviewDelta": 87,
+    "dashboardGeneratedAt": "2026-06-12T13:55:12",
+    "distinctListingUrls": 1899997,
+    "gapDetailRows": 18,
     "reviewRows": 10127796,
-    "rowsMissingListingMetadata": 169,
-    "rowsMissingListingTitle": 45,
-    "rowsMissingListingUrl": 126,
-    "shopsMissingListingMetadata": 19,
-    "source": "live-audit"
+    "rowsMissingListingMetadata": 18,
+    "rowsMissingListingTitle": 18,
+    "rowsMissingListingUrl": 0,
+    "shopsMissingListingMetadata": 2,
+    "source": "dashboard-cache"
   },
   "rollupFreshnessStatus": "current",
-  "rollupSourceTotalReviews": 10127796,
+  "rollupSourceTotalReviews": 10127883,
   "rollupStaleReviewRows": 0
 }
