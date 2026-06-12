@@ -20,7 +20,7 @@ let customBuyerMomentRange = null;
 let reviewMappingGapControlSignature = "";
 let reviewShopCoverageControlSignature = "";
 const CUSTOM_BUYER_MOMENT_ID = "custom-date-range";
-const DATA_ASSET_VERSION = "market-penetration-20260612-2";
+const DATA_ASSET_VERSION = "market-penetration-20260612-3";
 const STATUS_ASSET_VERSION = "public-status-20260611-1";
 const BUYER_MOMENT_LANE_HEIGHT = 30;
 const BUYER_MOMENT_HIGH_OPPORTUNITY_SCORE = 68;
@@ -149,6 +149,9 @@ const numericColumns = new Set([
   "Orders To 5% Share", "Reviews 365D", "Reviews 90D", "Total Reviews",
   "Leader Reviews 365D", "Est. Leader Orders 365D", "My vs Leader %",
   "Leader Market Share %", "Orders To Match Leader",
+  "MyMaravia Share %", "Leader Share %", "#2 Shop Share %", "#3 Shop Share %",
+  "Long Tail Competitor Share %", "MyMaravia Est. Orders", "Leader Est. Orders",
+  "#2 Shop Est. Orders", "#3 Shop Est. Orders", "Long Tail Competitor Est. Orders",
   "Avg Rating", "Signal", "Signal Share %", "Reviewed Shops", "Resolved Shops", "Open Shops", "Resolved %",
   "Window Complete Shops", "Depth Satisfied Shops", "Empty / Zero Shops", "Partial Shops",
   "Capped Shops", "Queued Shops", "Untracked Shops", "Other Status Shops",
@@ -261,7 +264,7 @@ function fmt(value, column = "") {
   if (value === null || value === undefined || value === "") return "";
   if (typeof value === "boolean") return value ? "Yes" : "No";
   if (numericColumns.has(column) && typeof value === "number") {
-    if (column === "Estimated Order Share %" || column === "Review Share %") return formatSharePercent(value);
+    if (["Estimated Order Share %", "Review Share %", "MyMaravia Share %", "Leader Share %", "#2 Shop Share %", "#3 Shop Share %", "Long Tail Competitor Share %"].includes(column)) return formatSharePercent(value);
     if (column.includes("%")) return `${value.toFixed(1)}%`;
     return new Intl.NumberFormat("en-US", { maximumFractionDigits: value % 1 ? 1 : 0 }).format(value);
   }
@@ -4294,6 +4297,97 @@ function marketPenetrationConcentrationRows(segments, coverageAudit) {
   });
 }
 
+function marketPenetrationPreciseShare(value, total) {
+  const numerator = Number(value || 0);
+  const denominator = Number(total || 0);
+  if (!denominator || denominator <= 0) return null;
+  return Number(((numerator / denominator) * 100).toFixed(3));
+}
+
+function marketPenetrationShareMixRows(segments) {
+  return segments.map(segment => {
+    const topShops = (Array.isArray(segment["Top Shops"]) ? segment["Top Shops"].slice() : [])
+      .sort((a, b) => numericCell(b, "Reviews 365D") - numericCell(a, "Reviews 365D"));
+    const competitorReviews = numericCell(segment, "Competitor Reviews 365D");
+    const competitorOrders = numericCell(segment, "Estimated Competitor Orders 365D");
+    const myOrders = numericCell(segment, "MyMaravia Orders 365D");
+    const totalOrders = competitorOrders + myOrders;
+    const ordersPerReview = competitorReviews > 0 && competitorOrders > 0 ? competitorOrders / competitorReviews : 0;
+    const shopOrders = topShops.slice(0, 3).map(shop => {
+      const reviews365 = numericCell(shop, "Reviews 365D");
+      return reviews365 > 0 && ordersPerReview > 0 ? reviews365 * ordersPerReview : 0;
+    });
+    const longTailOrders = Math.max(0, competitorOrders - shopOrders.reduce((sum, value) => sum + value, 0));
+    return {
+      "Market": segment["Market"],
+      "Read": segment["Read"],
+      "MyMaravia Share %": segment["Estimated Order Share %"] ?? marketPenetrationPreciseShare(myOrders, totalOrders),
+      "MyMaravia Est. Orders": myOrders,
+      "Leader Shop": topShops[0]?.["Shop"] || "",
+      "Leader Share %": marketPenetrationPreciseShare(shopOrders[0], totalOrders),
+      "Leader Est. Orders": Math.round(shopOrders[0] || 0),
+      "#2 Shop": topShops[1]?.["Shop"] || "",
+      "#2 Shop Share %": marketPenetrationPreciseShare(shopOrders[1], totalOrders),
+      "#2 Shop Est. Orders": Math.round(shopOrders[1] || 0),
+      "#3 Shop": topShops[2]?.["Shop"] || "",
+      "#3 Shop Share %": marketPenetrationPreciseShare(shopOrders[2], totalOrders),
+      "#3 Shop Est. Orders": Math.round(shopOrders[2] || 0),
+      "Long Tail Competitor Share %": marketPenetrationPreciseShare(longTailOrders, totalOrders),
+      "Long Tail Competitor Est. Orders": Math.round(longTailOrders),
+      "Competitor Shops": segment["Competitor Shops"],
+      "Reviewed Listings": segment["Reviewed Listings"]
+    };
+  });
+}
+
+function renderMarketPenetrationShareMixChart(rows) {
+  const chartTarget = document.getElementById("market-penetration-chart");
+  if (!chartTarget) return;
+  const chartRows = rows
+    .slice()
+    .sort((a, b) => numericCell(a, "MyMaravia Share %") - numericCell(b, "MyMaravia Share %"));
+  if (!chartRows.length) {
+    chartTarget.innerHTML = `<div class="empty">No market penetration rows are available in this snapshot.</div>`;
+    return;
+  }
+  const traces = [
+    { name: "MyMaravia", shareKey: "MyMaravia Share %", ordersKey: "MyMaravia Est. Orders", shopKey: null, color: "#0f766e" },
+    { name: "Leader shop", shareKey: "Leader Share %", ordersKey: "Leader Est. Orders", shopKey: "Leader Shop", color: "#334155" },
+    { name: "#2 shop", shareKey: "#2 Shop Share %", ordersKey: "#2 Shop Est. Orders", shopKey: "#2 Shop", color: "#2563eb" },
+    { name: "#3 shop", shareKey: "#3 Shop Share %", ordersKey: "#3 Shop Est. Orders", shopKey: "#3 Shop", color: "#d97706" },
+    { name: "Long-tail competitors", shareKey: "Long Tail Competitor Share %", ordersKey: "Long Tail Competitor Est. Orders", shopKey: null, color: "#94a3b8" }
+  ];
+  Plotly.newPlot("market-penetration-chart", traces.map(trace => ({
+    type: "bar",
+    orientation: "h",
+    name: trace.name,
+    x: chartRows.map(row => numericCell(row, trace.shareKey)),
+    y: chartRows.map(row => row["Market"]),
+    text: chartRows.map(row => {
+      const share = numericCell(row, trace.shareKey);
+      return share >= 4 ? formatSharePercent(share) : "";
+    }),
+    textposition: "inside",
+    insidetextanchor: "middle",
+    customdata: chartRows.map(row => [
+      formatSharePercent(numericCell(row, trace.shareKey)),
+      trace.shopKey ? row[trace.shopKey] || trace.name : trace.name,
+      fmt(row[trace.ordersKey], trace.ordersKey)
+    ]),
+    marker: { color: trace.color },
+    hovertemplate: `%{y}<br>${trace.name}: %{customdata[0]}<br>%{customdata[1]}<br>Est. orders: %{customdata[2]}<extra></extra>`
+  })), {
+    barmode: "stack",
+    margin: { l: 130, r: 20, t: 20, b: 45 },
+    xaxis: { title: "Estimated 365-day order share", range: [0, 100], ticksuffix: "%" },
+    yaxis: { automargin: true },
+    legend: { orientation: "h", y: -0.28 },
+    height: Math.max(320, chartRows.length * 86),
+    paper_bgcolor: "rgba(0,0,0,0)",
+    plot_bgcolor: "rgba(0,0,0,0)"
+  }, plotConfig);
+}
+
 function renderMarketPenetration() {
   const metricTarget = document.getElementById("market-penetration-metrics");
   if (!metricTarget) return;
@@ -4335,34 +4429,14 @@ function renderMarketPenetration() {
       : `No market penetration rows are available in this snapshot.`;
   }
 
-  const chartTarget = document.getElementById("market-penetration-chart");
-  const chartRows = segments
-    .slice()
-    .sort((a, b) => numericCell(a, "Estimated Order Share %") - numericCell(b, "Estimated Order Share %"));
-  if (chartTarget && chartRows.length) {
-    const maxShare = Math.max(1, ...chartRows.map(row => numericCell(row, "Estimated Order Share %")));
-    const shareLabels = chartRows.map(row => formatSharePercent(numericCell(row, "Estimated Order Share %")));
-    Plotly.newPlot("market-penetration-chart", [{
-      type: "bar",
-      orientation: "h",
-      x: chartRows.map(row => numericCell(row, "Estimated Order Share %")),
-      y: chartRows.map(row => row["Market"]),
-      text: shareLabels.map(label => `${label} order share`),
-      textposition: "auto",
-      customdata: shareLabels,
-      marker: { color: "#0f766e" },
-      hovertemplate: "%{y}<br>Estimated order share: %{customdata}<extra></extra>"
-    }], {
-      margin: { l: 130, r: 20, t: 20, b: 45 },
-      xaxis: { title: "Estimated MyMaravia order share", range: [0, maxShare * 1.25], ticksuffix: "%" },
-      yaxis: { automargin: true },
-      height: Math.max(260, chartRows.length * 70),
-      paper_bgcolor: "rgba(0,0,0,0)",
-      plot_bgcolor: "rgba(0,0,0,0)"
-    }, plotConfig);
-  } else if (chartTarget) {
-    chartTarget.innerHTML = `<div class="empty">No market penetration rows are available in this snapshot.</div>`;
-  }
+  const shareMixRows = marketPenetrationShareMixRows(segments);
+  renderMarketPenetrationShareMixChart(shareMixRows);
+  renderTable("market-penetration-share-mix", shareMixRows, [
+    "Market", "Read", "MyMaravia Share %", "MyMaravia Est. Orders",
+    "Leader Shop", "Leader Share %", "#2 Shop", "#2 Shop Share %",
+    "#3 Shop", "#3 Shop Share %", "Long Tail Competitor Share %",
+    "Competitor Shops", "Reviewed Listings"
+  ], 10, { preserveOrder: true });
 
   renderTable("market-penetration-leader-gap", marketPenetrationLeaderGapRows(segments), [
     "Market", "Leader Shop", "Leader Reviews 365D", "Est. Leader Orders 365D",
