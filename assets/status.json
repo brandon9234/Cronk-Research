@@ -1,22 +1,5 @@
 {
-  "activeDeepening": {
-    "apiErrors": 0,
-    "coverageStatuses": [
-      "api_review_capture_capped"
-    ],
-    "elapsedSeconds": 299.8,
-    "estimatedRemainingSeconds": 0.0,
-    "lastShop": "CrwbanShop",
-    "queuedCandidates": 10,
-    "reviewRowsChanged": 33513,
-    "reviewsFetched": 33513,
-    "reviewsMissingListingMetadata": 0,
-    "runStatus": "complete",
-    "secondsPerShop": 30.0,
-    "shopsCompleted": 10,
-    "sourceFile": "backlog-capped-write.json",
-    "updatedAt": "2026-06-12T04:34:35Z"
-  },
+  "activeDeepening": {},
   "activeWriterAlive": true,
   "coverageBacklog": {
     "capped": 110,
@@ -27,21 +10,21 @@
     "queuedTotal": 754,
     "windowComplete": 16081
   },
-  "currentPhase": "rollup_refresh_complete",
-  "generatedAt": "2026-06-12T04:37:11Z",
+  "currentPhase": "discovery_running",
+  "generatedAt": "2026-06-12T04:39:57Z",
   "latestQueryYield": {
-    "generatedAt": "2026-06-12T04:24:57Z",
+    "generatedAt": "2026-06-12T04:37:25Z",
     "queryBank": "market_led_nameplates",
     "rateLimitErrors": 0,
-    "reviewRowsWritten": 1357,
-    "shopsPromoted": 1
+    "reviewRowsWritten": 33513,
+    "shopsPromoted": null
   },
-  "nextSafeAction": "monitor active phase `rollup_refresh_complete`; avoid launching another SQL writer",
-  "publicCommit": "ddbeb7e541c6",
+  "nextSafeAction": "monitor active phase `discovery_running`; avoid launching another SQL writer",
+  "publicCommit": "7a0c5b59c13b",
   "publish": {
-    "lastReason": "publish sync pushed c07a7d1cd576a51521da97094128a9f5179e9254",
-    "lastStatus": "success",
-    "lastStatusAt": "2026-06-12T04:28:01Z",
+    "lastReason": "thresholds not met: 11,013 new reviews since publish, 394s elapsed, 1 runs",
+    "lastStatus": "skipped",
+    "lastStatusAt": "2026-06-12T04:37:12Z",
     "lastSuccessfulAt": "2026-06-12T04:28:01Z",
     "lastSuccessfulPublicCommit": "c07a7d1cd576",
     "lastSuccessfulPublicDataReviewCount": 9992031,
@@ -52,11 +35,11 @@
   },
   "reviewLedgerCount": 10003044,
   "reviewListingMapping": {
-    "cacheReviewDelta": 11013,
-    "dashboardGeneratedAt": "2026-06-12T00:26:58",
-    "distinctListingUrls": 1879902,
+    "cacheReviewDelta": 0,
+    "dashboardGeneratedAt": "2026-06-12T00:39:09",
+    "distinctListingUrls": 1880628,
     "gapDetailRows": 18,
-    "reviewRows": 9992031,
+    "reviewRows": 10003044,
     "rowsMissingListingMetadata": 18,
     "rowsMissingListingTitle": 18,
     "rowsMissingListingUrl": 0,
