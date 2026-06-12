@@ -11,7 +11,7 @@
     "windowComplete": 16465
   },
   "currentPhase": "discovery_running",
-  "generatedAt": "2026-06-12T16:04:12Z",
+  "generatedAt": "2026-06-12T16:04:34Z",
   "latestQueryYield": {
     "generatedAt": "2026-06-12T15:39:08Z",
     "queryBank": "market_license_plates",
@@ -20,13 +20,13 @@
     "shopsPromoted": 30
   },
   "nextSafeAction": "monitor active phase `discovery_running`; avoid launching another SQL writer",
-  "publicCommit": "39f42c68c6b3",
+  "publicCommit": "ac07e6dd5eb4",
   "publish": {
-    "lastReason": "publish sync pushed 05cc49da312f53fd6eab71d2bd973e8c39975ea5",
+    "lastReason": "publish sync pushed ac07e6dd5eb450b24cc98f161fe0d3a4a7476a81",
     "lastStatus": "success",
-    "lastStatusAt": "2026-06-12T16:00:11Z",
-    "lastSuccessfulAt": "2026-06-12T16:00:11Z",
-    "lastSuccessfulPublicCommit": "05cc49da312f",
+    "lastStatusAt": "2026-06-12T16:04:16Z",
+    "lastSuccessfulAt": "2026-06-12T16:04:16Z",
+    "lastSuccessfulPublicCommit": "ac07e6dd5eb4",
     "lastSuccessfulPublicDataReviewCount": 10125328,
     "lastSuccessfulReviewLedgerCount": 10125328
   },
@@ -35,16 +35,16 @@
   },
   "reviewLedgerCount": 10125328,
   "reviewListingMapping": {
-    "cacheReviewDelta": 0,
-    "dashboardGeneratedAt": "2026-06-12T11:54:55",
-    "distinctListingUrls": 1899310,
-    "gapDetailRows": 18,
+    "cacheReviewDelta": null,
+    "dashboardGeneratedAt": "",
+    "distinctListingUrls": 1899523,
+    "gapDetailRows": null,
     "reviewRows": 10125328,
-    "rowsMissingListingMetadata": 18,
-    "rowsMissingListingTitle": 18,
-    "rowsMissingListingUrl": 0,
-    "shopsMissingListingMetadata": 2,
-    "source": "dashboard-cache"
+    "rowsMissingListingMetadata": 169,
+    "rowsMissingListingTitle": 45,
+    "rowsMissingListingUrl": 126,
+    "shopsMissingListingMetadata": 19,
+    "source": "live-audit"
   },
   "rollupFreshnessStatus": "current",
   "rollupSourceTotalReviews": 10125328,
