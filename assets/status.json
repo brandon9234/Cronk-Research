@@ -1,22 +1,22 @@
 {
   "activeDeepening": {
-    "apiErrors": 45,
+    "apiErrors": 9,
     "coverageStatuses": [
       "queued_api_review_capture",
       "queued"
     ],
-    "elapsedSeconds": 24.0,
+    "elapsedSeconds": 10.7,
     "estimatedRemainingSeconds": 0.0,
-    "lastShop": "PoppyPlumPressed",
+    "lastShop": "TimelessHandicraftCo",
     "queuedCandidates": 50,
-    "reviewRowsChanged": 685,
-    "reviewsFetched": 685,
+    "reviewRowsChanged": 0,
+    "reviewsFetched": 0,
     "reviewsMissingListingMetadata": 0,
     "runStatus": "complete",
-    "secondsPerShop": 0.5,
+    "secondsPerShop": 0.2,
     "shopsCompleted": 50,
-    "sourceFile": "deepen-write.json",
-    "updatedAt": "2026-06-12T16:57:36Z"
+    "sourceFile": "backlog-queued-write.json",
+    "updatedAt": "2026-06-12T17:19:31Z"
   },
   "activeWriterAlive": false,
   "coverageBacklog": {
@@ -24,47 +24,47 @@
     "depthSatisfied": 144,
     "partial": 4003,
     "queued": 123,
-    "queuedApiReviewCapture": 504,
-    "queuedTotal": 627,
-    "windowComplete": 16478
+    "queuedApiReviewCapture": 463,
+    "queuedTotal": 586,
+    "windowComplete": 16481
   },
   "currentPhase": "dashboard_refresh_complete",
-  "generatedAt": "2026-06-12T17:08:13Z",
+  "generatedAt": "2026-06-12T17:26:11Z",
   "latestQueryYield": {
-    "generatedAt": "2026-06-12T17:00:36Z",
-    "queryBank": "market_license_plates",
+    "generatedAt": "2026-06-12T17:19:44Z",
+    "queryBank": "market_led_nameplates",
     "rateLimitErrors": 0,
-    "reviewRowsWritten": 685,
-    "shopsPromoted": 5
+    "reviewRowsWritten": 0,
+    "shopsPromoted": null
   },
-  "nextSafeAction": "status is safe to inspect; no write action is recommended without fresh context",
-  "publicCommit": "48bb2a5f46c0",
+  "nextSafeAction": "dashboard cache matches ledger; continue monitoring the background scrape",
+  "publicCommit": "532195b2aba5",
   "publish": {
-    "lastReason": "publish sync pushed 48bb2a5f46c0514c1f170a0b064b3592fbd7cfb3",
+    "lastReason": "atomic dashboard refresh promoted",
     "lastStatus": "success",
-    "lastStatusAt": "2026-06-12T17:07:54Z",
-    "lastSuccessfulAt": "2026-06-12T17:07:54Z",
-    "lastSuccessfulPublicCommit": "48bb2a5f46c0",
-    "lastSuccessfulPublicDataReviewCount": 10126896,
-    "lastSuccessfulReviewLedgerCount": 10126896
+    "lastStatusAt": "2026-06-12T17:25:36Z",
+    "lastSuccessfulAt": "2026-06-12T17:25:36Z",
+    "lastSuccessfulPublicCommit": "532195b2aba5",
+    "lastSuccessfulPublicDataReviewCount": 10127330,
+    "lastSuccessfulReviewLedgerCount": 10127330
   },
   "rateLimitCooldown": {
     "active": false
   },
-  "reviewLedgerCount": 10126896,
+  "reviewLedgerCount": 10127330,
   "reviewListingMapping": {
-    "cacheReviewDelta": null,
-    "dashboardGeneratedAt": "",
-    "distinctListingUrls": 1899950,
-    "gapDetailRows": null,
-    "reviewRows": 10126896,
-    "rowsMissingListingMetadata": 169,
-    "rowsMissingListingTitle": 45,
-    "rowsMissingListingUrl": 126,
-    "shopsMissingListingMetadata": 19,
-    "source": "live-audit"
+    "cacheReviewDelta": 0,
+    "dashboardGeneratedAt": "2026-06-12T13:21:45",
+    "distinctListingUrls": 1899916,
+    "gapDetailRows": 18,
+    "reviewRows": 10127330,
+    "rowsMissingListingMetadata": 18,
+    "rowsMissingListingTitle": 18,
+    "rowsMissingListingUrl": 0,
+    "shopsMissingListingMetadata": 2,
+    "source": "dashboard-cache"
   },
   "rollupFreshnessStatus": "current",
-  "rollupSourceTotalReviews": 10126896,
+  "rollupSourceTotalReviews": 10127330,
   "rollupStaleReviewRows": 0
 }
