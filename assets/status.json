@@ -4,31 +4,31 @@
     "coverageStatuses": [
       "api_review_capture_capped"
     ],
-    "elapsedSeconds": 282.0,
+    "elapsedSeconds": 294.1,
     "estimatedRemainingSeconds": 0.0,
-    "lastShop": "AinneStudio",
-    "queuedCandidates": 10,
-    "reviewRowsChanged": 34428,
-    "reviewsFetched": 34428,
+    "lastShop": "MarciaEmbroidery",
+    "queuedCandidates": 8,
+    "reviewRowsChanged": 26948,
+    "reviewsFetched": 26948,
     "reviewsMissingListingMetadata": 0,
     "runStatus": "complete",
-    "secondsPerShop": 28.2,
-    "shopsCompleted": 10,
+    "secondsPerShop": 36.8,
+    "shopsCompleted": 8,
     "sourceFile": "backlog-capped-write.json",
-    "updatedAt": "2026-06-12T09:12:51Z"
+    "updatedAt": "2026-06-12T09:32:42Z"
   },
-  "activeWriterAlive": false,
+  "activeWriterAlive": true,
   "coverageBacklog": {
-    "capped": 22,
+    "capped": 15,
     "depthSatisfied": 129,
     "partial": 4003,
     "queued": 123,
     "queuedApiReviewCapture": 588,
     "queuedTotal": 711,
-    "windowComplete": 16258
+    "windowComplete": 16265
   },
-  "currentPhase": "indexing_complete",
-  "generatedAt": "2026-06-12T09:19:38Z",
+  "currentPhase": "rollup_refresh_complete",
+  "generatedAt": "2026-06-12T09:35:21Z",
   "latestQueryYield": {
     "generatedAt": "2026-06-12T09:15:49Z",
     "queryBank": "market_penetration",
@@ -36,8 +36,8 @@
     "reviewRowsWritten": 34428,
     "shopsPromoted": null
   },
-  "nextSafeAction": "dashboard cache matches ledger; continue monitoring the background scrape",
-  "publicCommit": "74f73bed0d11",
+  "nextSafeAction": "monitor active phase `rollup_refresh_complete`; avoid launching another SQL writer",
+  "publicCommit": "e2f3106df863",
   "publish": {
     "lastReason": "publish sync pushed 74f73bed0d118538ae6e6b3a55d378694ee039f1",
     "lastStatus": "success",
@@ -50,9 +50,9 @@
   "rateLimitCooldown": {
     "active": false
   },
-  "reviewLedgerCount": 10091387,
+  "reviewLedgerCount": 10098335,
   "reviewListingMapping": {
-    "cacheReviewDelta": 0,
+    "cacheReviewDelta": 6948,
     "dashboardGeneratedAt": "2026-06-12T05:18:43",
     "distinctListingUrls": 1890591,
     "gapDetailRows": 18,
@@ -64,6 +64,6 @@
     "source": "dashboard-cache"
   },
   "rollupFreshnessStatus": "current",
-  "rollupSourceTotalReviews": 10091387,
+  "rollupSourceTotalReviews": 10098335,
   "rollupStaleReviewRows": 0
 }
