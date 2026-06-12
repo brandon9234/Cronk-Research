@@ -1,22 +1,5 @@
 {
-  "activeDeepening": {
-    "apiErrors": 3,
-    "coverageStatuses": [
-      "api_review_capture_capped"
-    ],
-    "elapsedSeconds": 0.9,
-    "estimatedRemainingSeconds": 1.3,
-    "lastShop": "",
-    "queuedCandidates": 10,
-    "reviewRowsChanged": 0,
-    "reviewsFetched": 0,
-    "reviewsMissingListingMetadata": 0,
-    "runStatus": "complete",
-    "secondsPerShop": 0.2,
-    "shopsCompleted": 4,
-    "sourceFile": "backlog-capped-write.json",
-    "updatedAt": "2026-06-12T00:37:06Z"
-  },
+  "activeDeepening": {},
   "activeWriterAlive": false,
   "coverageBacklog": {
     "capped": 124,
@@ -27,25 +10,35 @@
     "queuedTotal": 381,
     "windowComplete": 15854
   },
-  "currentPhase": "indexing_complete",
-  "generatedAt": "2026-06-12T00:38:21Z",
+  "currentPhase": "rate_limit_cooldown",
+  "generatedAt": "2026-06-12T00:52:47Z",
   "latestQueryYield": {
-    "generatedAt": "2026-06-12T00:37:20Z",
-    "queryBank": "market_license_plates",
+    "generatedAt": "2026-06-12T00:47:05Z",
+    "queryBank": "market_penetration",
     "rateLimitErrors": 3,
     "reviewRowsWritten": 0,
     "shopsPromoted": null
   },
-  "nextSafeAction": "dashboard cache matches ledger; continue monitoring the background scrape",
-  "publicCommit": "10d9cdcf0c84",
+  "nextSafeAction": "wait for target-market Etsy rate-limit cooldown until 2026-06-12T01:32:05Z (39.3m remaining)",
+  "publicCommit": "f66e438fc50d",
   "publish": {
-    "lastReason": "thresholds not met: 24,250 new reviews since publish, 2756s elapsed, 12 runs",
+    "lastReason": "recent target-market Etsy API rate limit",
     "lastStatus": "skipped",
-    "lastStatusAt": "2026-06-12T00:37:08Z",
-    "lastSuccessfulAt": "2026-06-11T23:51:11Z",
-    "lastSuccessfulPublicCommit": "484ea2f4e9d9",
-    "lastSuccessfulPublicDataReviewCount": 9890875,
-    "lastSuccessfulReviewLedgerCount": 9894190
+    "lastStatusAt": "2026-06-12T00:52:34Z",
+    "lastSuccessfulAt": "2026-06-12T00:38:47Z",
+    "lastSuccessfulPublicCommit": "f66e438fc50d",
+    "lastSuccessfulPublicDataReviewCount": 9918440,
+    "lastSuccessfulReviewLedgerCount": 9918440
+  },
+  "rateLimitCooldown": {
+    "active": true,
+    "cooldownStartedAt": "2026-06-12T00:47:05Z",
+    "cooldownUntil": "2026-06-12T01:32:05Z",
+    "queryBank": "market_penetration",
+    "reason": "recent target-market Etsy API rate limit",
+    "remainingSeconds": 2357,
+    "sourceQueryBank": "market_penetration",
+    "sourceRateLimitErrors": 3
   },
   "reviewLedgerCount": 9918440,
   "reviewListingMapping": {
