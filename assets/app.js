@@ -20,7 +20,7 @@ let customBuyerMomentRange = null;
 let reviewMappingGapControlSignature = "";
 let reviewShopCoverageControlSignature = "";
 const CUSTOM_BUYER_MOMENT_ID = "custom-date-range";
-const DATA_ASSET_VERSION = "market-penetration-20260611-5";
+const DATA_ASSET_VERSION = "market-penetration-20260611-6";
 const STATUS_ASSET_VERSION = "public-status-20260611-1";
 const BUYER_MOMENT_LANE_HEIGHT = 30;
 const BUYER_MOMENT_HIGH_OPPORTUNITY_SCORE = 68;
@@ -4260,6 +4260,11 @@ function renderMarketPenetration() {
     "Resolved Shops", "Open Shops", "Resolved %", "Window Complete Shops",
     "Depth Satisfied Shops", "Empty / Zero Shops", "Partial Shops", "Capped Shops",
     "Queued Shops", "Untracked Shops", "Other Status Shops", "Freshest Capture"
+  ], 20, { preserveOrder: true });
+  renderTable("market-penetration-completion-gates", Array.isArray(coverageAudit.completionGates) ? coverageAudit.completionGates : [], [
+    "Market", "Exhaustiveness Status", "Completion Blockers", "Open Shops", "Resolved %",
+    "Recent Lane Runs", "Recent Discovery Rows", "Recent Shops Promoted", "Recent Review Rows",
+    "Recent Rate Limit Errors", "Latest Relevant Run", "Next Proof Needed"
   ], 20, { preserveOrder: true });
   renderTable("market-penetration-open-shops", Array.isArray(coverageAudit.topOpenShops) ? coverageAudit.topOpenShops : [], [
     "Market", "Shop", "Shop ID", "Coverage Status", "Next Action",
