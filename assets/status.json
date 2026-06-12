@@ -6,25 +6,25 @@
     "depthSatisfied": 96,
     "partial": 4003,
     "queued": 123,
-    "queuedApiReviewCapture": 690,
-    "queuedTotal": 813,
-    "windowComplete": 15987
+    "queuedApiReviewCapture": 671,
+    "queuedTotal": 794,
+    "windowComplete": 16017
   },
   "currentPhase": "discovery_running",
-  "generatedAt": "2026-06-12T04:02:01Z",
+  "generatedAt": "2026-06-12T04:10:11Z",
   "latestQueryYield": {
-    "generatedAt": "2026-06-12T03:59:40Z",
+    "generatedAt": "2026-06-12T04:08:10Z",
     "queryBank": "market_license_plates",
     "rateLimitErrors": 0,
-    "reviewRowsWritten": 40940,
-    "shopsPromoted": null
+    "reviewRowsWritten": 5592,
+    "shopsPromoted": 11
   },
   "nextSafeAction": "monitor active phase `discovery_running`; avoid launching another SQL writer",
-  "publicCommit": "020f8f7c6572",
+  "publicCommit": "aa7565382481",
   "publish": {
-    "lastReason": "publish sync pushed 020f8f7c65725b585251a9a2fd911be3c0783108",
-    "lastStatus": "success",
-    "lastStatusAt": "2026-06-12T04:01:53Z",
+    "lastReason": "thresholds not met: 5,592 new reviews since publish, 210s elapsed, 1 runs",
+    "lastStatus": "skipped",
+    "lastStatusAt": "2026-06-12T04:07:57Z",
     "lastSuccessfulAt": "2026-06-12T04:01:53Z",
     "lastSuccessfulPublicCommit": "020f8f7c6572",
     "lastSuccessfulPublicDataReviewCount": 9980604,
@@ -33,13 +33,13 @@
   "rateLimitCooldown": {
     "active": false
   },
-  "reviewLedgerCount": 9980604,
+  "reviewLedgerCount": 9986196,
   "reviewListingMapping": {
     "cacheReviewDelta": 0,
-    "dashboardGeneratedAt": "2026-06-12T00:00:48",
-    "distinctListingUrls": 1875732,
+    "dashboardGeneratedAt": "2026-06-12T00:09:19",
+    "distinctListingUrls": 1877346,
     "gapDetailRows": 18,
-    "reviewRows": 9980604,
+    "reviewRows": 9986196,
     "rowsMissingListingMetadata": 18,
     "rowsMissingListingTitle": 18,
     "rowsMissingListingUrl": 0,
@@ -47,6 +47,6 @@
     "source": "dashboard-cache"
   },
   "rollupFreshnessStatus": "current",
-  "rollupSourceTotalReviews": 9980604,
+  "rollupSourceTotalReviews": 9986196,
   "rollupStaleReviewRows": 0
 }
