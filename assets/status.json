@@ -11,7 +11,7 @@
     "windowComplete": 16405
   },
   "currentPhase": "dashboard_refresh_complete",
-  "generatedAt": "2026-06-12T12:53:53Z",
+  "generatedAt": "2026-06-12T12:55:33Z",
   "latestQueryYield": {
     "generatedAt": "2026-06-12T12:47:53Z",
     "queryBank": "market_penetration",
@@ -19,14 +19,14 @@
     "reviewRowsWritten": 0,
     "shopsPromoted": null
   },
-  "nextSafeAction": "dashboard cache matches ledger; continue monitoring the background scrape",
-  "publicCommit": "f6896eace6b5",
+  "nextSafeAction": "status is safe to inspect; no write action is recommended without fresh context",
+  "publicCommit": "ddb10dfca175",
   "publish": {
-    "lastReason": "atomic dashboard refresh promoted",
+    "lastReason": "publish sync pushed ddb10dfca1758cf4c776f658a1f3c4eb2659275b",
     "lastStatus": "success",
-    "lastStatusAt": "2026-06-12T12:52:41Z",
-    "lastSuccessfulAt": "2026-06-12T12:52:41Z",
-    "lastSuccessfulPublicCommit": "f6896eace6b5",
+    "lastStatusAt": "2026-06-12T12:54:36Z",
+    "lastSuccessfulAt": "2026-06-12T12:54:36Z",
+    "lastSuccessfulPublicCommit": "ddb10dfca175",
     "lastSuccessfulPublicDataReviewCount": 10116456,
     "lastSuccessfulReviewLedgerCount": 10116456
   },
@@ -35,16 +35,16 @@
   },
   "reviewLedgerCount": 10116456,
   "reviewListingMapping": {
-    "cacheReviewDelta": 0,
-    "dashboardGeneratedAt": "2026-06-12T08:48:45",
-    "distinctListingUrls": 1896214,
-    "gapDetailRows": 18,
+    "cacheReviewDelta": null,
+    "dashboardGeneratedAt": "",
+    "distinctListingUrls": 1896427,
+    "gapDetailRows": null,
     "reviewRows": 10116456,
-    "rowsMissingListingMetadata": 18,
-    "rowsMissingListingTitle": 18,
-    "rowsMissingListingUrl": 0,
-    "shopsMissingListingMetadata": 2,
-    "source": "dashboard-cache"
+    "rowsMissingListingMetadata": 169,
+    "rowsMissingListingTitle": 45,
+    "rowsMissingListingUrl": 126,
+    "shopsMissingListingMetadata": 19,
+    "source": "live-audit"
   },
   "rollupFreshnessStatus": "current",
   "rollupSourceTotalReviews": 10116456,
