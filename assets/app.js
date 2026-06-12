@@ -145,7 +145,8 @@ const numericColumns = new Set([
   "Best Top 20 Tags", "Reviewed Listings", "Competitor Shops", "Competitor Reviews 365D",
   "Competitor Reviews 90D", "Estimated Competitor Orders 365D", "MyMaravia Active Listings",
   "MyMaravia All Listings", "MyMaravia Orders 365D", "MyMaravia Reviews 365D",
-  "Estimated Order Share %", "Review Share %", "Reviews 365D", "Reviews 90D", "Total Reviews",
+  "Estimated Order Share %", "Review Share %", "Orders To 1% Share", "Orders To 3% Share",
+  "Orders To 5% Share", "Reviews 365D", "Reviews 90D", "Total Reviews",
   "Avg Rating", "Signal", "Reviewed Shops", "Resolved Shops", "Open Shops", "Resolved %",
   "Window Complete Shops", "Depth Satisfied Shops", "Empty / Zero Shops", "Partial Shops",
   "Capped Shops", "Queued Shops", "Untracked Shops", "Other Status Shops",
@@ -243,10 +244,22 @@ const tableSortState = new Map();
 
 const plotConfig = { responsive: true, displayModeBar: false };
 
+function formatSharePercent(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return "";
+  const abs = Math.abs(number);
+  if (abs > 0 && abs < 0.1) {
+    const basisPoints = number * 100;
+    return Math.abs(basisPoints) < 0.1 ? "<0.1 bp" : `${basisPoints.toFixed(1)} bp`;
+  }
+  return `${number.toFixed(1)}%`;
+}
+
 function fmt(value, column = "") {
   if (value === null || value === undefined || value === "") return "";
   if (typeof value === "boolean") return value ? "Yes" : "No";
   if (numericColumns.has(column) && typeof value === "number") {
+    if (column === "Estimated Order Share %" || column === "Review Share %") return formatSharePercent(value);
     if (column.includes("%")) return `${value.toFixed(1)}%`;
     return new Intl.NumberFormat("en-US", { maximumFractionDigits: value % 1 ? 1 : 0 }).format(value);
   }
@@ -4223,15 +4236,17 @@ function renderMarketPenetration() {
     .sort((a, b) => numericCell(a, "Estimated Order Share %") - numericCell(b, "Estimated Order Share %"));
   if (chartTarget && chartRows.length) {
     const maxShare = Math.max(1, ...chartRows.map(row => numericCell(row, "Estimated Order Share %")));
+    const shareLabels = chartRows.map(row => formatSharePercent(numericCell(row, "Estimated Order Share %")));
     Plotly.newPlot("market-penetration-chart", [{
       type: "bar",
       orientation: "h",
       x: chartRows.map(row => numericCell(row, "Estimated Order Share %")),
       y: chartRows.map(row => row["Market"]),
-      text: chartRows.map(row => `${fmt(row["Estimated Order Share %"], "Estimated Order Share %")} order share`),
+      text: shareLabels.map(label => `${label} order share`),
       textposition: "auto",
+      customdata: shareLabels,
       marker: { color: "#0f766e" },
-      hovertemplate: "%{y}<br>Estimated order share: %{x:.1f}%<extra></extra>"
+      hovertemplate: "%{y}<br>Estimated order share: %{customdata}<extra></extra>"
     }], {
       margin: { l: 130, r: 20, t: 20, b: 45 },
       xaxis: { title: "Estimated MyMaravia order share", range: [0, maxShare * 1.25], ticksuffix: "%" },
@@ -4249,6 +4264,7 @@ function renderMarketPenetration() {
     "Competitor Reviews 365D", "Competitor Reviews 90D", "Estimated Competitor Orders 365D",
     "MyMaravia Active Listings", "MyMaravia All Listings", "MyMaravia Orders 365D",
     "MyMaravia Reviews 365D", "Estimated Order Share %", "Review Share %",
+    "Orders To 1% Share", "Orders To 3% Share", "Orders To 5% Share",
     "Latest Competitor Review"
   ], 20, { preserveOrder: true });
   const coverageSummaryTarget = document.getElementById("market-penetration-coverage-summary");
