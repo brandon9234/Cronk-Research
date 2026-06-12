@@ -1,22 +1,22 @@
 {
   "activeDeepening": {
-    "apiErrors": 45,
+    "apiErrors": 50,
     "coverageStatuses": [
       "queued_api_review_capture",
       "queued"
     ],
-    "elapsedSeconds": 17.6,
+    "elapsedSeconds": 11.4,
     "estimatedRemainingSeconds": 0.0,
-    "lastShop": "TheTStoreDesign",
+    "lastShop": "manwood",
     "queuedCandidates": 50,
-    "reviewRowsChanged": 110,
-    "reviewsFetched": 110,
+    "reviewRowsChanged": 0,
+    "reviewsFetched": 0,
     "reviewsMissingListingMetadata": 0,
     "runStatus": "complete",
-    "secondsPerShop": 0.4,
+    "secondsPerShop": 0.2,
     "shopsCompleted": 50,
-    "sourceFile": "deepen-write.json",
-    "updatedAt": "2026-06-12T20:23:50Z"
+    "sourceFile": "backlog-queued-write.json",
+    "updatedAt": "2026-06-12T20:45:02Z"
   },
   "activeWriterAlive": true,
   "coverageBacklog": {
@@ -28,21 +28,21 @@
     "queuedTotal": 457,
     "windowComplete": 16512
   },
-  "currentPhase": "rollup_refresh_complete",
-  "generatedAt": "2026-06-12T20:26:08Z",
+  "currentPhase": "review_backlog_fallback_running",
+  "generatedAt": "2026-06-12T20:45:02Z",
   "latestQueryYield": {
-    "generatedAt": "2026-06-12T20:18:10Z",
+    "generatedAt": "2026-06-12T20:32:56Z",
     "queryBank": "market_hangers",
     "rateLimitErrors": 0,
     "reviewRowsWritten": 0,
     "shopsPromoted": 1
   },
-  "nextSafeAction": "monitor active phase `rollup_refresh_complete`; avoid launching another SQL writer",
-  "publicCommit": "66e41f38d494",
+  "nextSafeAction": "monitor active phase `review_backlog_fallback_running`; avoid launching another SQL writer",
+  "publicCommit": "8a5562047f59",
   "publish": {
-    "lastReason": "thresholds not met: 598 new reviews since publish, 1835s elapsed, 3 runs",
+    "lastReason": "thresholds not met: 708 new reviews since publish, 2721s elapsed, 5 runs",
     "lastStatus": "skipped",
-    "lastStatusAt": "2026-06-12T20:18:00Z",
+    "lastStatusAt": "2026-06-12T20:32:46Z",
     "lastSuccessfulAt": "2026-06-12T19:47:24Z",
     "lastSuccessfulPublicCommit": "1db4420bfcad",
     "lastSuccessfulPublicDataReviewCount": 10128567,
