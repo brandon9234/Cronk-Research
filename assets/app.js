@@ -20,7 +20,7 @@ let customBuyerMomentRange = null;
 let reviewMappingGapControlSignature = "";
 let reviewShopCoverageControlSignature = "";
 const CUSTOM_BUYER_MOMENT_ID = "custom-date-range";
-const DATA_ASSET_VERSION = "market-penetration-20260612-2";
+const DATA_ASSET_VERSION = "market-penetration-concentration-20260612-1";
 const STATUS_ASSET_VERSION = "public-status-20260611-1";
 const BUYER_MOMENT_LANE_HEIGHT = 30;
 const BUYER_MOMENT_HIGH_OPPORTUNITY_SCORE = 68;
@@ -4235,6 +4235,65 @@ function marketPenetrationLeaderGapRows(segments) {
   }).filter(row => row["Leader Shop"]);
 }
 
+function marketPenetrationConcentrationRows(segments, coverageAudit) {
+  const coverageRows = Array.isArray(coverageAudit?.segmentCoverage) ? coverageAudit.segmentCoverage : [];
+  const coverageByMarket = new Map(coverageRows.map(row => [row["Market"], row]));
+  return segments.flatMap(segment => {
+    const market = segment["Market"];
+    const topShops = (Array.isArray(segment["Top Shops"]) ? segment["Top Shops"].slice() : [])
+      .sort((a, b) => numericCell(b, "Reviews 365D") - numericCell(a, "Reviews 365D"))
+      .slice(0, 10);
+    const competitorReviews = numericCell(segment, "Competitor Reviews 365D");
+    const competitorOrders = numericCell(segment, "Estimated Competitor Orders 365D");
+    const myOrders = numericCell(segment, "MyMaravia Orders 365D");
+    const totalOrders = competitorOrders + myOrders;
+    const ordersPerReview = competitorReviews > 0 && competitorOrders > 0 ? competitorOrders / competitorReviews : 0;
+    const coverage = coverageByMarket.get(market) || {};
+    const shopRows = topShops.map((shop, index) => {
+      const reviews365 = numericCell(shop, "Reviews 365D");
+      const estOrders = reviews365 > 0 && ordersPerReview > 0 ? reviews365 * ordersPerReview : 0;
+      return { shop, index, reviews365, estOrders };
+    });
+    const top3Orders = shopRows.slice(0, 3).reduce((sum, row) => sum + row.estOrders, 0);
+    const top10Orders = shopRows.reduce((sum, row) => sum + row.estOrders, 0);
+    let cumulativeOrders = 0;
+    const competitorRows = shopRows.map(row => {
+      cumulativeOrders += row.estOrders;
+      return {
+        "Market": market,
+        "Rank": row.index + 1,
+        "Entity": row.shop["Shop"] || "",
+        "Entity Type": "Competitor",
+        "Reviews 365D": row.reviews365,
+        "Est. Orders 365D": Math.round(row.estOrders),
+        "Market Share %": percentShare(row.estOrders, totalOrders),
+        "Cumulative Competitor Share %": percentShare(cumulativeOrders, totalOrders),
+        "Top 3 Competitor Share %": percentShare(top3Orders, totalOrders),
+        "Top 10 Competitor Share %": percentShare(top10Orders, totalOrders),
+        "Resolved %": coverage["Resolved %"],
+        "Open Shops": coverage["Open Shops"],
+        "Coverage Read": coverage["Coverage Read"] || segment["Read"] || ""
+      };
+    });
+    const myRow = {
+      "Market": market,
+      "Rank": "MyMaravia",
+      "Entity": "MyMaravia",
+      "Entity Type": "My shop",
+      "Reviews 365D": numericCell(segment, "MyMaravia Reviews 365D"),
+      "Est. Orders 365D": myOrders,
+      "Market Share %": percentShare(myOrders, totalOrders),
+      "Cumulative Competitor Share %": "",
+      "Top 3 Competitor Share %": percentShare(top3Orders, totalOrders),
+      "Top 10 Competitor Share %": percentShare(top10Orders, totalOrders),
+      "Resolved %": coverage["Resolved %"],
+      "Open Shops": coverage["Open Shops"],
+      "Coverage Read": coverage["Coverage Read"] || segment["Read"] || ""
+    };
+    return competitorRows.concat([myRow]);
+  });
+}
+
 function renderMarketPenetration() {
   const metricTarget = document.getElementById("market-penetration-metrics");
   if (!metricTarget) return;
@@ -4310,6 +4369,11 @@ function renderMarketPenetration() {
     "MyMaravia Orders 365D", "My vs Leader %", "Leader Market Share %",
     "Orders To Match Leader", "Competitive Read"
   ], 10, { preserveOrder: true });
+  renderTable("market-penetration-concentration", marketPenetrationConcentrationRows(segments, coverageAudit), [
+    "Market", "Rank", "Entity", "Entity Type", "Reviews 365D", "Est. Orders 365D",
+    "Market Share %", "Cumulative Competitor Share %", "Top 3 Competitor Share %",
+    "Top 10 Competitor Share %", "Resolved %", "Open Shops", "Coverage Read"
+  ], 36, { preserveOrder: true });
   renderTable("market-penetration-segments", segments, [
     "Market", "Read", "Reviewed Listings", "Competitor Shops",
     "Competitor Reviews 365D", "Competitor Reviews 90D", "Estimated Competitor Orders 365D",

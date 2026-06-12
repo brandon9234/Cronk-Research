@@ -1,24 +1,6 @@
 {
-  "activeDeepening": {
-    "apiErrors": 25,
-    "coverageStatuses": [
-      "queued_api_review_capture",
-      "queued"
-    ],
-    "elapsedSeconds": 120.1,
-    "estimatedRemainingSeconds": 0.0,
-    "lastShop": "JRHangersAndCrafts",
-    "queuedCandidates": 50,
-    "reviewRowsChanged": 4575,
-    "reviewsFetched": 4575,
-    "reviewsMissingListingMetadata": 0,
-    "runStatus": "complete",
-    "secondsPerShop": 2.4,
-    "shopsCompleted": 50,
-    "sourceFile": "deepen-write.json",
-    "updatedAt": "2026-06-12T15:36:09Z"
-  },
-  "activeWriterAlive": false,
+  "activeDeepening": {},
+  "activeWriterAlive": true,
   "coverageBacklog": {
     "capped": 1,
     "depthSatisfied": 143,
@@ -28,8 +10,8 @@
     "queuedTotal": 681,
     "windowComplete": 16465
   },
-  "currentPhase": "dashboard_refresh_complete",
-  "generatedAt": "2026-06-12T16:00:38Z",
+  "currentPhase": "discovery_running",
+  "generatedAt": "2026-06-12T16:04:12Z",
   "latestQueryYield": {
     "generatedAt": "2026-06-12T15:39:08Z",
     "queryBank": "market_license_plates",
@@ -37,8 +19,8 @@
     "reviewRowsWritten": 4575,
     "shopsPromoted": 30
   },
-  "nextSafeAction": "status is safe to inspect; no write action is recommended without fresh context",
-  "publicCommit": "05cc49da312f",
+  "nextSafeAction": "monitor active phase `discovery_running`; avoid launching another SQL writer",
+  "publicCommit": "39f42c68c6b3",
   "publish": {
     "lastReason": "publish sync pushed 05cc49da312f53fd6eab71d2bd973e8c39975ea5",
     "lastStatus": "success",
@@ -53,16 +35,16 @@
   },
   "reviewLedgerCount": 10125328,
   "reviewListingMapping": {
-    "cacheReviewDelta": null,
-    "dashboardGeneratedAt": "",
-    "distinctListingUrls": 1899523,
-    "gapDetailRows": null,
+    "cacheReviewDelta": 0,
+    "dashboardGeneratedAt": "2026-06-12T11:54:55",
+    "distinctListingUrls": 1899310,
+    "gapDetailRows": 18,
     "reviewRows": 10125328,
-    "rowsMissingListingMetadata": 169,
-    "rowsMissingListingTitle": 45,
-    "rowsMissingListingUrl": 126,
-    "shopsMissingListingMetadata": 19,
-    "source": "live-audit"
+    "rowsMissingListingMetadata": 18,
+    "rowsMissingListingTitle": 18,
+    "rowsMissingListingUrl": 0,
+    "shopsMissingListingMetadata": 2,
+    "source": "dashboard-cache"
   },
   "rollupFreshnessStatus": "current",
   "rollupSourceTotalReviews": 10125328,
