@@ -1,22 +1,22 @@
 {
   "activeDeepening": {
-    "apiErrors": 48,
+    "apiErrors": 49,
     "coverageStatuses": [
       "queued_api_review_capture",
       "queued"
     ],
-    "elapsedSeconds": 20.3,
+    "elapsedSeconds": 14.9,
     "estimatedRemainingSeconds": 0.0,
-    "lastShop": "CaddyBayCollection",
+    "lastShop": "ClayHiveCo",
     "queuedCandidates": 50,
-    "reviewRowsChanged": 881,
-    "reviewsFetched": 881,
+    "reviewRowsChanged": 112,
+    "reviewsFetched": 112,
     "reviewsMissingListingMetadata": 0,
     "runStatus": "complete",
-    "secondsPerShop": 0.4,
+    "secondsPerShop": 0.3,
     "shopsCompleted": 50,
     "sourceFile": "deepen-write.json",
-    "updatedAt": "2026-06-12T22:49:44Z"
+    "updatedAt": "2026-06-12T23:14:44Z"
   },
   "activeWriterAlive": true,
   "coverageBacklog": {
@@ -26,23 +26,23 @@
     "queued": 78,
     "queuedApiReviewCapture": 334,
     "queuedTotal": 412,
-    "windowComplete": 16571
+    "windowComplete": 16576
   },
   "currentPhase": "rollup_refresh_complete",
-  "generatedAt": "2026-06-12T22:52:36Z",
+  "generatedAt": "2026-06-12T23:17:22Z",
   "latestQueryYield": {
-    "generatedAt": "2026-06-12T22:35:39Z",
-    "queryBank": "market_led_nameplates",
+    "generatedAt": "2026-06-12T23:01:58Z",
+    "queryBank": "market_license_plates",
     "rateLimitErrors": 0,
-    "reviewRowsWritten": 60142,
-    "shopsPromoted": null
+    "reviewRowsWritten": 864,
+    "shopsPromoted": 4
   },
   "nextSafeAction": "monitor active phase `rollup_refresh_complete`; avoid launching another SQL writer",
-  "publicCommit": "64121f9a4afe",
+  "publicCommit": "266039215836",
   "publish": {
-    "lastReason": "thresholds not met: 61,801 new reviews since publish, 9940s elapsed, 15 runs",
+    "lastReason": "thresholds not met: 63,546 new reviews since publish, 11507s elapsed, 17 runs",
     "lastStatus": "skipped",
-    "lastStatusAt": "2026-06-12T22:35:29Z",
+    "lastStatusAt": "2026-06-12T23:01:47Z",
     "lastSuccessfulAt": "2026-06-12T19:47:24Z",
     "lastSuccessfulPublicCommit": "1db4420bfcad",
     "lastSuccessfulPublicDataReviewCount": 10128567,
@@ -51,9 +51,9 @@
   "rateLimitCooldown": {
     "active": false
   },
-  "reviewLedgerCount": 10191249,
+  "reviewLedgerCount": 10192225,
   "reviewListingMapping": {
-    "cacheReviewDelta": 62682,
+    "cacheReviewDelta": 63658,
     "dashboardGeneratedAt": "2026-06-12T15:42:44",
     "distinctListingUrls": 1900280,
     "gapDetailRows": 18,
@@ -65,6 +65,6 @@
     "source": "dashboard-cache"
   },
   "rollupFreshnessStatus": "current",
-  "rollupSourceTotalReviews": 10191249,
+  "rollupSourceTotalReviews": 10192225,
   "rollupStaleReviewRows": 0
 }
