@@ -20,7 +20,7 @@ let customBuyerMomentRange = null;
 let reviewMappingGapControlSignature = "";
 let reviewShopCoverageControlSignature = "";
 const CUSTOM_BUYER_MOMENT_ID = "custom-date-range";
-const DATA_ASSET_VERSION = "listing-search-rollup-20260612";
+const DATA_ASSET_VERSION = "taxonomy-rollups-20260613";
 const STATUS_ASSET_VERSION = "public-status-20260611-1";
 const BUYER_MOMENT_LANE_HEIGHT = 30;
 const BUYER_MOMENT_HIGH_OPPORTUNITY_SCORE = 68;
@@ -48,8 +48,40 @@ const LISTING_SUBSTRATE_GROUPS = [
     value: "__group:led-nameplates",
     label: "LED nameplates (all)",
     matches: isLedNameplateListing
-  }
+  },
+  listingIntentGroup("__group:nameplates", "Nameplates and name plates (all)", { any: ["nameplate", "name plate", "desk nameplate", "desk name plate", "door name plate"] }),
+  listingIntentGroup("__group:desk-nameplates", "Desk nameplates (all)", { all: ["desk"], any: ["nameplate", "name plate", "name sign"] }),
+  listingIntentGroup("__group:license-plates", "License plates (all)", { any: ["license plate", "licence plate", "decorative plate", "golf cart plate", "number plate", "car plate"] }),
+  listingIntentGroup("__group:hangers", "Hangers (all)", { any: ["hanger", "hangers", "wedding hanger", "bridal hanger"] }),
+  listingIntentGroup("__group:signs", "Signs (all)", { any: ["sign", "signs"] }),
+  listingIntentGroup("__group:plaques-awards", "Plaques and award plates (all)", { any: ["plaque", "award plate", "trophy plate", "brass plate", "memorial plate"] }),
+  listingIntentGroup("__group:night-lights", "Night lights and lighted acrylic (all)", { any: ["night light", "nightlight", "led acrylic light", "lighted acrylic"] }),
+  listingIntentGroup("__group:name-badges", "Name badges and badge holders (all)", { any: ["name badge", "badge holder", "badge reel", "badge"] }),
+  listingIntentGroup("__group:pet-collars-tags", "Pet collars, tags, and name plates (all)", { all: ["pet"], any: ["collar", "tag", "name plate", "nameplate"] }),
+  listingIntentGroup("__group:pet-memorials", "Pet memorial gifts (all)", { all: ["pet"], any: ["memorial", "rainbow bridge", "loss"] }),
+  listingIntentGroup("__group:cutting-serving-boards", "Cutting and serving boards (all)", { any: ["cutting board", "serving board", "charcuterie board", "butcher block"] }),
+  listingIntentGroup("__group:drinkware", "Mugs, tumblers, cups, and glassware (all)", { any: ["mug", "tumbler", "cup", "glassware", "wine glass", "plastic cup"] }),
+  listingIntentGroup("__group:coasters", "Coasters (all)", { any: ["coaster", "coasters"] }),
+  listingIntentGroup("__group:wedding-events", "Wedding and event goods (all)", { any: ["wedding", "bridal", "bride", "groom", "guest book", "event", "party favor", "cake topper", "welcome sign"] }),
+  listingIntentGroup("__group:journals-stationery", "Journals, notebooks, padfolios, and stationery (all)", { any: ["journal", "notebook", "padfolio", "stationery", "note pad", "return address", "address stamp", "label"] }),
+  listingIntentGroup("__group:gift-keepsake-boxes", "Gift boxes and keepsake boxes (all)", { any: ["gift box", "keepsake box", "memory box", "jewelry box"] }),
+  listingIntentGroup("__group:apparel-textiles", "Apparel and textiles (all)", { any: ["shirt", "t shirt", "sweatshirt", "hoodie", "hat", "beanie", "blanket", "towel", "embroidered"] }),
+  listingIntentGroup("__group:wallets-bags-travel", "Wallets, bags, and travel goods (all)", { any: ["wallet", "passport holder", "bag", "tote", "pouch", "travel"] }),
+  listingIntentGroup("__group:holiday-ornaments", "Holiday ornaments and seasonal decor (all)", { any: ["ornament", "christmas", "holiday", "seasonal decor"] })
 ];
+const BROAD_LISTING_CATEGORY_STEMS = new Set([
+  "apparel and textile",
+  "bags wallet and travel",
+  "home decor and photo gift",
+  "home entry decor",
+  "jewelry and accessory",
+  "lighting and illuminated gift",
+  "party and event good",
+  "pet gift and accessory",
+  "sign plaque and desk nameplate",
+  "small accessory and keepsake",
+  "wedding and event"
+]);
 const REVIEW_LISTING_PROGRESS_RENDER_MS = 500;
 const REVIEW_SHOP_COVERAGE_RESULT_LIMIT = 500;
 const LISTING_TIMEFRAME_CUSTOM_ID = "custom";
@@ -795,11 +827,89 @@ function normalizeListingSearchValue(value) {
     .trim();
 }
 
+function singularizeListingToken(token) {
+  if (token.length <= 3 || token.endsWith("ss")) return token;
+  if (token.endsWith("ies")) return `${token.slice(0, -3)}y`;
+  if (token.endsWith("xes") || token.endsWith("ches") || token.endsWith("shes")) return token.slice(0, -2);
+  if (token.endsWith("s")) return token.slice(0, -1);
+  return token;
+}
+
+function stemListingSearchValue(value) {
+  return normalizeListingSearchValue(value)
+    .split(/\s+/)
+    .filter(Boolean)
+    .map(singularizeListingToken)
+    .join(" ");
+}
+
+function compactListingSearchValue(value) {
+  return normalizeListingSearchValue(value).replace(/\s+/g, "");
+}
+
+function isBroadListingCategoryValue(value) {
+  return BROAD_LISTING_CATEGORY_STEMS.has(stemListingSearchValue(value));
+}
+
+function listingSearchValues(row) {
+  return Object.entries(row)
+    .filter(([key]) => !key.startsWith("__"))
+    .filter(([key]) => key !== "Product Category")
+    .filter(([key, value]) => !["Product Category", "Product Family", "Original Broad Category"].includes(key) || !isBroadListingCategoryValue(value))
+    .map(([, value]) => value);
+}
+
+function listingIntentText(rowOrText) {
+  if (typeof rowOrText === "string") return normalizeListingSearchValue(rowOrText);
+  const focusedKeys = [
+    "Product Substrate Category",
+    "Product Title",
+    "Category Aliases",
+    "Tags",
+    "Actual Tags",
+    "Best Guess Tags"
+  ];
+  const values = focusedKeys.map(key => rowOrText[key]).filter(value => value !== null && value !== undefined && value !== "");
+  const productFamily = rowOrText["Product Family"];
+  if (productFamily && !isBroadListingCategoryValue(productFamily)) values.push(productFamily);
+  const originalBroadCategory = rowOrText["Original Broad Category"];
+  if (originalBroadCategory && !isBroadListingCategoryValue(originalBroadCategory)) values.push(originalBroadCategory);
+  return normalizeListingSearchValue(values.join(" "));
+}
+
+function listingHasTerm(text, term) {
+  const normalizedText = normalizeListingSearchValue(text);
+  const normalizedTerm = normalizeListingSearchValue(term);
+  if (!normalizedTerm) return false;
+  if (` ${normalizedText} `.includes(` ${normalizedTerm} `)) return true;
+  const compactTerm = compactListingSearchValue(normalizedTerm);
+  if (compactTerm.length >= 4 && compactListingSearchValue(normalizedText).includes(compactTerm)) return true;
+  const stemmedText = stemListingSearchValue(normalizedText);
+  const stemmedTerm = stemListingSearchValue(normalizedTerm);
+  return Boolean(stemmedTerm && ` ${stemmedText} `.includes(` ${stemmedTerm} `));
+}
+
+function listingIntentGroup(value, label, config) {
+  return {
+    value,
+    label,
+    matches: rowOrText => listingIntentMatches(rowOrText, config)
+  };
+}
+
+function listingIntentMatches(rowOrText, config = {}) {
+  const text = listingIntentText(rowOrText);
+  if ((config.none || []).some(term => listingHasTerm(text, term))) return false;
+  const all = config.all || [];
+  const any = config.any || [];
+  if (all.length && !all.every(term => listingHasTerm(text, term))) return false;
+  if (any.length && !any.some(term => listingHasTerm(text, term))) return false;
+  return Boolean(all.length || any.length);
+}
+
 function listingSearchText(row) {
   if (row.__listingSearchText) return row.__listingSearchText;
-  const text = Object.keys(row)
-    .filter(key => !key.startsWith("__"))
-    .map(key => row[key])
+  const text = listingSearchValues(row)
     .join(" ")
     .toLowerCase();
   const normalizedText = normalizeListingSearchValue(text);
@@ -816,11 +926,14 @@ function listingMatchesQuery(row, query) {
   if (!normalizedQuery) return true;
   const text = listingSearchText(row);
   if (text.includes(normalizedQuery)) return true;
-  const compactQuery = normalizedQuery.replace(/\s+/g, "");
-  if (compactQuery.length >= 4 && text.replace(/\s+/g, "").includes(compactQuery)) return true;
-  const tokens = normalizedQuery.split(/\s+/).filter(Boolean);
+  const compactQuery = compactListingSearchValue(normalizedQuery);
+  if (compactQuery.length >= 4 && compactListingSearchValue(text).includes(compactQuery)) return true;
+  const stemmedQuery = stemListingSearchValue(normalizedQuery);
+  const stemmedText = stemListingSearchValue(text);
+  if (stemmedQuery && stemmedText.includes(stemmedQuery)) return true;
+  const tokens = stemmedQuery.split(/\s+/).filter(Boolean);
   if (tokens.some(token => token.length < 3)) return false;
-  return tokens.every(token => text.includes(token));
+  return tokens.every(token => stemmedText.includes(token));
 }
 
 function listingSubstrateText(row) {
@@ -828,10 +941,11 @@ function listingSubstrateText(row) {
 }
 
 function isLedNameplateListing(rowOrText) {
-  const text = typeof rowOrText === "string" ? normalizeListingSearchValue(rowOrText) : listingSearchText(rowOrText);
-  const hasNameplate = text.includes("nameplate") || (text.includes("name") && text.includes("plate"));
-  const hasDeskSign = text.includes("desk") && text.includes("sign");
-  return text.includes("led") && (hasNameplate || hasDeskSign);
+  const text = listingIntentText(rowOrText);
+  const hasLight = ["led", "lighted", "light"].some(term => listingHasTerm(text, term));
+  const hasNameplate = ["nameplate", "name plate"].some(term => listingHasTerm(text, term));
+  const hasDeskSign = listingHasTerm(text, "desk") && listingHasTerm(text, "sign");
+  return hasLight && (hasNameplate || hasDeskSign);
 }
 
 function listingSubstrateGroup(value) {
