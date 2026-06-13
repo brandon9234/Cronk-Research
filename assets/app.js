@@ -20,7 +20,7 @@ let customBuyerMomentRange = null;
 let reviewMappingGapControlSignature = "";
 let reviewShopCoverageControlSignature = "";
 const CUSTOM_BUYER_MOMENT_ID = "custom-date-range";
-const DATA_ASSET_VERSION = "daily-refresh-20260613-1";
+const DATA_ASSET_VERSION = "relevance-search-20260613-2";
 const STATUS_ASSET_VERSION = "public-status-20260611-1";
 const BUYER_MOMENT_LANE_HEIGHT = 30;
 const BUYER_MOMENT_HIGH_OPPORTUNITY_SCORE = 68;
@@ -82,6 +82,63 @@ const BROAD_LISTING_CATEGORY_STEMS = new Set([
   "small accessory and keepsake",
   "wedding and event"
 ]);
+const LISTING_PRIMARY_SEARCH_FIELDS = [
+  "Product Title",
+  "Tags",
+  "Actual Tags"
+];
+const LISTING_TAXONOMY_SEARCH_FIELDS = [
+  "Product Substrate Category",
+  "Product Category",
+  "Category Aliases",
+  "Product Family"
+];
+const LISTING_SECONDARY_SEARCH_FIELDS = [
+  "Best Guess Tags"
+];
+const LED_NAMEPLATE_LIGHT_TERMS = [
+  "led",
+  "lighted",
+  "light up",
+  "illuminated",
+  "backlit",
+  "edge lit"
+];
+const LED_NAMEPLATE_NAME_TERMS = [
+  "nameplate",
+  "name plate",
+  "desk nameplate",
+  "desk name plate",
+  "office nameplate",
+  "office name plate",
+  "desk sign"
+];
+const LED_NAMEPLATE_NEGATIVE_TERMS = [
+  "golf",
+  "golf ball",
+  "golf tee",
+  "golf marker",
+  "ball marker",
+  "golf tumbler",
+  "dimpled golf",
+  "poker chip",
+  "stamp box",
+  "necklace",
+  "pendant",
+  "jewelry",
+  "bracelet",
+  "earring",
+  "ring",
+  "wedding welcome sign",
+  "welcome sign",
+  "wedding golf",
+  "license plate",
+  "licence plate",
+  "pet collar",
+  "dog collar",
+  "tumbler",
+  "cup"
+];
 const REVIEW_LISTING_PROGRESS_RENDER_MS = 500;
 const REVIEW_SHOP_COVERAGE_RESULT_LIMIT = 500;
 const LISTING_TIMEFRAME_CUSTOM_ID = "custom";
@@ -851,30 +908,48 @@ function isBroadListingCategoryValue(value) {
   return BROAD_LISTING_CATEGORY_STEMS.has(stemListingSearchValue(value));
 }
 
+function listingSearchFieldValues(row, keys) {
+  return keys
+    .map(key => ({ key, value: row[key] }))
+    .filter(({ value }) => value !== null && value !== undefined && value !== "")
+    .filter(({ key, value }) => {
+      if (!["Product Category", "Product Family", "Original Broad Category"].includes(key)) return true;
+      return !isBroadListingCategoryValue(value);
+    })
+    .map(({ value }) => value);
+}
+
+function listingSearchBuckets(row) {
+  if (row.__listingSearchBuckets) return row.__listingSearchBuckets;
+  const primaryValues = listingSearchFieldValues(row, LISTING_PRIMARY_SEARCH_FIELDS);
+  const taxonomyValues = listingSearchFieldValues(row, LISTING_TAXONOMY_SEARCH_FIELDS);
+  const secondaryValues = listingSearchFieldValues(row, LISTING_SECONDARY_SEARCH_FIELDS);
+  const buckets = {
+    title: normalizeListingSearchValue(row["Product Title"]),
+    primary: normalizeListingSearchValue(primaryValues.join(" ")),
+    taxonomy: normalizeListingSearchValue(taxonomyValues.join(" ")),
+    secondary: normalizeListingSearchValue(secondaryValues.join(" ")),
+    shop: normalizeListingSearchValue(row.Shop)
+  };
+  buckets.trusted = normalizeListingSearchValue([buckets.primary, buckets.taxonomy, buckets.shop].join(" "));
+  buckets.product = normalizeListingSearchValue([buckets.primary, buckets.taxonomy].join(" "));
+  buckets.all = normalizeListingSearchValue([buckets.trusted, buckets.secondary].join(" "));
+  Object.defineProperty(row, "__listingSearchBuckets", {
+    value: buckets,
+    configurable: true,
+    writable: true
+  });
+  return buckets;
+}
+
 function listingSearchValues(row) {
-  return Object.entries(row)
-    .filter(([key]) => !key.startsWith("__"))
-    .filter(([key]) => key !== "Product Category")
-    .filter(([key, value]) => !["Product Category", "Product Family", "Original Broad Category"].includes(key) || !isBroadListingCategoryValue(value))
-    .map(([, value]) => value);
+  const buckets = listingSearchBuckets(row);
+  return [buckets.trusted, buckets.secondary].filter(Boolean);
 }
 
 function listingIntentText(rowOrText) {
   if (typeof rowOrText === "string") return normalizeListingSearchValue(rowOrText);
-  const focusedKeys = [
-    "Product Substrate Category",
-    "Product Title",
-    "Category Aliases",
-    "Tags",
-    "Actual Tags",
-    "Best Guess Tags"
-  ];
-  const values = focusedKeys.map(key => rowOrText[key]).filter(value => value !== null && value !== undefined && value !== "");
-  const productFamily = rowOrText["Product Family"];
-  if (productFamily && !isBroadListingCategoryValue(productFamily)) values.push(productFamily);
-  const originalBroadCategory = rowOrText["Original Broad Category"];
-  if (originalBroadCategory && !isBroadListingCategoryValue(originalBroadCategory)) values.push(originalBroadCategory);
-  return normalizeListingSearchValue(values.join(" "));
+  return listingSearchBuckets(rowOrText).product;
 }
 
 function listingHasTerm(text, term) {
@@ -887,6 +962,139 @@ function listingHasTerm(text, term) {
   const stemmedText = stemListingSearchValue(normalizedText);
   const stemmedTerm = stemListingSearchValue(normalizedTerm);
   return Boolean(stemmedTerm && ` ${stemmedText} `.includes(` ${stemmedTerm} `));
+}
+
+function listingHasAnyTerm(text, terms) {
+  return (terms || []).some(term => listingHasTerm(text, term));
+}
+
+function listingHasLedNameplateLightIntent(text) {
+  return listingHasAnyTerm(text, LED_NAMEPLATE_LIGHT_TERMS);
+}
+
+function listingHasLedNameplateNameIntent(text) {
+  return listingHasAnyTerm(text, LED_NAMEPLATE_NAME_TERMS) ||
+    ((listingHasTerm(text, "desk") || listingHasTerm(text, "office")) && listingHasTerm(text, "sign"));
+}
+
+function listingQueryPlan(query) {
+  if (query && typeof query === "object" && "normalized" in query) return query;
+  const normalized = normalizeListingSearchValue(query);
+  const stemmed = stemListingSearchValue(normalized);
+  const tokens = stemmed.split(/\s+/).filter(token => token.length >= 2);
+  const compact = compactListingSearchValue(normalized);
+  return {
+    normalized,
+    stemmed,
+    tokens,
+    compact,
+    isLedNameplateIntent: Boolean(
+      listingHasLedNameplateLightIntent(normalized) &&
+      listingHasLedNameplateNameIntent(normalized)
+    )
+  };
+}
+
+function listingTextMatchesQuery(text, planOrQuery) {
+  const plan = listingQueryPlan(planOrQuery);
+  if (!plan.normalized) return true;
+  if (listingHasTerm(text, plan.normalized)) return true;
+  if (plan.compact.length >= 4 && compactListingSearchValue(text).includes(plan.compact)) return true;
+  if (plan.stemmed && ` ${stemListingSearchValue(text)} `.includes(` ${plan.stemmed} `)) return true;
+  if (!plan.tokens.length) return false;
+  return plan.tokens.every(token => listingHasTerm(text, token));
+}
+
+function listingTextMatchScore(text, planOrQuery, weight) {
+  const plan = listingQueryPlan(planOrQuery);
+  if (!plan.normalized || !text) return 0;
+  let score = 0;
+  const normalizedText = normalizeListingSearchValue(text);
+  const stemmedText = stemListingSearchValue(normalizedText);
+  const compactText = compactListingSearchValue(normalizedText);
+  if (` ${normalizedText} `.includes(` ${plan.normalized} `)) score += 32 * weight;
+  else if (plan.stemmed && ` ${stemmedText} `.includes(` ${plan.stemmed} `)) score += 28 * weight;
+  else if (plan.compact.length >= 4 && compactText.includes(plan.compact)) score += 24 * weight;
+  const matchedTokens = plan.tokens.filter(token => listingHasTerm(normalizedText, token)).length;
+  if (plan.tokens.length && matchedTokens === plan.tokens.length) score += (12 + matchedTokens * 3) * weight;
+  return score;
+}
+
+function genericListingQueryRelevance(row, plan) {
+  const buckets = listingSearchBuckets(row);
+  const titleMatch = listingTextMatchesQuery(buckets.title, plan);
+  const primaryMatch = listingTextMatchesQuery(buckets.primary, plan);
+  const taxonomyMatch = listingTextMatchesQuery(buckets.taxonomy, plan);
+  const shopMatch = listingTextMatchesQuery(buckets.shop, plan);
+  if (!titleMatch && !primaryMatch && !taxonomyMatch && !shopMatch) {
+    return { match: false, score: 0 };
+  }
+  const secondaryMatch = listingTextMatchesQuery(buckets.secondary, plan);
+  const score =
+    listingTextMatchScore(buckets.title, plan, 10) +
+    listingTextMatchScore(buckets.primary, plan, 7) +
+    listingTextMatchScore(buckets.taxonomy, plan, 5) +
+    listingTextMatchScore(buckets.shop, plan, 8) +
+    (secondaryMatch ? listingTextMatchScore(buckets.secondary, plan, 1) : 0);
+  return { match: true, score };
+}
+
+function ledNameplateListingRelevance(row, plan) {
+  const buckets = listingSearchBuckets(row);
+  const titleHasLight = listingHasLedNameplateLightIntent(buckets.title);
+  const titleHasName = listingHasLedNameplateNameIntent(buckets.title);
+  const primaryHasLight = listingHasLedNameplateLightIntent(buckets.primary);
+  const primaryHasName = listingHasLedNameplateNameIntent(buckets.primary);
+  const taxonomyHasLight = listingHasLedNameplateLightIntent(buckets.taxonomy);
+  const taxonomyHasName = listingHasLedNameplateNameIntent(buckets.taxonomy);
+  const trustedHasLight = primaryHasLight || taxonomyHasLight;
+  const trustedHasName = primaryHasName || taxonomyHasName;
+  if (!trustedHasLight || !trustedHasName) return { match: false, score: 0 };
+
+  const negativeProduct = listingHasAnyTerm(buckets.title, LED_NAMEPLATE_NEGATIVE_TERMS) ||
+    listingHasAnyTerm(buckets.primary, LED_NAMEPLATE_NEGATIVE_TERMS);
+  const jewelryProduct = listingHasAnyTerm(buckets.title, ["necklace", "pendant", "jewelry", "bracelet", "earring", "ring"]);
+  const deskOrOfficeProduct = listingHasAnyTerm(buckets.title, ["desk", "office", "door sign"]);
+  const explicitTitleIntent = titleHasLight && titleHasName;
+  const explicitPrimaryIntent = primaryHasLight && primaryHasName;
+  const bridgedPrimaryTaxonomy = (primaryHasLight && taxonomyHasName) || (primaryHasName && taxonomyHasLight);
+  const taxonomyOnly = taxonomyHasLight && taxonomyHasName && !primaryHasLight && !primaryHasName;
+  const primaryProductCue = primaryHasLight || primaryHasName || listingHasAnyTerm(buckets.title, ["acrylic", "desk", "office", "door sign", "sign"]);
+
+  if (jewelryProduct && !deskOrOfficeProduct) return { match: false, score: 0 };
+  if (negativeProduct && !explicitTitleIntent && !explicitPrimaryIntent) return { match: false, score: 0 };
+  if (taxonomyOnly && !primaryProductCue) return { match: false, score: 0 };
+
+  let score = 500;
+  if (explicitTitleIntent) score += 520;
+  if (explicitPrimaryIntent) score += 360;
+  if (bridgedPrimaryTaxonomy) score += 280;
+  if (taxonomyOnly) score += 90;
+  score += listingTextMatchScore(buckets.title, plan, 12);
+  score += listingTextMatchScore(buckets.primary, plan, 8);
+  score += listingTextMatchScore(buckets.taxonomy, plan, 5);
+  if (listingTextMatchesQuery(buckets.secondary, plan)) score += listingTextMatchScore(buckets.secondary, plan, 1);
+  return { match: true, score };
+}
+
+function listingQueryRelevance(row, planOrQuery) {
+  const plan = listingQueryPlan(planOrQuery);
+  if (!plan.normalized) return { match: true, score: 0 };
+  if (!row.__listingQueryRelevanceCache) {
+    Object.defineProperty(row, "__listingQueryRelevanceCache", {
+      value: new Map(),
+      configurable: true,
+      writable: true
+    });
+  }
+  if (row.__listingQueryRelevanceCache.has(plan.normalized)) {
+    return row.__listingQueryRelevanceCache.get(plan.normalized);
+  }
+  const result = plan.isLedNameplateIntent
+    ? ledNameplateListingRelevance(row, plan)
+    : genericListingQueryRelevance(row, plan);
+  row.__listingQueryRelevanceCache.set(plan.normalized, result);
+  return result;
 }
 
 function listingIntentGroup(value, label, config) {
@@ -909,10 +1117,7 @@ function listingIntentMatches(rowOrText, config = {}) {
 
 function listingSearchText(row) {
   if (row.__listingSearchText) return row.__listingSearchText;
-  const text = listingSearchValues(row)
-    .join(" ")
-    .toLowerCase();
-  const normalizedText = normalizeListingSearchValue(text);
+  const normalizedText = listingSearchBuckets(row).all;
   Object.defineProperty(row, "__listingSearchText", {
     value: normalizedText,
     configurable: true,
@@ -921,19 +1126,8 @@ function listingSearchText(row) {
   return normalizedText;
 }
 
-function listingMatchesQuery(row, query) {
-  const normalizedQuery = normalizeListingSearchValue(query);
-  if (!normalizedQuery) return true;
-  const text = listingSearchText(row);
-  if (text.includes(normalizedQuery)) return true;
-  const compactQuery = compactListingSearchValue(normalizedQuery);
-  if (compactQuery.length >= 4 && compactListingSearchValue(text).includes(compactQuery)) return true;
-  const stemmedQuery = stemListingSearchValue(normalizedQuery);
-  const stemmedText = stemListingSearchValue(text);
-  if (stemmedQuery && stemmedText.includes(stemmedQuery)) return true;
-  const tokens = stemmedQuery.split(/\s+/).filter(Boolean);
-  if (tokens.some(token => token.length < 3)) return false;
-  return tokens.every(token => stemmedText.includes(token));
+function listingMatchesQuery(row, query, queryPlan = null) {
+  return listingQueryRelevance(row, queryPlan || query).match;
 }
 
 function listingSubstrateText(row) {
