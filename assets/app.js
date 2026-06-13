@@ -20,7 +20,7 @@ let customBuyerMomentRange = null;
 let reviewMappingGapControlSignature = "";
 let reviewShopCoverageControlSignature = "";
 const CUSTOM_BUYER_MOMENT_ID = "custom-date-range";
-const DATA_ASSET_VERSION = "listing-sort-v2-20260613-1";
+const DATA_ASSET_VERSION = "market-penetration-20260612-3";
 const STATUS_ASSET_VERSION = "public-status-20260611-1";
 const BUYER_MOMENT_LANE_HEIGHT = 30;
 const BUYER_MOMENT_HIGH_OPPORTUNITY_SCORE = 68;
@@ -119,6 +119,7 @@ const LED_NAMEPLATE_NAME_TERMS = [
   "office name plates",
   "desk sign"
 ];
+const LED_NAMEPLATE_SHOP_HINTS = new Set(["evmat"]);
 const LED_NAMEPLATE_NEGATIVE_TERMS = [
   "golf",
   "golf ball",
@@ -274,7 +275,16 @@ const reviewListingState = {
   searchLoading: false,
   searchToken: 0,
   searchAbortController: null,
-  lastProgressRenderAt: 0
+  lastProgressRenderAt: 0,
+  searchPackKey: "",
+  searchPackId: "",
+  searchPackRows: [],
+  searchPackMatches: 0,
+  searchPackScanned: 0,
+  searchPackComplete: false,
+  searchPackLoading: false,
+  searchPackError: "",
+  searchPackCache: new Map()
 };
 const reviewShopCoverageState = {
   rows: [],
@@ -1290,13 +1300,14 @@ function genericListingQueryRelevance(row, plan) {
 
 function ledNameplateListingRelevance(row, plan) {
   const buckets = listingSearchBuckets(row);
+  const knownLedNameplateShop = LED_NAMEPLATE_SHOP_HINTS.has(companyName(row.Shop).toLowerCase());
   const titleHasLight = listingNormalizedHasLedNameplateLightIntent(buckets.title);
   const titleHasName = listingNormalizedHasLedNameplateNameIntent(buckets.title);
   const primaryHasLight = listingNormalizedHasLedNameplateLightIntent(buckets.primary);
   const primaryHasName = listingNormalizedHasLedNameplateNameIntent(buckets.primary);
   const taxonomyHasLight = listingNormalizedHasLedNameplateLightIntent(buckets.taxonomy);
   const taxonomyHasName = listingNormalizedHasLedNameplateNameIntent(buckets.taxonomy);
-  const trustedHasLight = primaryHasLight || taxonomyHasLight;
+  const trustedHasLight = primaryHasLight || taxonomyHasLight || (knownLedNameplateShop && (titleHasName || primaryHasName));
   const trustedHasName = primaryHasName || taxonomyHasName;
   if (!trustedHasLight || !trustedHasName || !titleHasName) return { match: false, score: 0 };
 
@@ -1323,6 +1334,7 @@ function ledNameplateListingRelevance(row, plan) {
   if (explicitTitleIntent) score += 520;
   if (explicitPrimaryIntent) score += 360;
   if (bridgedPrimaryTaxonomy) score += 280;
+  if (knownLedNameplateShop && titleHasName) score += 180;
   if (taxonomyOnly) score += 90;
   score += listingTextMatchScore(buckets.title, plan, 12);
   score += listingTextMatchScore(buckets.primary, plan, 8);
@@ -1449,6 +1461,10 @@ function reviewListingManifest() {
   return dashboard?.listing?.reviewListingIndex || null;
 }
 
+function reviewListingSearchManifest() {
+  return dashboard?.listing?.reviewListingSearchIndex || null;
+}
+
 function reviewListingTotal() {
   return Number(reviewListingManifest()?.reviewListingsExported || 0);
 }
@@ -1463,6 +1479,18 @@ function reviewListingCoverageText() {
   const universe = reviewListingUniverseTotal();
   if (!universe || universe <= exported) return "";
   return `Public export covers ${fmt(exported, "Listing Count")} of ${fmt(universe, "Listing Count")} review-sourced listings.`;
+}
+
+function reviewListingSearchPacks() {
+  return reviewListingSearchManifest()?.packs || [];
+}
+
+function reviewListingSearchTotal() {
+  return Number(reviewListingSearchManifest()?.totalReviewListingUrls || reviewListingUniverseTotal() || reviewListingTotal());
+}
+
+function reviewListingTotalForQuery(query, queryPlan = null) {
+  return reviewSearchPackForQuery(query, queryPlan) ? reviewListingSearchTotal() : reviewListingTotal();
 }
 
 function reviewListingAssetUrl(file) {
@@ -1515,6 +1543,43 @@ function decodeReviewListingRows(payload, chunkIndex, options = {}) {
     row["Weekly Sales Graph"] = "Open graph";
     row["Weekly Cycle Key"] = `review:${chunkIndex}:${rowIndex}:${listingId}`;
     row["Evidence Confidence"] = row["Evidence Confidence"] || "Review-derived estimate";
+    row["Review Corpus Latest ISO"] = row["Review Corpus Latest ISO"] || row["Last Review ISO"] || "";
+    const enriched = withDailySales(row);
+    if (options.trackRows) {
+      reviewListingState.rowByCycleKey.set(enriched["Weekly Cycle Key"], enriched);
+    }
+    return enriched;
+  });
+  return rows;
+}
+
+function decodeReviewSearchPackRows(payload, pack, options = {}) {
+  const manifest = reviewListingSearchManifest();
+  if (!manifest) return [];
+  const columns = payload.columns || manifest.rowColumns || [];
+  const labels = manifest.columnLabels || {};
+  const packId = payload.id || pack?.id || "";
+  const rows = (payload.rows || []).map((values, rowIndex) => {
+    const row = {};
+    columns.forEach((column, index) => {
+      let value = reviewListingDictionaryValue(manifest, column, values[index]);
+      if (column === "p") {
+        row["Listing URL"] = fullReviewListingUrl(value, manifest);
+        return;
+      }
+      if (column === "c") {
+        row["Product Category"] = value;
+        row["Product Substrate Category"] = value;
+        return;
+      }
+      const label = labels[column];
+      if (label) row[label] = value;
+    });
+    const listingId = listingIdFromUrl(row["Listing URL"]) || row["Overall Rank"] || rowIndex;
+    row["Weekly Sales Graph"] = "Open graph";
+    row["Weekly Cycle Key"] = `pack:${packId}:${rowIndex}:${listingId}`;
+    row["__Review Search Pack"] = packId;
+    row["Evidence Confidence"] = row["Evidence Confidence"] || "Full review search pack estimate";
     row["Review Corpus Latest ISO"] = row["Review Corpus Latest ISO"] || row["Last Review ISO"] || "";
     const enriched = withDailySales(row);
     if (options.trackRows) {
@@ -1662,8 +1727,97 @@ function startReviewListingSearch(query, production, substrate, selectedSort = n
   })();
 }
 
+function reviewSearchPackFilterKey(pack, query, production, substrate, sort = "") {
+  return `${pack?.id || ""}\n${query || ""}\n${production || ""}\n${substrate || ""}\n${sort || ""}`;
+}
+
+function reviewSearchPackForQuery(query, queryPlan = null) {
+  const manifest = reviewListingSearchManifest();
+  if (!manifest) return null;
+  const plan = queryPlan || listingQueryPlan(query);
+  if (!plan.normalized) return null;
+  const packs = reviewListingSearchPacks();
+  const directId = plan.isLedNameplateIntent
+    ? "led-nameplates"
+    : (plan.occasion?.id || plan.productGroup?.id || "");
+  if (directId) {
+    const direct = packs.find(pack => pack.id === directId);
+    if (direct) return direct;
+  }
+  return packs.find(pack => listingHasAnyTerm(plan.normalized, pack.queryTerms || [])) || null;
+}
+
+function cancelReviewSearchPack() {
+  if (!reviewListingState.searchPackLoading && !reviewListingState.searchPackKey && !reviewListingState.searchPackRows.length) return;
+  reviewListingState.searchPackKey = "";
+  reviewListingState.searchPackId = "";
+  reviewListingState.searchPackRows = [];
+  reviewListingState.searchPackMatches = 0;
+  reviewListingState.searchPackScanned = 0;
+  reviewListingState.searchPackComplete = false;
+  reviewListingState.searchPackLoading = false;
+  reviewListingState.searchPackError = "";
+}
+
+async function fetchReviewSearchPackRows(pack, options = {}) {
+  if (!pack?.rowFile) return [];
+  if (reviewListingState.searchPackCache.has(pack.id)) {
+    return reviewListingState.searchPackCache.get(pack.id);
+  }
+  const response = await fetch(reviewListingAssetUrl(pack.rowFile));
+  if (!response.ok) throw new Error(`Review search pack ${pack.id} failed to load`);
+  const rows = decodeReviewSearchPackRows(await response.json(), pack, options);
+  reviewListingState.searchPackCache.set(pack.id, rows);
+  return rows;
+}
+
+function startReviewSearchPackSearch(pack, query, production, substrate, selectedSort = null) {
+  if (!pack) return;
+  const key = reviewSearchPackFilterKey(pack, query, production, substrate, selectedSort || "");
+  if (reviewListingState.searchPackKey === key && (reviewListingState.searchPackLoading || reviewListingState.searchPackComplete)) return;
+  reviewListingState.searchPackKey = key;
+  reviewListingState.searchPackId = pack.id;
+  reviewListingState.searchPackRows = [];
+  reviewListingState.searchPackMatches = 0;
+  reviewListingState.searchPackScanned = 0;
+  reviewListingState.searchPackComplete = false;
+  reviewListingState.searchPackLoading = true;
+  reviewListingState.searchPackError = "";
+  const queryPlan = listingQueryPlan(query);
+  (async () => {
+    try {
+      const rows = await fetchReviewSearchPackRows(pack, { trackRows: true });
+      if (reviewListingState.searchPackKey !== key) return;
+      reviewListingState.searchPackScanned = rows.length;
+      const matched = rows.filter(row => rowMatchesListingFilters(row, query, production, substrate, queryPlan));
+      reviewListingState.searchPackMatches = matched.length;
+      reviewListingState.searchPackRows = sortListingRows(matched, selectedSort, queryPlan).slice(0, REVIEW_LISTING_RESULT_LIMIT);
+      reviewListingState.searchPackComplete = true;
+    } catch (error) {
+      console.warn(error);
+      if (reviewListingState.searchPackKey === key) {
+        reviewListingState.searchPackError = error?.message || "Review search pack failed to load";
+      }
+    } finally {
+      if (reviewListingState.searchPackKey === key) {
+        reviewListingState.searchPackLoading = false;
+        if (listingsViewIsActive()) renderListings();
+      }
+    }
+  })();
+}
+
 function reviewListingRowsForListings(query, production, substrate, selectedSort = null) {
   const manifest = reviewListingManifest();
+  const queryPlan = listingQueryPlan(query);
+  const pack = reviewSearchPackForQuery(query, queryPlan);
+  if (pack && listingsViewIsActive()) {
+    cancelReviewListingSearch();
+    startReviewSearchPackSearch(pack, query, production, substrate, selectedSort);
+    const key = reviewSearchPackFilterKey(pack, query, production, substrate, selectedSort || "");
+    return reviewListingState.searchPackKey === key ? reviewListingState.searchPackRows : [];
+  }
+  cancelReviewSearchPack();
   if (!manifest) return [];
   if (!listingsViewIsActive()) return [];
   if (shouldSearchReviewListings(query, production, substrate)) {
@@ -1674,12 +1828,32 @@ function reviewListingRowsForListings(query, production, substrate, selectedSort
   cancelReviewListingSearch();
   ensureReviewListingPreview();
   if (!query) return reviewListingState.previewRows;
-  const queryPlan = listingQueryPlan(query);
   return reviewListingState.previewRows.filter(row => rowMatchesListingFilters(row, query, production, substrate, queryPlan));
 }
 
 function reviewListingStatusText(query, production, substrate, selectedSort = null) {
   const manifest = reviewListingManifest();
+  const queryPlan = listingQueryPlan(query);
+  const pack = reviewSearchPackForQuery(query, queryPlan);
+  if (pack) {
+    const key = reviewSearchPackFilterKey(pack, query, production, substrate, selectedSort || "");
+    const packRows = fmt(pack.rowCount || 0, "Listing Count");
+    const universe = fmt(reviewListingSearchTotal(), "Listing Count");
+    if (reviewListingState.searchPackKey !== key) {
+      return `Full review search pack queued: ${pack.label || pack.id} (${packRows} indexed rows from ${universe} review-sourced listings).`;
+    }
+    if (reviewListingState.searchPackError) {
+      return `Full review search pack failed: ${reviewListingState.searchPackError}.`;
+    }
+    const matches = fmt(reviewListingState.searchPackMatches, "Listing Count");
+    if (reviewListingState.searchPackComplete) {
+      const capped = reviewListingState.searchPackMatches > reviewListingState.searchPackRows.length
+        ? `; top ${fmt(reviewListingState.searchPackRows.length, "Listing Count")} loaded by current sort`
+        : "";
+      return `Full review search pack searched ${packRows} ${pack.label || pack.id} rows from ${universe} review-sourced listings; ${matches} matches${capped}.`;
+    }
+    return `Loading full review search pack: ${fmt(reviewListingState.searchPackScanned, "Listing Count")} of ${packRows} ${pack.label || pack.id} rows scanned so far.`;
+  }
   if (!manifest) return "";
   const total = fmt(reviewListingTotal(), "Listing Count");
   const coverage = reviewListingCoverageText();
@@ -2335,6 +2509,41 @@ function renderReviewListingCycle(cycleKey, target, summary) {
     });
 }
 
+function renderReviewSearchPackCycle(cycleKey, target, summary) {
+  const row = reviewListingState.rowByCycleKey.get(cycleKey);
+  if (!row) {
+    target.innerHTML = `<div class="empty">No full-search listing cycle is loaded for this row.</div>`;
+    summary.textContent = "";
+    document.getElementById("listing-cycle-table").innerHTML = "";
+    return;
+  }
+  const rows = reviewListingCycleWeeks(row["Weekly Review Counts"], reviewListingSearchManifest(), row);
+  if (!rows.length) {
+    target.innerHTML = `<div class="empty">No full-search listing cycle is available.</div>`;
+    summary.textContent = "";
+    document.getElementById("listing-cycle-table").innerHTML = "";
+    return;
+  }
+  const title = row["Product Title"] || "Full-search listing";
+  summary.textContent = `${row.Shop || "Unknown shop"} · ${fmt(row["Review Corpus Count"], "Review Corpus Count")} reviews · ${row["Cycle Confidence"] || row["Evidence Confidence"] || "Full review search pack"} · ${row["Trend Source"] || ""}`;
+  Plotly.newPlot("listing-cycle-chart", [{
+    type: "bar",
+    name: "Estimated daily sales",
+    x: rows.map(item => item["Week Start"]),
+    y: rows.map(item => item["Estimated Daily Sales"]),
+    customdata: rows.map(item => [item["Estimated Weekly Sales"], item["Review Count"], item["Sales Per Review Used"], item["Trend Confidence"]]),
+    marker: { color: "#145a78" },
+    hovertemplate: "%{x}<br>Estimated daily sales: %{y:,.1f}<br>Estimated weekly sales: %{customdata[0]:,.1f}<br>Reviews: %{customdata[1]:,.0f}<br>Sales/review: %{customdata[2]:,.2f}<br>%{customdata[3]}<extra></extra>"
+  }], {
+    title: { text: title, font: { size: 14 } },
+    margin: { l: 58, r: 18, t: 38, b: 44 },
+    yaxis: { title: "Estimated daily sales" },
+    paper_bgcolor: "white",
+    plot_bgcolor: "white"
+  }, plotConfig);
+  renderTable("listing-cycle-table", [...rows].reverse(), ["Week Start", "Estimated Daily Sales", "Estimated Weekly Sales", "Review Count", "Sales Per Review Used", "Trend Confidence", "Trend Source"], 52);
+}
+
 function renderBuyerMomentListingCycle(cycleKey, target, summary) {
   const result = buyerMomentListingCycleRowsCache.get(cycleKey);
   if (!result) {
@@ -2383,6 +2592,10 @@ function renderListingCycle(cycleKey = selectedListingCycleKey) {
   }
   if (String(selectedListingCycleKey).startsWith("review:")) {
     renderReviewListingCycle(selectedListingCycleKey, target, summary);
+    return;
+  }
+  if (String(selectedListingCycleKey).startsWith("pack:")) {
+    renderReviewSearchPackCycle(selectedListingCycleKey, target, summary);
     return;
   }
   const cycle = listingCycleMap().get(selectedListingCycleKey);
@@ -3093,6 +3306,13 @@ function listingWeeksForTimeframe(row) {
   if (cycleKey.startsWith("review:")) {
     const result = reviewListingWeeksFromLoadedCycle(row);
     return { ...result, source: row["Trend Source"] || "Review listing sidecar" };
+  }
+  if (cycleKey.startsWith("pack:") && row["Weekly Review Counts"]) {
+    return {
+      loading: false,
+      source: row["Trend Source"] || "Full review search pack",
+      weeks: reviewListingCycleWeeks(row["Weekly Review Counts"], reviewListingSearchManifest(), row)
+    };
   }
   const embedded = row["Weekly Review Counts"] ? buyerMomentListingCycleWeeks(row) : [];
   if (embedded.length) {
@@ -7000,7 +7220,7 @@ function renderListings() {
   }
   rows = sortListingRows(rows, filters.sort, queryPlan);
   const count = fmt(rows.length, "Listing Count");
-  const totalCount = allRows.length + reviewListingTotal();
+  const totalCount = allRows.length + reviewListingTotalForQuery(query, queryPlan);
   const total = fmt(totalCount, "Listing Count");
   const shown = Math.min(rows.length, LISTING_RENDER_LIMIT);
   const status = reviewListingStatusText(query, production, selectedListingSubstrate, filters.sort);
