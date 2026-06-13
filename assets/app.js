@@ -10,6 +10,7 @@ let selectedMarketSegment = "";
 let selectedMarketSizeProduct = "";
 let selectedNextActionKey = "";
 let publicStatus = null;
+let viewShardState = new Map();
 let nextActionTraceCache = new Map();
 let buyerMomentRowsCache = new Map();
 let buyerMomentSummariesCache = null;
@@ -20,7 +21,7 @@ let customBuyerMomentRange = null;
 let reviewMappingGapControlSignature = "";
 let reviewShopCoverageControlSignature = "";
 const CUSTOM_BUYER_MOMENT_ID = "custom-date-range";
-const DATA_ASSET_VERSION = "listing-search-packs-chunked-20260613-3";
+const DATA_ASSET_VERSION = "thin-client-shards-20260613-1";
 const STATUS_ASSET_VERSION = "public-status-20260611-1";
 const BUYER_MOMENT_LANE_HEIGHT = 30;
 const BUYER_MOMENT_HIGH_OPPORTUNITY_SCORE = 68;
@@ -39,6 +40,93 @@ const BUYER_MOMENT_FILTER_IDS = [
   ["life", "buyer-moment-filter-life"],
   ["local", "buyer-moment-filter-local"]
 ];
+
+function dashboardAssetUrl(file) {
+  return `assets/${file}?v=${DATA_ASSET_VERSION}`;
+}
+
+function resetBuyerMomentCaches() {
+  buyerMomentRowsCache.clear();
+  buyerMomentSummariesCache = null;
+  buyerMomentCatalogCache = null;
+  buyerMomentTopListingRowsCache = null;
+  buyerMomentListingCycleRowsCache.clear();
+}
+
+function buyerMomentListingMatchesReady() {
+  const buyerMoments = dashboard?.buyerMoments || {};
+  const asset = buyerMoments.listingMatchesAsset;
+  const rows = buyerMoments.listingMatches;
+  return !asset || (Array.isArray(rows) && rows.length > 0);
+}
+
+function comparisonTrendsReady() {
+  const comparison = dashboard?.comparison || {};
+  const asset = comparison.shopTrendsAsset;
+  const trends = comparison.shopTrends;
+  const chart = comparison.shopTrendChart;
+  return !asset || (Array.isArray(trends) && trends.length > 0) || (Array.isArray(chart) && chart.length > 0);
+}
+
+async function loadDashboardShard(key, file, applyPayload) {
+  if (!file) return null;
+  const existing = viewShardState.get(key);
+  if (existing?.loaded) return existing.payload || null;
+  if (existing?.promise) return existing.promise;
+  const promise = fetch(dashboardAssetUrl(file))
+    .then(response => {
+      if (!response.ok) throw new Error(`${key} shard failed to load (${response.status})`);
+      return response.json();
+    })
+    .then(payload => {
+      applyPayload(payload || {});
+      viewShardState.set(key, { loaded: true, payload });
+      return payload;
+    })
+    .catch(error => {
+      viewShardState.delete(key);
+      throw error;
+    });
+  viewShardState.set(key, { promise });
+  return promise;
+}
+
+async function ensureBuyerMomentListingMatches() {
+  if (buyerMomentListingMatchesReady()) return;
+  const buyerMoments = dashboard.buyerMoments || {};
+  await loadDashboardShard("buyer-moment-listing-matches", buyerMoments.listingMatchesAsset, payload => {
+    const rows = payload.listingMatches || payload.buyerMoments?.listingMatches || [];
+    dashboard.buyerMoments = {
+      ...dashboard.buyerMoments,
+      ...(payload.buyerMoments || {}),
+      listingMatches: Array.isArray(rows) ? rows : []
+    };
+    if (payload.qa) {
+      dashboard.buyerMoments.qa = { ...(dashboard.buyerMoments.qa || {}), ...payload.qa };
+    }
+    resetBuyerMomentCaches();
+  });
+}
+
+async function ensureComparisonTrends() {
+  if (comparisonTrendsReady()) return;
+  const comparison = dashboard.comparison || {};
+  await loadDashboardShard("comparison-trends", comparison.shopTrendsAsset, payload => {
+    const trendRows = payload.shopTrends || payload.comparison?.shopTrends || [];
+    const chartRows = payload.shopTrendChart || payload.comparison?.shopTrendChart || [];
+    dashboard.comparison = {
+      ...dashboard.comparison,
+      ...(payload.comparison || {}),
+      shopTrends: Array.isArray(trendRows) ? trendRows : [],
+      shopTrendChart: Array.isArray(chartRows) ? chartRows : []
+    };
+  });
+}
+
+function setLoading(targetId, message) {
+  const target = document.getElementById(targetId);
+  if (target) target.innerHTML = `<div class="empty">${message}</div>`;
+}
 const LISTING_RENDER_LIMIT = 500;
 const REVIEW_LISTING_PREVIEW_CHUNKS = 1;
 const REVIEW_LISTING_RESULT_LIMIT = 50000;
@@ -2220,6 +2308,17 @@ function sortComparisonRows(rows) {
 }
 
 function renderCategoryWorkspace() {
+  if (!comparisonTrendsReady()) {
+    setLoading("category-shop-chart", "Loading comparison trend data...");
+    setLoading("category-comparison", "Loading comparison trend data...");
+    ensureComparisonTrends()
+      .then(renderCategoryWorkspace)
+      .catch(error => {
+        setLoading("category-shop-chart", `Comparison trend data failed to load: ${error.message}`);
+        setLoading("category-comparison", `Comparison trend data failed to load: ${error.message}`);
+      });
+    return;
+  }
   const allRows = getListingRows();
   const listingRows = getComparisonListingRows();
   const movement = buildDynamicCategoryMovement(listingRows);
@@ -4188,6 +4287,25 @@ function renderBuyerMomentWeekChart(rows) {
 function renderBuyerMoments() {
   const summaryTarget = document.getElementById("buyer-moment-summary");
   if (!summaryTarget) return;
+  if (!buyerMomentListingMatchesReady()) {
+    summaryTarget.textContent = "Loading buyer moment listing evidence...";
+    [
+      "buyer-moment-metrics",
+      "buyer-moment-rollup-chart",
+      "buyer-moment-rollups",
+      "buyer-moment-decision-read",
+      "buyer-moment-best-bets",
+      "buyer-moment-listings",
+      "buyer-moment-week-chart",
+      "buyer-moment-week-table"
+    ].forEach(id => setLoading(id, "Loading buyer moment listing evidence..."));
+    ensureBuyerMomentListingMatches()
+      .then(renderBuyerMoments)
+      .catch(error => {
+        summaryTarget.textContent = `Buyer moment listing evidence failed to load: ${error.message}`;
+      });
+    return;
+  }
   const summaries = buyerMomentSummaries();
   const visibleSummaries = filteredBuyerMomentSummaries(summaries);
   const selected = selectedBuyerMomentSummary(visibleSummaries.length ? visibleSummaries : summaries);
@@ -5960,6 +6078,20 @@ function companyReviewEvidence(corpusShop, shopCoverage) {
 }
 
 function renderCompanyProfile() {
+  if (!comparisonTrendsReady()) {
+    setLoading("company-sales-chart", "Loading company trend data...");
+    setLoading("company-snapshot", "Loading company trend data...");
+    ensureComparisonTrends()
+      .then(() => {
+        renderCompanyOptions();
+        renderCompanyProfile();
+      })
+      .catch(error => {
+        setLoading("company-sales-chart", `Company trend data failed to load: ${error.message}`);
+        setLoading("company-snapshot", `Company trend data failed to load: ${error.message}`);
+      });
+    return;
+  }
   bindReviewShopCoverageActions();
   loadReviewShopCoverageRows();
   const select = document.getElementById("company-select");
@@ -6171,11 +6303,13 @@ function renderCompanyProfile() {
   requestAnimationFrame(updateAllBottomScrollbars);
 }
 
-function openCompanyProfile(company) {
+async function openCompanyProfile(company) {
   const name = companyName(company);
   if (!name) return;
+  selectedCompany = name;
+  selectedCompanyProduction = "";
+  await activateView("company");
   selectCompanyProfile(name, { searchValue: "" });
-  activateView("company");
 }
 
 function updateViewUrl(viewId) {
@@ -6882,7 +7016,7 @@ function openActionListingEvidence(row) {
   requestAnimationFrame(() => document.getElementById("top-listings")?.scrollIntoView({ block: "start" }));
 }
 
-function openActionBuyerMomentEvidence(row) {
+async function openActionBuyerMomentEvidence(row) {
   const trace = actionBuyerMomentTrace(row);
   const source = document.getElementById("buyer-moment-source-filter");
   const calendarSearch = document.getElementById("buyer-moment-calendar-search");
@@ -6895,19 +7029,20 @@ function openActionBuyerMomentEvidence(row) {
   if (calendarSearch) calendarSearch.value = trace.moment || "";
   if (listingSearch) listingSearch.value = trace.query || "";
   selectedBuyerMomentId = trace.momentId || "";
-  activateView("buyer-moments");
+  await activateView("buyer-moments");
   renderBuyerMoments();
   setNextActionShareStatus(trace.moment ? `Buyer Moment evidence opened: ${trace.moment}.` : "Buyer Moment evidence opened.");
   requestAnimationFrame(() => document.getElementById("buyer-moment-listings")?.scrollIntoView({ block: "start" }));
 }
 
-function openActionCompanyEvidence(row) {
+async function openActionCompanyEvidence(row) {
   const company = actionEvidenceCompany(row);
+  await ensureComparisonTrends();
   if (!company || !companyStats().has(company)) {
     setNextActionShareStatus("No matching company profile found for this action.");
     return;
   }
-  openCompanyProfile(company);
+  await openCompanyProfile(company);
   setNextActionShareStatus(`Company evidence opened: ${company}.`);
   requestAnimationFrame(() => document.getElementById("company-listings")?.scrollIntoView({ block: "start" }));
 }
@@ -7404,7 +7539,41 @@ function renderRaw() {
   renderTable("raw-table", rawPreviewRows(key), rawPreviewColumns(key));
 }
 
-function activateView(viewId) {
+function renderComparisonView() {
+  initComparisonFilters();
+  renderCategoryWorkspace();
+  renderBar("demand-intent-chart", dashboard.comparison.demandIntentRollup || [], "Total Est. 30D Sales", "Demand Intent Cluster", 20, "#0f766e");
+  renderTable("demand-intent-table", dashboard.comparison.demandIntentRollup, ["Demand Intent Cluster", "Total Est. 30D Sales", "Listing Count", "Shop Count", "Top Substrates"], 40);
+  renderLineByGroup("shop-trend-chart", dashboard.comparison.shopTrendChart || [], "Date", "Daily Sales", "Shop");
+  renderTrendTable("shop-trends", dashboard.comparison.shopTrends, ["Shop", "Trend", "Recent Avg Daily Sales", "Prior Avg Daily Sales", "Delta", "Delta %", "Latest Complete Date", "Latest Complete Daily Sales", "Total Daily Sales In Range", "Days Used", "Review Count", "Sales Per Review Used", "Trend Confidence", "Trend Source"], 120);
+}
+
+function renderBuyerMomentsView() {
+  initBuyerMomentFilters();
+  applyBuyerMomentUrlState();
+  renderBuyerMoments();
+}
+
+function renderCompanyView() {
+  initCompanyProfile();
+}
+
+function renderListingsView() {
+  initListingFilters();
+  applyListingUrlState();
+  renderListings();
+  renderBar("category-rollup-chart", dashboard.listing.categoryRollup || [], "Total Est. Daily Sales", "Product Substrate Category", 15, "#1f5fbf");
+  renderTable("category-rollup-table", dashboard.listing.categoryRollup, ["Product Substrate Category", "Product Family", "Total Est. Daily Sales", "Total Est. 30D Sales", "Review Corpus Count", "Review Corpus 90D", "Review Corpus 365D", "Review Corpus Listings", "Listing Count", "Shop Count"], 40);
+  renderBar("demand-summary-chart", dashboard.listing.demandSummary || [], "Total Est. Daily Sales", "Demand Intent Cluster", 20, "#0f766e");
+  renderTable("demand-summary-table", dashboard.listing.demandSummary, ["Demand Intent Cluster", "Total Est. Daily Sales", "Listing Count", "Review Count", "Review Corpus Count", "Review Corpus 90D", "Review Corpus Listings", "Avg Daily Sales / Listing", "Shop Count"], 50);
+}
+
+async function ensureViewData(viewId) {
+  if (viewId === "comparison" || viewId === "company") await ensureComparisonTrends();
+  if (viewId === "buyer-moments") await ensureBuyerMomentListingMatches();
+}
+
+async function activateView(viewId, options = {}) {
   const view = document.getElementById(viewId);
   if (!view) return;
   if (viewId !== "listings") {
@@ -7418,14 +7587,20 @@ function activateView(viewId) {
     section.classList.toggle("active", section.id === viewId);
   });
   window.dispatchEvent(new Event("resize"));
-  if (viewId === "listings") renderListings();
-  if (viewId === "company") {
-    renderCompanyOptions();
-    renderCompanyProfile();
+  try {
+    await ensureViewData(viewId);
+  } catch (error) {
+    setLoading(`${viewId}-count`, `Data failed to load: ${error.message}`);
+    console.error(error);
+    return;
   }
+  if (viewId === "listings") renderListingsView();
+  if (viewId === "comparison") renderComparisonView();
+  if (viewId === "buyer-moments") renderBuyerMomentsView();
+  if (viewId === "company") renderCompanyView();
   if (viewId === "market-size") renderMarketSize();
   if (viewId === "market-penetration") renderMarketPenetration();
-  updateViewUrl(viewId);
+  if (options.updateUrl !== false) updateViewUrl(viewId);
   requestAnimationFrame(updateAllBottomScrollbars);
 }
 
@@ -8888,23 +9063,6 @@ function renderAll() {
   renderImportChart();
   renderMarketTrend();
   renderTopShops();
-  initComparisonFilters();
-  renderCategoryWorkspace();
-  renderBar("demand-intent-chart", dashboard.comparison.demandIntentRollup || [], "Total Est. 30D Sales", "Demand Intent Cluster", 20, "#0f766e");
-  renderTable("demand-intent-table", dashboard.comparison.demandIntentRollup, ["Demand Intent Cluster", "Total Est. 30D Sales", "Listing Count", "Shop Count", "Top Substrates"], 40);
-  renderLineByGroup("shop-trend-chart", dashboard.comparison.shopTrendChart || [], "Date", "Daily Sales", "Shop");
-  renderTrendTable("shop-trends", dashboard.comparison.shopTrends, ["Shop", "Trend", "Recent Avg Daily Sales", "Prior Avg Daily Sales", "Delta", "Delta %", "Latest Complete Date", "Latest Complete Daily Sales", "Total Daily Sales In Range", "Days Used", "Review Count", "Sales Per Review Used", "Trend Confidence", "Trend Source"], 120);
-  initCompanyProfile();
-  initListingFilters();
-  applyListingUrlState();
-  renderListings();
-  initBuyerMomentFilters();
-  applyBuyerMomentUrlState();
-  renderBuyerMoments();
-  renderBar("category-rollup-chart", dashboard.listing.categoryRollup || [], "Total Est. Daily Sales", "Product Substrate Category", 15, "#1f5fbf");
-  renderTable("category-rollup-table", dashboard.listing.categoryRollup, ["Product Substrate Category", "Product Family", "Total Est. Daily Sales", "Total Est. 30D Sales", "Review Corpus Count", "Review Corpus 90D", "Review Corpus 365D", "Review Corpus Listings", "Listing Count", "Shop Count"], 40);
-  renderBar("demand-summary-chart", dashboard.listing.demandSummary || [], "Total Est. Daily Sales", "Demand Intent Cluster", 20, "#0f766e");
-  renderTable("demand-summary-table", dashboard.listing.demandSummary, ["Demand Intent Cluster", "Total Est. Daily Sales", "Listing Count", "Review Count", "Review Corpus Count", "Review Corpus 90D", "Review Corpus Listings", "Avg Daily Sales / Listing", "Shop Count"], 50);
   initListingStateRecoveryFilters();
   renderOperations();
   renderTable("quality-table", dashboard.market.quality, ["Date", "Raw Rows", "Unique Shops", "Duplicate Shop-Date Pairs", "Raw Market Sales", "Deduped Market Sales", "Potential Inflation", "Likely Partial Final Day", "Source Files"], 120);
@@ -8921,8 +9079,8 @@ async function boot() {
   dashboard = await response.json();
   applyNextActionUrlState();
   renderAll();
-  const initialView = initialDashboardView();
-  if (initialView && initialView !== "opportunity") activateView(initialView);
+  const initialView = initialDashboardView() || "opportunity";
+  await activateView(initialView, { updateUrl: false });
   document.getElementById("top-shop-metric").addEventListener("change", renderTopShops);
   const listingSearch = document.getElementById("listing-search");
   listingSearch.addEventListener("input", handleListingInputChange);
