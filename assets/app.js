@@ -20,7 +20,7 @@ let customBuyerMomentRange = null;
 let reviewMappingGapControlSignature = "";
 let reviewShopCoverageControlSignature = "";
 const CUSTOM_BUYER_MOMENT_ID = "custom-date-range";
-const DATA_ASSET_VERSION = "market-penetration-20260612-3";
+const DATA_ASSET_VERSION = "listing-search-rollup-20260612";
 const STATUS_ASSET_VERSION = "public-status-20260611-1";
 const BUYER_MOMENT_LANE_HEIGHT = 30;
 const BUYER_MOMENT_HIGH_OPPORTUNITY_SCORE = 68;
@@ -43,6 +43,13 @@ const LISTING_RENDER_LIMIT = 500;
 const REVIEW_LISTING_PREVIEW_CHUNKS = 1;
 const REVIEW_LISTING_RESULT_LIMIT = 5000;
 const REVIEW_LISTING_SEARCH_MIN_CHARS = 2;
+const LISTING_SUBSTRATE_GROUPS = [
+  {
+    value: "__group:led-nameplates",
+    label: "LED nameplates (all)",
+    matches: isLedNameplateListing
+  }
+];
 const REVIEW_LISTING_PROGRESS_RENDER_MS = 500;
 const REVIEW_SHOP_COVERAGE_RESULT_LIMIT = 500;
 const LISTING_TIMEFRAME_CUSTOM_ID = "custom";
@@ -778,6 +785,16 @@ function renderMetrics() {
   document.getElementById("metric-grid").innerHTML = cards.map(([label, value]) => metric(label, value)).join("");
 }
 
+function normalizeListingSearchValue(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/['']/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function listingSearchText(row) {
   if (row.__listingSearchText) return row.__listingSearchText;
   const text = Object.keys(row)
@@ -785,12 +802,47 @@ function listingSearchText(row) {
     .map(key => row[key])
     .join(" ")
     .toLowerCase();
+  const normalizedText = normalizeListingSearchValue(text);
   Object.defineProperty(row, "__listingSearchText", {
-    value: text,
+    value: normalizedText,
     configurable: true,
     writable: true
   });
-  return text;
+  return normalizedText;
+}
+
+function listingMatchesQuery(row, query) {
+  const normalizedQuery = normalizeListingSearchValue(query);
+  if (!normalizedQuery) return true;
+  const text = listingSearchText(row);
+  if (text.includes(normalizedQuery)) return true;
+  const compactQuery = normalizedQuery.replace(/\s+/g, "");
+  if (compactQuery.length >= 4 && text.replace(/\s+/g, "").includes(compactQuery)) return true;
+  const tokens = normalizedQuery.split(/\s+/).filter(Boolean);
+  if (tokens.some(token => token.length < 3)) return false;
+  return tokens.every(token => text.includes(token));
+}
+
+function listingSubstrateText(row) {
+  return String(row["Product Substrate Category"] || row["Product Category"] || "Uncategorized");
+}
+
+function isLedNameplateListing(rowOrText) {
+  const text = typeof rowOrText === "string" ? normalizeListingSearchValue(rowOrText) : listingSearchText(rowOrText);
+  const hasNameplate = text.includes("nameplate") || (text.includes("name") && text.includes("plate"));
+  const hasDeskSign = text.includes("desk") && text.includes("sign");
+  return text.includes("led") && (hasNameplate || hasDeskSign);
+}
+
+function listingSubstrateGroup(value) {
+  return LISTING_SUBSTRATE_GROUPS.find(group => group.value === value);
+}
+
+function listingMatchesSubstrate(row, substrate) {
+  if (!substrate) return true;
+  const group = listingSubstrateGroup(substrate);
+  if (group) return group.matches(row);
+  return listingSubstrateText(row) === substrate;
 }
 
 function listingsViewIsActive() {
@@ -910,8 +962,8 @@ function cancelReviewListingSearch() {
 
 function rowMatchesListingFilters(row, query, production, substrate) {
   if (production && row["Production Tag"] !== production) return false;
-  if (substrate && String(row["Product Substrate Category"] || row["Product Category"] || "") !== substrate) return false;
-  if (query && !listingSearchText(row).includes(query)) return false;
+  if (!listingMatchesSubstrate(row, substrate)) return false;
+  if (!listingMatchesQuery(row, query)) return false;
   return true;
 }
 
@@ -1046,7 +1098,7 @@ function listingControlState() {
   const search = (document.getElementById("listing-search")?.value || "").trim();
   return {
     search,
-    query: search.toLowerCase(),
+    query: normalizeListingSearchValue(search),
     production: document.getElementById("production-filter")?.value || "",
     substrate: document.getElementById("substrate-filter")?.value || "",
     sort: document.getElementById("listing-sort")?.value || "",
@@ -1109,7 +1161,7 @@ function comparisonCategory(row) {
 function getComparisonListingRows() {
   const category = document.getElementById("comparison-category-filter")?.value || "";
   const production = document.getElementById("comparison-production-filter")?.value || "";
-  const query = (document.getElementById("comparison-search")?.value || "").trim().toLowerCase();
+  const query = normalizeListingSearchValue((document.getElementById("comparison-search")?.value || "").trim());
   let rows = getListingRows();
 
   if (category) {
@@ -1119,7 +1171,7 @@ function getComparisonListingRows() {
     rows = rows.filter(row => row["Production Tag"] === production);
   }
   if (query) {
-    rows = rows.filter(row => listingSearchText(row).includes(query));
+    rows = rows.filter(row => listingMatchesQuery(row, query));
   }
 
   return rows;
@@ -6238,10 +6290,10 @@ function renderListings() {
     rows = rows.filter(row => row["Production Tag"] === production);
   }
   if (selectedListingSubstrate) {
-    rows = rows.filter(row => String(row["Product Substrate Category"] || row["Product Category"] || "") === selectedListingSubstrate);
+    rows = rows.filter(row => listingMatchesSubstrate(row, selectedListingSubstrate));
   }
   if (query) {
-    rows = rows.filter(row => listingSearchText(row).includes(query));
+    rows = rows.filter(row => listingMatchesQuery(row, query));
   }
   const reviewRows = reviewListingRowsForListings(query, production, selectedListingSubstrate);
   rows = rows.concat(reviewRows);
@@ -6375,6 +6427,17 @@ function initListingSubstrateFilter() {
   });
   Object.entries(reviewListingManifest()?.categoryCounts || {}).forEach(([category, count]) => {
     counts.set(category, (counts.get(category) || 0) + Number(count || 0));
+  });
+  LISTING_SUBSTRATE_GROUPS.forEach(group => {
+    let count = getListingRows().filter(row => group.matches(row)).length;
+    Object.entries(reviewListingManifest()?.categoryCounts || {}).forEach(([category, categoryCount]) => {
+      if (group.matches(category)) count += Number(categoryCount || 0);
+    });
+    if (!count) return;
+    const option = document.createElement("option");
+    option.value = group.value;
+    option.textContent = `${group.label} (${count})`;
+    select.appendChild(option);
   });
   [...counts.entries()]
     .filter(([category]) => category)
