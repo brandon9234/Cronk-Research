@@ -180,6 +180,8 @@ const LISTING_OCCASION_QUERY_GROUPS = [
 const REVIEW_LISTING_PROGRESS_RENDER_MS = 500;
 const REVIEW_SHOP_COVERAGE_RESULT_LIMIT = 500;
 const LISTING_TIMEFRAME_CUSTOM_ID = "custom";
+const LISTING_TIMEFRAME_NEXT_40_ID = "next-40";
+const LISTING_TIMEFRAME_NEXT_40_DAYS = 40;
 const LISTING_TIMEFRAME_PRESETS = {
   "mothers-day": { label: "Mother's Day season", start: "04-15", end: "05-25" },
   "graduation": { label: "Graduation season", start: "04-15", end: "06-15" },
@@ -1560,13 +1562,15 @@ function scheduleRenderListings() {
 
 function listingControlState() {
   const search = (document.getElementById("listing-search")?.value || "").trim();
+  const timeframe = document.getElementById("listing-timeframe-preset")?.value || "";
+  const sort = document.getElementById("listing-sort")?.value || listingTimeframeDefaultSort(timeframe);
   return {
     search,
     query: normalizeListingSearchValue(search),
     production: document.getElementById("production-filter")?.value || "",
     substrate: document.getElementById("substrate-filter")?.value || "",
-    sort: document.getElementById("listing-sort")?.value || "",
-    timeframe: document.getElementById("listing-timeframe-preset")?.value || "",
+    sort,
+    timeframe,
     start: document.getElementById("listing-timeframe-start")?.value || "",
     end: document.getElementById("listing-timeframe-end")?.value || ""
   };
@@ -2686,7 +2690,20 @@ function last30ListingTimeframePreset() {
   };
 }
 
+function next40ListingTimeframePreset() {
+  const reference = listingReferenceDate();
+  const start = new Date(Date.UTC(2025, reference.getUTCMonth(), reference.getUTCDate()));
+  const end = new Date(start);
+  end.setUTCDate(end.getUTCDate() + LISTING_TIMEFRAME_NEXT_40_DAYS - 1);
+  return {
+    label: `Next ${LISTING_TIMEFRAME_NEXT_40_DAYS} days`,
+    start: monthDayFromDate(start),
+    end: monthDayFromDate(end)
+  };
+}
+
 function listingTimeframePresetDefinition(preset, filters = null) {
+  if (preset === LISTING_TIMEFRAME_NEXT_40_ID) return next40ListingTimeframePreset();
   if (preset === "last-30") return last30ListingTimeframePreset();
   if (preset === LISTING_TIMEFRAME_CUSTOM_ID) {
     return {
@@ -5672,6 +5689,8 @@ function applyListingUrlState() {
   setSelectIfOption("substrate-filter", params.get("listSubstrate") || "");
   setSelectIfOption("listing-sort", params.get("listSort") || "");
   setSelectIfOption("listing-timeframe-preset", params.get("listTimeframe") || "");
+  syncListingTimeframeInputs();
+  applyListingTimeframeDefaultSort(document.getElementById("listing-timeframe-preset")?.value || "", { onlyIfBlank: true });
   selectedListingCycleKey = params.get("listCycle") || selectedListingCycleKey || "";
   setAppliedListingFiltersFromControls();
 }
@@ -6937,6 +6956,17 @@ function syncListingTimeframeInputs() {
   endInput.value = definition.end;
 }
 
+function listingTimeframeDefaultSort(preset) {
+  return preset === LISTING_TIMEFRAME_NEXT_40_ID ? "timeframe-sales-desc" : "";
+}
+
+function applyListingTimeframeDefaultSort(preset, { onlyIfBlank = true } = {}) {
+  const select = document.getElementById("listing-sort");
+  const sort = listingTimeframeDefaultSort(preset);
+  if (!select || !sort || (onlyIfBlank && select.value)) return;
+  select.value = sort;
+}
+
 function markListingTimeframeCustom() {
   const select = document.getElementById("listing-timeframe-preset");
   if (select && (document.getElementById("listing-timeframe-start")?.value || document.getElementById("listing-timeframe-end")?.value)) {
@@ -6953,7 +6983,8 @@ function initListingTimeframeControls() {
   preset.addEventListener("change", () => {
     selectedListingTimeframePreset = preset.value;
     syncListingTimeframeInputs();
-    handleListingFilterChange();
+    applyListingTimeframeDefaultSort(preset.value, { onlyIfBlank: false });
+    applyListingSearch();
   });
   [startInput, endInput].forEach(input => {
     input.addEventListener("input", () => {
