@@ -106,11 +106,17 @@ const LED_NAMEPLATE_LIGHT_TERMS = [
 ];
 const LED_NAMEPLATE_NAME_TERMS = [
   "nameplate",
+  "nameplates",
   "name plate",
+  "name plates",
   "desk nameplate",
+  "desk nameplates",
   "desk name plate",
+  "desk name plates",
   "office nameplate",
+  "office nameplates",
   "office name plate",
+  "office name plates",
   "desk sign"
 ];
 const LED_NAMEPLATE_NEGATIVE_TERMS = [
@@ -130,6 +136,16 @@ const LED_NAMEPLATE_NEGATIVE_TERMS = [
   "earring",
   "ring",
   "wedding welcome sign",
+  "wedding sign",
+  "neon sign",
+  "lightbox",
+  "storefront",
+  "wall decor",
+  "address sign",
+  "house number",
+  "night light",
+  "nightlight",
+  "lamp",
   "welcome sign",
   "wedding golf",
   "license plate",
@@ -934,6 +950,7 @@ function listingSearchBuckets(row) {
   buckets.trusted = normalizeListingSearchValue([buckets.primary, buckets.taxonomy, buckets.shop].join(" "));
   buckets.product = normalizeListingSearchValue([buckets.primary, buckets.taxonomy].join(" "));
   buckets.all = normalizeListingSearchValue([buckets.trusted, buckets.secondary].join(" "));
+  if (String(row["Weekly Cycle Key"] || "").startsWith("review:")) return buckets;
   Object.defineProperty(row, "__listingSearchBuckets", {
     value: buckets,
     configurable: true,
@@ -968,13 +985,64 @@ function listingHasAnyTerm(text, terms) {
   return (terms || []).some(term => listingHasTerm(text, term));
 }
 
+function listingNormalizedHasTerm(normalizedText, normalizedTerm) {
+  if (!normalizedTerm) return false;
+  if (` ${normalizedText} `.includes(` ${normalizedTerm} `)) return true;
+  if (normalizedTerm.includes(" ")) return false;
+  const plural = normalizedTerm.endsWith("y")
+    ? `${normalizedTerm.slice(0, -1)}ies`
+    : `${normalizedTerm}s`;
+  return ` ${normalizedText} `.includes(` ${plural} `);
+}
+
+function listingNormalizedHasAnyTerm(normalizedText, terms) {
+  return (terms || []).some(term => listingNormalizedHasTerm(normalizedText, normalizeListingSearchValue(term)));
+}
+
+function listingNormalizedHasLedNameplateLightIntent(normalizedText) {
+  return listingNormalizedHasAnyTerm(normalizedText, LED_NAMEPLATE_LIGHT_TERMS);
+}
+
+function listingNormalizedHasExplicitNameplateIntent(normalizedText) {
+  return listingNormalizedHasAnyTerm(normalizedText, [
+    "nameplate",
+    "nameplates",
+    "name plate",
+    "name plates",
+    "desk nameplate",
+    "desk nameplates",
+    "desk name plate",
+    "desk name plates",
+    "office nameplate",
+    "office nameplates",
+    "office name plate",
+    "office name plates",
+    "desk plate",
+    "desk plates",
+    "name block",
+    "name blocks",
+    "name and title"
+  ]);
+}
+
+function listingNormalizedHasDeskSignBridgeIntent(normalizedText) {
+  const hasDeskSign = listingNormalizedHasTerm(normalizedText, "desk") &&
+    listingNormalizedHasTerm(normalizedText, "sign");
+  return listingNormalizedHasAnyTerm(normalizedText, ["desk display", "desk plaque"]) ||
+    (hasDeskSign && listingNormalizedHasAnyTerm(normalizedText, ["personalized", "custom", "business", "company logo", "office"]));
+}
+
+function listingNormalizedHasLedNameplateNameIntent(normalizedText) {
+  return listingNormalizedHasExplicitNameplateIntent(normalizedText) ||
+    listingNormalizedHasDeskSignBridgeIntent(normalizedText);
+}
+
 function listingHasLedNameplateLightIntent(text) {
-  return listingHasAnyTerm(text, LED_NAMEPLATE_LIGHT_TERMS);
+  return listingNormalizedHasLedNameplateLightIntent(normalizeListingSearchValue(text));
 }
 
 function listingHasLedNameplateNameIntent(text) {
-  return listingHasAnyTerm(text, LED_NAMEPLATE_NAME_TERMS) ||
-    ((listingHasTerm(text, "desk") || listingHasTerm(text, "office")) && listingHasTerm(text, "sign"));
+  return listingNormalizedHasLedNameplateNameIntent(normalizeListingSearchValue(text));
 }
 
 function listingQueryPlan(query) {
@@ -983,14 +1051,18 @@ function listingQueryPlan(query) {
   const stemmed = stemListingSearchValue(normalized);
   const tokens = stemmed.split(/\s+/).filter(token => token.length >= 2);
   const compact = compactListingSearchValue(normalized);
+  const hasLedNameplateQuery =
+    listingNormalizedHasAnyTerm(normalized, LED_NAMEPLATE_NAME_TERMS) ||
+    ((listingNormalizedHasTerm(normalized, "desk") || listingNormalizedHasTerm(normalized, "office")) &&
+      listingNormalizedHasTerm(normalized, "sign"));
   return {
     normalized,
     stemmed,
     tokens,
     compact,
     isLedNameplateIntent: Boolean(
-      listingHasLedNameplateLightIntent(normalized) &&
-      listingHasLedNameplateNameIntent(normalized)
+      listingNormalizedHasLedNameplateLightIntent(normalized) &&
+      hasLedNameplateQuery
     )
   };
 }
@@ -1026,6 +1098,13 @@ function genericListingQueryRelevance(row, plan) {
   const primaryMatch = listingTextMatchesQuery(buckets.primary, plan);
   const taxonomyMatch = listingTextMatchesQuery(buckets.taxonomy, plan);
   const shopMatch = listingTextMatchesQuery(buckets.shop, plan);
+  const tailToken = plan.tokens[plan.tokens.length - 1] || "";
+  const primaryTailMatch = Boolean(tailToken && listingHasTerm(buckets.primary, tailToken));
+  const primaryCompactMatch = Boolean(plan.compact.length >= 4 && compactListingSearchValue(buckets.primary).includes(plan.compact));
+  const primaryProductSupport = titleMatch || primaryMatch || primaryTailMatch || primaryCompactMatch;
+  if (plan.tokens.length > 1 && !shopMatch && !primaryProductSupport) {
+    return { match: false, score: 0 };
+  }
   if (!titleMatch && !primaryMatch && !taxonomyMatch && !shopMatch) {
     return { match: false, score: 0 };
   }
@@ -1041,26 +1120,31 @@ function genericListingQueryRelevance(row, plan) {
 
 function ledNameplateListingRelevance(row, plan) {
   const buckets = listingSearchBuckets(row);
-  const titleHasLight = listingHasLedNameplateLightIntent(buckets.title);
-  const titleHasName = listingHasLedNameplateNameIntent(buckets.title);
-  const primaryHasLight = listingHasLedNameplateLightIntent(buckets.primary);
-  const primaryHasName = listingHasLedNameplateNameIntent(buckets.primary);
-  const taxonomyHasLight = listingHasLedNameplateLightIntent(buckets.taxonomy);
-  const taxonomyHasName = listingHasLedNameplateNameIntent(buckets.taxonomy);
+  const titleHasLight = listingNormalizedHasLedNameplateLightIntent(buckets.title);
+  const titleHasName = listingNormalizedHasLedNameplateNameIntent(buckets.title);
+  const primaryHasLight = listingNormalizedHasLedNameplateLightIntent(buckets.primary);
+  const primaryHasName = listingNormalizedHasLedNameplateNameIntent(buckets.primary);
+  const taxonomyHasLight = listingNormalizedHasLedNameplateLightIntent(buckets.taxonomy);
+  const taxonomyHasName = listingNormalizedHasLedNameplateNameIntent(buckets.taxonomy);
   const trustedHasLight = primaryHasLight || taxonomyHasLight;
   const trustedHasName = primaryHasName || taxonomyHasName;
-  if (!trustedHasLight || !trustedHasName) return { match: false, score: 0 };
+  if (!trustedHasLight || !trustedHasName || !titleHasName) return { match: false, score: 0 };
 
-  const negativeProduct = listingHasAnyTerm(buckets.title, LED_NAMEPLATE_NEGATIVE_TERMS) ||
-    listingHasAnyTerm(buckets.primary, LED_NAMEPLATE_NEGATIVE_TERMS);
-  const jewelryProduct = listingHasAnyTerm(buckets.title, ["necklace", "pendant", "jewelry", "bracelet", "earring", "ring"]);
-  const deskOrOfficeProduct = listingHasAnyTerm(buckets.title, ["desk", "office", "door sign"]);
+  const titleHasExplicitName = listingNormalizedHasExplicitNameplateIntent(buckets.title);
+  const titleHasBridgeName = listingNormalizedHasDeskSignBridgeIntent(buckets.title);
+  const negativeTitle = listingNormalizedHasAnyTerm(buckets.title, LED_NAMEPLATE_NEGATIVE_TERMS);
+  const negativeProduct = listingNormalizedHasAnyTerm(buckets.title, LED_NAMEPLATE_NEGATIVE_TERMS) ||
+    listingNormalizedHasAnyTerm(buckets.primary, LED_NAMEPLATE_NEGATIVE_TERMS);
+  const jewelryProduct = listingNormalizedHasAnyTerm(buckets.title, ["necklace", "pendant", "jewelry", "bracelet", "earring", "ring"]);
+  const deskOrOfficeProduct = listingNormalizedHasAnyTerm(buckets.title, ["desk", "office", "door sign"]);
   const explicitTitleIntent = titleHasLight && titleHasName;
   const explicitPrimaryIntent = primaryHasLight && primaryHasName;
-  const bridgedPrimaryTaxonomy = (primaryHasLight && taxonomyHasName) || (primaryHasName && taxonomyHasLight);
+  const bridgedPrimaryTaxonomy = primaryHasName && taxonomyHasLight;
   const taxonomyOnly = taxonomyHasLight && taxonomyHasName && !primaryHasLight && !primaryHasName;
-  const primaryProductCue = primaryHasLight || primaryHasName || listingHasAnyTerm(buckets.title, ["acrylic", "desk", "office", "door sign", "sign"]);
+  const primaryProductCue = primaryHasLight || primaryHasName || listingNormalizedHasAnyTerm(buckets.title, ["acrylic", "desk", "office", "door sign", "sign"]);
 
+  if (!titleHasExplicitName && !titleHasBridgeName) return { match: false, score: 0 };
+  if (negativeTitle && !titleHasExplicitName) return { match: false, score: 0 };
   if (jewelryProduct && !deskOrOfficeProduct) return { match: false, score: 0 };
   if (negativeProduct && !explicitTitleIntent && !explicitPrimaryIntent) return { match: false, score: 0 };
   if (taxonomyOnly && !primaryProductCue) return { match: false, score: 0 };
@@ -1080,7 +1164,13 @@ function ledNameplateListingRelevance(row, plan) {
 function listingQueryRelevance(row, planOrQuery) {
   const plan = listingQueryPlan(planOrQuery);
   if (!plan.normalized) return { match: true, score: 0 };
+  const canCache = !String(row["Weekly Cycle Key"] || "").startsWith("review:");
   if (!row.__listingQueryRelevanceCache) {
+    if (!canCache) {
+      return plan.isLedNameplateIntent
+        ? ledNameplateListingRelevance(row, plan)
+        : genericListingQueryRelevance(row, plan);
+    }
     Object.defineProperty(row, "__listingQueryRelevanceCache", {
       value: new Map(),
       configurable: true,
@@ -1135,11 +1225,11 @@ function listingSubstrateText(row) {
 }
 
 function isLedNameplateListing(rowOrText) {
+  if (typeof rowOrText !== "string") {
+    return ledNameplateListingRelevance(rowOrText, listingQueryPlan("led nameplate")).match;
+  }
   const text = listingIntentText(rowOrText);
-  const hasLight = ["led", "lighted", "light"].some(term => listingHasTerm(text, term));
-  const hasNameplate = ["nameplate", "name plate"].some(term => listingHasTerm(text, term));
-  const hasDeskSign = listingHasTerm(text, "desk") && listingHasTerm(text, "sign");
-  return hasLight && (hasNameplate || hasDeskSign);
+  return listingHasLedNameplateLightIntent(text) && listingHasLedNameplateNameIntent(text);
 }
 
 function listingSubstrateGroup(value) {
@@ -1268,10 +1358,10 @@ function cancelReviewListingSearch() {
   reviewListingState.lastProgressRenderAt = 0;
 }
 
-function rowMatchesListingFilters(row, query, production, substrate) {
+function rowMatchesListingFilters(row, query, production, substrate, queryPlan = null) {
   if (production && row["Production Tag"] !== production) return false;
   if (!listingMatchesSubstrate(row, substrate)) return false;
-  if (!listingMatchesQuery(row, query)) return false;
+  if (!listingMatchesQuery(row, query, queryPlan || listingQueryPlan(query))) return false;
   return true;
 }
 
@@ -1314,6 +1404,7 @@ function startReviewListingSearch(query, production, substrate) {
   reviewListingState.searchComplete = false;
   reviewListingState.searchLoading = true;
   reviewListingState.lastProgressRenderAt = 0;
+  const queryPlan = listingQueryPlan(query);
   (async () => {
     try {
       for (let index = 0; index < (manifest.rowFiles?.length || 0); index += 1) {
@@ -1326,7 +1417,7 @@ function startReviewListingSearch(query, production, substrate) {
         const visibleRowsBefore = reviewListingState.searchRows.length;
         reviewListingState.searchScanned += rows.length;
         rows.forEach(row => {
-          if (!rowMatchesListingFilters(row, query, production, substrate)) return;
+          if (!rowMatchesListingFilters(row, query, production, substrate, queryPlan)) return;
           reviewListingState.searchMatches += 1;
           if (reviewListingState.searchRows.length < REVIEW_LISTING_RESULT_LIMIT) {
             reviewListingState.searchRows.push(row);
@@ -1369,7 +1460,8 @@ function reviewListingRowsForListings(query, production, substrate) {
   cancelReviewListingSearch();
   ensureReviewListingPreview();
   if (!query) return reviewListingState.previewRows;
-  return reviewListingState.previewRows.filter(row => rowMatchesListingFilters(row, query, production, substrate));
+  const queryPlan = listingQueryPlan(query);
+  return reviewListingState.previewRows.filter(row => rowMatchesListingFilters(row, query, production, substrate, queryPlan));
 }
 
 function reviewListingStatusText(query, production, substrate) {
@@ -4938,7 +5030,7 @@ function renderMarketControl() {
   renderTable("market-control-actions", actionRows, ["Cue / Action", "Evidence", "Next Edit", "Market Control Read"], 20);
 }
 
-function sortListingRows(rows, selectedSort = null) {
+function sortListingRows(rows, selectedSort = null, query = "") {
   const sort = (selectedSort ?? document.getElementById("listing-sort").value) || "daily-desc";
   const sortMap = {
     "daily-desc": ["Est. Daily Sales", "desc"],
@@ -4952,6 +5044,7 @@ function sortListingRows(rows, selectedSort = null) {
   const config = sortMap[sort];
   if (!config) return rows;
   const [column, direction] = config;
+  const queryPlan = listingQueryPlan(query);
   return rows.slice().sort((a, b) => {
     if (column.startsWith("Last Year Timeframe")) {
       const missingA = typeof a[column] !== "number";
@@ -4961,6 +5054,10 @@ function sortListingRows(rows, selectedSort = null) {
     const delta = numericCell(a, column) - numericCell(b, column);
     const ordered = direction === "asc" ? delta : -delta;
     if (ordered) return ordered;
+    if (queryPlan.normalized) {
+      const relevanceDelta = listingQueryRelevance(b, queryPlan).score - listingQueryRelevance(a, queryPlan).score;
+      if (relevanceDelta) return relevanceDelta;
+    }
     return numericCell(a, "Overall Rank") - numericCell(b, "Overall Rank") ||
       String(a.Shop || "").localeCompare(String(b.Shop || "")) ||
       String(a["Product Title"] || "").localeCompare(String(b["Product Title"] || ""));
@@ -6592,6 +6689,7 @@ function renderListings() {
   selectedListingSubstrate = filters.substrate;
   selectedListingTimeframePreset = filters.timeframe;
   const timeframeWindow = selectedListingTimeframeWindow(filters);
+  const queryPlan = listingQueryPlan(query);
   const allRows = getListingRows();
   let rows = allRows;
   if (production) {
@@ -6601,7 +6699,7 @@ function renderListings() {
     rows = rows.filter(row => listingMatchesSubstrate(row, selectedListingSubstrate));
   }
   if (query) {
-    rows = rows.filter(row => listingMatchesQuery(row, query));
+    rows = rows.filter(row => listingMatchesQuery(row, query, queryPlan));
   }
   const reviewRows = reviewListingRowsForListings(query, production, selectedListingSubstrate);
   rows = rows.concat(reviewRows);
@@ -6616,7 +6714,7 @@ function renderListings() {
       .filter(listingHasTimeframeSignal);
     timeframeStatus = `Last-year timeframe: ${timeframeWindow.display}. Showing only listings with sales/review signal in that range.`;
   }
-  rows = sortListingRows(rows, filters.sort);
+  rows = sortListingRows(rows, filters.sort, queryPlan);
   const count = fmt(rows.length, "Listing Count");
   const totalCount = allRows.length + reviewListingTotal();
   const total = fmt(totalCount, "Listing Count");
