@@ -1,22 +1,22 @@
 {
   "activeDeepening": {
-    "apiErrors": 50,
+    "apiErrors": 14,
     "coverageStatuses": [
       "queued_api_review_capture",
       "queued"
     ],
-    "elapsedSeconds": 9.4,
+    "elapsedSeconds": 3.0,
     "estimatedRemainingSeconds": 0.0,
-    "lastShop": "MyOwnCraftsStore",
-    "queuedCandidates": 50,
+    "lastShop": "WreathsDownSouth",
+    "queuedCandidates": 14,
     "reviewRowsChanged": 0,
     "reviewsFetched": 0,
     "reviewsMissingListingMetadata": 0,
     "runStatus": "complete",
     "secondsPerShop": 0.2,
-    "shopsCompleted": 50,
+    "shopsCompleted": 14,
     "sourceFile": "backlog-queued-write.json",
-    "updatedAt": "2026-06-13T23:21:41Z"
+    "updatedAt": "2026-06-13T23:44:22Z"
   },
   "activeWriterAlive": true,
   "coverageBacklog": {
@@ -29,20 +29,20 @@
     "windowComplete": 18853
   },
   "currentPhase": "review_backlog_fallback_running",
-  "generatedAt": "2026-06-13T23:21:42Z",
+  "generatedAt": "2026-06-13T23:44:23Z",
   "latestQueryYield": {
-    "generatedAt": "2026-06-13T23:10:25Z",
-    "queryBank": "market_license_plates",
+    "generatedAt": "2026-06-13T23:32:55Z",
+    "queryBank": "market_penetration",
     "rateLimitErrors": 0,
     "reviewRowsWritten": 0,
-    "shopsPromoted": 1
+    "shopsPromoted": null
   },
   "nextSafeAction": "monitor active phase `review_backlog_fallback_running`; avoid launching another SQL writer",
-  "publicCommit": "a5d516e04f11",
+  "publicCommit": "cd0239addc58",
   "publish": {
-    "lastReason": "thresholds not met: 234 new reviews since publish, 3358s elapsed, 6 runs",
+    "lastReason": "thresholds not met: 234 new reviews since publish, 4708s elapsed, 8 runs",
     "lastStatus": "skipped",
-    "lastStatusAt": "2026-06-13T23:10:14Z",
+    "lastStatusAt": "2026-06-13T23:32:43Z",
     "lastSuccessfulAt": "2026-06-13T22:14:15Z",
     "lastSuccessfulPublicCommit": "421d81e0efb5",
     "lastSuccessfulPublicDataReviewCount": 10237981,
