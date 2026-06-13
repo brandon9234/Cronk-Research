@@ -20,7 +20,7 @@ let customBuyerMomentRange = null;
 let reviewMappingGapControlSignature = "";
 let reviewShopCoverageControlSignature = "";
 const CUSTOM_BUYER_MOMENT_ID = "custom-date-range";
-const DATA_ASSET_VERSION = "occasion-search-20260613-1";
+const DATA_ASSET_VERSION = "listing-sort-v2-20260613-1";
 const STATUS_ASSET_VERSION = "public-status-20260611-1";
 const BUYER_MOMENT_LANE_HEIGHT = 30;
 const BUYER_MOMENT_HIGH_OPPORTUNITY_SCORE = 68;
@@ -155,6 +155,12 @@ const LED_NAMEPLATE_NEGATIVE_TERMS = [
   "tumbler",
   "cup"
 ];
+const LISTING_QUERY_STOPWORDS = new Set([
+  "a", "an", "and", "for", "from", "in", "of", "on", "or", "the", "to", "with"
+]);
+const LISTING_COMPACT_ALIAS_TERMS = new Set([
+  "nameplate", "nameplates", "tshirt", "tshirts", "koozie", "koozies", "coozie", "coozies"
+]);
 const LISTING_OCCASION_QUERY_GROUPS = [
   {
     id: "fathers-day",
@@ -173,8 +179,70 @@ const LISTING_OCCASION_QUERY_GROUPS = [
   },
   {
     id: "christmas-holiday",
-    queryTerms: ["christmas", "xmas", "holiday gift", "holiday gifts", "stocking stuffer", "secret santa"],
+    queryTerms: ["christmas", "xmas", "holiday gift", "holiday gifts", "stocking stuffer", "stocking stuffers", "secret santa"],
     matchTerms: ["christmas", "xmas", "holiday gift", "holiday gifts", "stocking stuffer", "stocking stuffers", "secret santa", "christmas gift", "christmas gifts"]
+  },
+  {
+    id: "teacher-appreciation",
+    queryTerms: ["teacher appreciation", "teacher gift", "gifts for teacher", "gift for teacher"],
+    matchTerms: ["teacher appreciation", "teacher gift", "teacher gifts", "gift for teacher", "gifts for teacher", "teacher", "classroom"]
+  },
+  {
+    id: "housewarming",
+    queryTerms: ["housewarming", "housewarming gift", "new home gift", "closing gift", "realtor gift"],
+    matchTerms: ["housewarming", "housewarming gift", "housewarming gifts", "new home gift", "new home gifts", "closing gift", "closing gifts", "realtor gift", "realtor gifts"]
+  },
+  {
+    id: "baby-shower",
+    queryTerms: ["baby shower", "baby shower gift", "new baby gift", "birth announcement", "pregnancy announcement"],
+    matchTerms: ["baby shower", "baby shower gift", "baby shower gifts", "new baby gift", "new baby gifts", "birth announcement", "pregnancy announcement", "newborn gift", "newborn gifts"]
+  },
+  {
+    id: "wedding-gift",
+    queryTerms: ["wedding gift", "wedding gifts", "bridal party gift", "bridesmaid gift", "groomsmen gift"],
+    matchTerms: ["wedding gift", "wedding gifts", "bridal party gift", "bridal party gifts", "bridesmaid gift", "bridesmaid gifts", "groomsmen gift", "groomsmen gifts", "engagement gift", "engagement gifts"]
+  },
+  {
+    id: "memorial-sympathy",
+    queryTerms: ["memorial gift", "sympathy gift", "loss of", "pet memorial", "dog memorial", "cat memorial"],
+    matchTerms: ["memorial gift", "memorial gifts", "sympathy gift", "sympathy gifts", "loss of", "pet memorial", "pet memorial gift", "dog memorial", "cat memorial", "rainbow bridge", "remembrance gift"]
+  },
+  {
+    id: "birthday",
+    queryTerms: ["birthday gift", "birthday gifts", "milestone birthday"],
+    matchTerms: ["birthday gift", "birthday gifts", "milestone birthday", "birthday", "birth month"]
+  },
+  {
+    id: "anniversary",
+    queryTerms: ["anniversary gift", "anniversary gifts"],
+    matchTerms: ["anniversary gift", "anniversary gifts", "anniversary"]
+  }
+];
+const LISTING_PRODUCT_QUERY_GROUPS = [
+  {
+    id: "can-coolers",
+    queryTerms: ["koozie", "koozies", "coozie", "coozies", "can cooler", "can coolers", "beer sleeve", "drink sleeve"],
+    matchTerms: ["koozie", "koozies", "coozie", "coozies", "can cooler", "can coolers", "beer sleeve", "beer sleeves", "drink sleeve", "drink sleeves", "can sleeve", "can sleeves"]
+  },
+  {
+    id: "tshirts",
+    queryTerms: ["t shirt", "t shirts", "tshirt", "tshirts", "t-shirt", "t-shirts", "tee shirt", "tee shirts", "graphic tee"],
+    matchTerms: ["t shirt", "t shirts", "tshirt", "tshirts", "tee shirt", "tee shirts", "graphic tee", "graphic tees", "shirt"]
+  },
+  {
+    id: "passport-holders",
+    queryTerms: ["passport holder", "passport holders", "passport wallet", "passport cover", "passport case"],
+    matchTerms: ["passport holder", "passport holders", "passport wallet", "passport wallets", "passport cover", "passport covers", "passport case", "passport cases"]
+  },
+  {
+    id: "address-stamps",
+    queryTerms: ["address stamp", "return address stamp", "address stamper", "self inking address stamp"],
+    matchTerms: ["address stamp", "address stamps", "return address", "return address stamp", "return address stamps", "address stamper", "self inking stamp", "address labels"]
+  },
+  {
+    id: "badge-reels",
+    queryTerms: ["badge reel", "badge reels", "name badge", "name tag", "employee badge", "employee name tag"],
+    matchTerms: ["badge reel", "badge reels", "name badge", "name badges", "name tag", "name tags", "employee badge", "employee name tag", "staff name tag", "badge holder", "lanyard"]
   }
 ];
 const REVIEW_LISTING_PROGRESS_RENDER_MS = 500;
@@ -1003,7 +1071,8 @@ function listingHasTerm(text, term) {
   if (!normalizedTerm) return false;
   if (` ${normalizedText} `.includes(` ${normalizedTerm} `)) return true;
   const compactTerm = compactListingSearchValue(normalizedTerm);
-  if (compactTerm.length >= 4 && compactListingSearchValue(normalizedText).includes(compactTerm)) return true;
+  const compactAlias = normalizedTerm.includes(" ") || LISTING_COMPACT_ALIAS_TERMS.has(compactTerm);
+  if (compactAlias && compactTerm.length >= 4 && compactListingSearchValue(normalizedText).includes(compactTerm)) return true;
   const stemmedText = stemListingSearchValue(normalizedText);
   const stemmedTerm = stemListingSearchValue(normalizedTerm);
   return Boolean(stemmedTerm && ` ${stemmedText} `.includes(` ${stemmedTerm} `));
@@ -1029,7 +1098,7 @@ function listingNormalizedHasAnyTerm(normalizedText, terms) {
 
 function listingOccasionQueryGroup(normalizedQuery) {
   return LISTING_OCCASION_QUERY_GROUPS.find(group =>
-    listingNormalizedHasAnyTerm(normalizedQuery, group.queryTerms)
+    listingHasAnyTerm(normalizedQuery, group.queryTerms)
   ) || null;
 }
 
@@ -1040,6 +1109,29 @@ function listingOccasionMatchScore(normalizedText, terms, weight) {
     const words = normalizedTerm.split(/\s+/).filter(Boolean).length;
     return score + (words > 1 ? 30 * weight : 12 * weight);
   }, 0);
+}
+
+function listingProductQueryGroup(normalizedQuery) {
+  return LISTING_PRODUCT_QUERY_GROUPS.find(group =>
+    listingHasAnyTerm(normalizedQuery, group.queryTerms)
+  ) || null;
+}
+
+function listingQueryGroupMatchScore(normalizedText, terms, weight) {
+  return (terms || []).reduce((score, term) => {
+    const normalizedTerm = normalizeListingSearchValue(term);
+    if (!listingHasTerm(normalizedText, normalizedTerm)) return score;
+    const words = normalizedTerm.split(/\s+/).filter(Boolean).length;
+    return score + (words > 1 ? 26 * weight : 10 * weight);
+  }, 0);
+}
+
+function listingHasAllQueryTokens(text, plan) {
+  return Boolean(plan.tokens.length && plan.tokens.every(token => listingHasTerm(text, token)));
+}
+
+function listingHasAnyQueryGroupTerm(text, group) {
+  return Boolean(group && listingHasAnyTerm(text, group.matchTerms || []));
 }
 
 function listingNormalizedHasLedNameplateLightIntent(normalizedText) {
@@ -1092,9 +1184,11 @@ function listingQueryPlan(query) {
   if (query && typeof query === "object" && "normalized" in query) return query;
   const normalized = normalizeListingSearchValue(query);
   const stemmed = stemListingSearchValue(normalized);
-  const tokens = stemmed.split(/\s+/).filter(token => token.length >= 2);
+  const rawTokens = stemmed.split(/\s+/).filter(token => token.length >= 1);
+  const tokens = rawTokens.filter(token => token.length >= 2 && !LISTING_QUERY_STOPWORDS.has(token));
   const compact = compactListingSearchValue(normalized);
   const occasion = listingOccasionQueryGroup(normalized);
+  const productGroup = listingProductQueryGroup(normalized);
   const hasLedNameplateQuery =
     listingNormalizedHasAnyTerm(normalized, LED_NAMEPLATE_NAME_TERMS) ||
     ((listingNormalizedHasTerm(normalized, "desk") || listingNormalizedHasTerm(normalized, "office")) &&
@@ -1102,9 +1196,11 @@ function listingQueryPlan(query) {
   return {
     normalized,
     stemmed,
+    rawTokens,
     tokens,
     compact,
     occasion,
+    productGroup,
     isLedNameplateIntent: Boolean(
       listingNormalizedHasLedNameplateLightIntent(normalized) &&
       hasLedNameplateQuery
@@ -1116,7 +1212,8 @@ function listingTextMatchesQuery(text, planOrQuery) {
   const plan = listingQueryPlan(planOrQuery);
   if (!plan.normalized) return true;
   if (listingHasTerm(text, plan.normalized)) return true;
-  if (plan.compact.length >= 4 && compactListingSearchValue(text).includes(plan.compact)) return true;
+  if (plan.productGroup && listingHasAnyQueryGroupTerm(text, plan.productGroup)) return true;
+  if (plan.compact.length >= 4 && plan.normalized.includes(" ") && compactListingSearchValue(text).includes(plan.compact)) return true;
   if (plan.stemmed && ` ${stemListingSearchValue(text)} `.includes(` ${plan.stemmed} `)) return true;
   if (!plan.tokens.length) return false;
   return plan.tokens.every(token => listingHasTerm(text, token));
@@ -1131,7 +1228,7 @@ function listingTextMatchScore(text, planOrQuery, weight) {
   const compactText = compactListingSearchValue(normalizedText);
   if (` ${normalizedText} `.includes(` ${plan.normalized} `)) score += 32 * weight;
   else if (plan.stemmed && ` ${stemmedText} `.includes(` ${plan.stemmed} `)) score += 28 * weight;
-  else if (plan.compact.length >= 4 && compactText.includes(plan.compact)) score += 24 * weight;
+  else if (plan.normalized.includes(" ") && plan.compact.length >= 4 && compactText.includes(plan.compact)) score += 24 * weight;
   const matchedTokens = plan.tokens.filter(token => listingHasTerm(normalizedText, token)).length;
   if (plan.tokens.length && matchedTokens === plan.tokens.length) score += (12 + matchedTokens * 3) * weight;
   return score;
@@ -1162,14 +1259,19 @@ function genericListingQueryRelevance(row, plan) {
   const primaryMatch = listingTextMatchesQuery(buckets.primary, plan);
   const taxonomyMatch = listingTextMatchesQuery(buckets.taxonomy, plan);
   const shopMatch = listingTextMatchesQuery(buckets.shop, plan);
+  const groupTerms = plan.productGroup?.matchTerms || [];
+  const titleGroupScore = listingQueryGroupMatchScore(buckets.title, groupTerms, 10);
+  const primaryGroupScore = listingQueryGroupMatchScore(buckets.primary, groupTerms, 7);
+  const taxonomyGroupScore = listingQueryGroupMatchScore(buckets.taxonomy, groupTerms, 4);
+  const secondaryGroupScore = listingQueryGroupMatchScore(buckets.secondary, groupTerms, 1);
   const tailToken = plan.tokens[plan.tokens.length - 1] || "";
   const primaryTailMatch = Boolean(tailToken && listingHasTerm(buckets.primary, tailToken));
-  const primaryCompactMatch = Boolean(plan.compact.length >= 4 && compactListingSearchValue(buckets.primary).includes(plan.compact));
-  const primaryProductSupport = titleMatch || primaryMatch || primaryTailMatch || primaryCompactMatch;
+  const primaryCompactMatch = Boolean(plan.normalized.includes(" ") && plan.compact.length >= 4 && compactListingSearchValue(buckets.primary).includes(plan.compact));
+  const primaryProductSupport = titleMatch || primaryMatch || primaryTailMatch || primaryCompactMatch || titleGroupScore || primaryGroupScore;
   if (plan.tokens.length > 1 && !shopMatch && !primaryProductSupport) {
     return { match: false, score: 0 };
   }
-  if (!titleMatch && !primaryMatch && !taxonomyMatch && !shopMatch) {
+  if (!titleMatch && !primaryMatch && !taxonomyMatch && !shopMatch && !titleGroupScore && !primaryGroupScore && !taxonomyGroupScore && !secondaryGroupScore) {
     return { match: false, score: 0 };
   }
   const secondaryMatch = listingTextMatchesQuery(buckets.secondary, plan);
@@ -1178,7 +1280,11 @@ function genericListingQueryRelevance(row, plan) {
     listingTextMatchScore(buckets.primary, plan, 7) +
     listingTextMatchScore(buckets.taxonomy, plan, 5) +
     listingTextMatchScore(buckets.shop, plan, 8) +
-    (secondaryMatch ? listingTextMatchScore(buckets.secondary, plan, 1) : 0);
+    (secondaryMatch ? listingTextMatchScore(buckets.secondary, plan, 1) : 0) +
+    titleGroupScore +
+    primaryGroupScore +
+    taxonomyGroupScore +
+    secondaryGroupScore;
   return { match: true, score };
 }
 
@@ -1228,13 +1334,7 @@ function ledNameplateListingRelevance(row, plan) {
 function listingQueryRelevance(row, planOrQuery) {
   const plan = listingQueryPlan(planOrQuery);
   if (!plan.normalized) return { match: true, score: 0 };
-  const canCache = !String(row["Weekly Cycle Key"] || "").startsWith("review:");
   if (!row.__listingQueryRelevanceCache) {
-    if (!canCache) {
-      if (plan.isLedNameplateIntent) return ledNameplateListingRelevance(row, plan);
-      if (plan.occasion) return occasionListingQueryRelevance(row, plan);
-      return genericListingQueryRelevance(row, plan);
-    }
     Object.defineProperty(row, "__listingQueryRelevanceCache", {
       value: new Map(),
       configurable: true,
@@ -1251,6 +1351,38 @@ function listingQueryRelevance(row, planOrQuery) {
       : genericListingQueryRelevance(row, plan);
   row.__listingQueryRelevanceCache.set(plan.normalized, result);
   return result;
+}
+
+function listingQueryGroupBucket(buckets, plan, group) {
+  if (!group) return 0;
+  const terms = group.matchTerms || [];
+  if (listingTextMatchesQuery(buckets.title, plan) || listingQueryGroupMatchScore(buckets.title, terms, 1) >= 20) return 4;
+  if (listingTextMatchesQuery(buckets.primary, plan) || listingQueryGroupMatchScore(buckets.primary, terms, 1) >= 20) return 3;
+  if (listingQueryGroupMatchScore(buckets.taxonomy, terms, 1) > 0) return 2;
+  if (listingQueryGroupMatchScore(buckets.secondary, terms, 1) > 0) return 1;
+  return 0;
+}
+
+function listingQuerySortBucket(row, planOrQuery) {
+  const plan = listingQueryPlan(planOrQuery);
+  if (!plan.normalized) return 0;
+  const relevance = listingQueryRelevance(row, plan);
+  if (!relevance.match) return -1;
+  const buckets = listingSearchBuckets(row);
+  if (plan.isLedNameplateIntent) {
+    if (relevance.score >= 1300) return 4;
+    if (relevance.score >= 950) return 3;
+    if (relevance.score >= 700) return 2;
+    return 1;
+  }
+  if (plan.occasion) return listingQueryGroupBucket(buckets, plan, plan.occasion);
+  if (plan.productGroup) return listingQueryGroupBucket(buckets, plan, plan.productGroup);
+  if (listingTextMatchScore(buckets.title, plan, 1) >= 28) return 4;
+  if (listingHasAllQueryTokens(buckets.title, plan)) return 3;
+  if (listingTextMatchScore(buckets.primary, plan, 1) >= 24 || listingHasAllQueryTokens(buckets.primary, plan)) return 2;
+  if (listingTextMatchScore(buckets.taxonomy, plan, 1) > 0 || listingHasAllQueryTokens(buckets.taxonomy, plan)) return 1;
+  if (listingTextMatchScore(buckets.secondary, plan, 1) > 0 || listingTextMatchesQuery(buckets.shop, plan)) return 0;
+  return 0;
 }
 
 function listingIntentGroup(value, label, config) {
@@ -1319,6 +1451,18 @@ function reviewListingManifest() {
 
 function reviewListingTotal() {
   return Number(reviewListingManifest()?.reviewListingsExported || 0);
+}
+
+function reviewListingUniverseTotal() {
+  const manifest = reviewListingManifest();
+  return Number(manifest?.totalReviewListingUrls || manifest?.reviewListingsExported || 0);
+}
+
+function reviewListingCoverageText() {
+  const exported = reviewListingTotal();
+  const universe = reviewListingUniverseTotal();
+  if (!universe || universe <= exported) return "";
+  return `Public export covers ${fmt(exported, "Listing Count")} of ${fmt(universe, "Listing Count")} review-sourced listings.`;
 }
 
 function reviewListingAssetUrl(file) {
@@ -1397,12 +1541,12 @@ async function fetchReviewListingRows(chunkIndex, options = {}) {
   return rows;
 }
 
-function reviewListingFilterKey(query, production, substrate) {
-  return `${query || ""}\n${production || ""}\n${substrate || ""}`;
+function reviewListingFilterKey(query, production, substrate, sort = "") {
+  return `${query || ""}\n${production || ""}\n${substrate || ""}\n${sort || ""}`;
 }
 
 function shouldSearchReviewListings(query, production, substrate) {
-  return Boolean(reviewListingManifest() && (production || substrate || query.length >= REVIEW_LISTING_SEARCH_MIN_CHARS));
+  return Boolean(reviewListingManifest() && (production || substrate || query.length === 0 || query.length >= REVIEW_LISTING_SEARCH_MIN_CHARS));
 }
 
 function abortReviewListingSearchRequest() {
@@ -1453,10 +1597,10 @@ function ensureReviewListingPreview() {
   })();
 }
 
-function startReviewListingSearch(query, production, substrate) {
+function startReviewListingSearch(query, production, substrate, selectedSort = null) {
   const manifest = reviewListingManifest();
   if (!manifest) return;
-  const key = reviewListingFilterKey(query, production, substrate);
+  const key = reviewListingFilterKey(query, production, substrate, selectedSort || "");
   if (reviewListingState.searchKey === key && (reviewListingState.searchLoading || reviewListingState.searchComplete)) return;
   abortReviewListingSearchRequest();
   const controller = new AbortController();
@@ -1471,6 +1615,10 @@ function startReviewListingSearch(query, production, substrate) {
   reviewListingState.searchLoading = true;
   reviewListingState.lastProgressRenderAt = 0;
   const queryPlan = listingQueryPlan(query);
+  const trimSearchRows = () => {
+    if (reviewListingState.searchRows.length <= REVIEW_LISTING_RESULT_LIMIT) return;
+    reviewListingState.searchRows = sortListingRows(reviewListingState.searchRows, selectedSort, queryPlan).slice(0, REVIEW_LISTING_RESULT_LIMIT);
+  };
   (async () => {
     try {
       for (let index = 0; index < (manifest.rowFiles?.length || 0); index += 1) {
@@ -1485,11 +1633,10 @@ function startReviewListingSearch(query, production, substrate) {
         rows.forEach(row => {
           if (!rowMatchesListingFilters(row, query, production, substrate, queryPlan)) return;
           reviewListingState.searchMatches += 1;
-          if (reviewListingState.searchRows.length < REVIEW_LISTING_RESULT_LIMIT) {
-            reviewListingState.searchRows.push(row);
-            reviewListingState.rowByCycleKey.set(row["Weekly Cycle Key"], row);
-          }
+          reviewListingState.searchRows.push(row);
+          reviewListingState.rowByCycleKey.set(row["Weekly Cycle Key"], row);
         });
+        trimSearchRows();
         const now = Date.now();
         const firstVisibleRows = visibleRowsBefore === 0 && reviewListingState.searchRows.length > 0;
         const shouldRenderProgress = firstVisibleRows || now - reviewListingState.lastProgressRenderAt >= REVIEW_LISTING_PROGRESS_RENDER_MS;
@@ -1499,6 +1646,7 @@ function startReviewListingSearch(query, production, substrate) {
           await new Promise(resolve => setTimeout(resolve, 0));
         }
       }
+      trimSearchRows();
       reviewListingState.searchComplete = true;
     } catch (error) {
       if (error?.name !== "AbortError") console.warn(error);
@@ -1514,13 +1662,13 @@ function startReviewListingSearch(query, production, substrate) {
   })();
 }
 
-function reviewListingRowsForListings(query, production, substrate) {
+function reviewListingRowsForListings(query, production, substrate, selectedSort = null) {
   const manifest = reviewListingManifest();
   if (!manifest) return [];
   if (!listingsViewIsActive()) return [];
   if (shouldSearchReviewListings(query, production, substrate)) {
-    startReviewListingSearch(query, production, substrate);
-    const key = reviewListingFilterKey(query, production, substrate);
+    startReviewListingSearch(query, production, substrate, selectedSort);
+    const key = reviewListingFilterKey(query, production, substrate, selectedSort || "");
     return reviewListingState.searchKey === key ? reviewListingState.searchRows : [];
   }
   cancelReviewListingSearch();
@@ -1530,29 +1678,30 @@ function reviewListingRowsForListings(query, production, substrate) {
   return reviewListingState.previewRows.filter(row => rowMatchesListingFilters(row, query, production, substrate, queryPlan));
 }
 
-function reviewListingStatusText(query, production, substrate) {
+function reviewListingStatusText(query, production, substrate, selectedSort = null) {
   const manifest = reviewListingManifest();
   if (!manifest) return "";
   const total = fmt(reviewListingTotal(), "Listing Count");
+  const coverage = reviewListingCoverageText();
   if (shouldSearchReviewListings(query, production, substrate)) {
-    const key = reviewListingFilterKey(query, production, substrate);
-    if (reviewListingState.searchKey !== key) return `Review index queued across ${total} listings.`;
+    const key = reviewListingFilterKey(query, production, substrate, selectedSort || "");
+    if (reviewListingState.searchKey !== key) return [`Review index queued across ${total} exported listings.`, coverage].filter(Boolean).join(" ");
     const matches = fmt(reviewListingState.searchMatches, "Listing Count");
     if (reviewListingState.searchComplete) {
       const capped = reviewListingState.searchMatches > reviewListingState.searchRows.length
-        ? `; first ${fmt(reviewListingState.searchRows.length, "Listing Count")} loaded`
+        ? `; top ${fmt(reviewListingState.searchRows.length, "Listing Count")} loaded by current sort`
         : "";
-      return `Review index searched ${total} listings; ${matches} matches${capped}.`;
+      return [`Review index searched ${total} exported listings; ${matches} matches${capped}.`, coverage].filter(Boolean).join(" ");
     }
-    return `Searching review index: ${fmt(reviewListingState.searchScanned, "Listing Count")} of ${total} scanned, ${matches} matches so far.`;
+    return [`Searching review index: ${fmt(reviewListingState.searchScanned, "Listing Count")} of ${total} exported scanned, ${matches} matches so far.`, coverage].filter(Boolean).join(" ");
   }
   if (reviewListingState.previewLoaded) {
-    return `Review index preview loaded from ${total} review-sourced listings.`;
+    return [`Review index preview loaded from ${total} exported review-sourced listings.`, coverage].filter(Boolean).join(" ");
   }
   if (!listingsViewIsActive()) {
-    return `Review index available with ${total} review-sourced listings.`;
+    return [`Review index available with ${total} exported review-sourced listings.`, coverage].filter(Boolean).join(" ");
   }
-  return `Review index available with ${total} review-sourced listings; loading preview.`;
+  return [`Review index available with ${total} exported review-sourced listings; loading preview.`, coverage].filter(Boolean).join(" ");
 }
 
 function scheduleRenderListings() {
@@ -1926,17 +2075,56 @@ function renderBar(targetId, rows, xKey, yKey, limit = 15, color = "#1f5fbf") {
 
 function getListingRows() {
   const rows = [
-    ...(dashboard.listing.topListings || []),
-    ...(dashboard.listing.categoryListings || []),
-    ...(dashboard.listing.myShopListings || [])
+    ...(dashboard.listing.topListings || []).map(row => ({ ...row, "__Listing Feed": "topListings" })),
+    ...(dashboard.listing.categoryListings || []).map(row => ({ ...row, "__Listing Feed": "categoryListings" })),
+    ...(dashboard.listing.myShopListings || []).map(row => ({ ...row, "__Listing Feed": "myShopListings" }))
   ];
   const byKey = new Map();
+  const taxonomyColumns = new Set([
+    "Product Category", "Product Substrate Category", "Product Family",
+    "Taxonomy Confidence", "Taxonomy Evidence", "Category Aliases"
+  ]);
+  const tagColumns = new Set([
+    "Production Tag", "Customization Tag", "Tag Confidence", "Tag Evidence"
+  ]);
   const isMyApiRow = row =>
     companyName(row.Shop).toLowerCase() === "mymaravia" &&
     /etsy api|mymaravia etsy/i.test(String(row.Source || row["Evidence Confidence"] || ""));
+  const listingIdentityKey = row => {
+    const shop = companyName(row.Shop || "");
+    const url = row["Listing URL"] || row["Market Listing URL"] || row["My Listing URL"] || "";
+    const listingId = listingIdFromUrl(url);
+    if (listingId) return `${shop}|id:${listingId}`;
+    return `${shop}|title:${normalizeListingSearchValue(row["Product Title"] || "")}`;
+  };
+  const feedPriority = row => ({ myShopListings: 4, categoryListings: 3, topListings: 2 }[row["__Listing Feed"]] || 1);
+  const rowConfidence = (row, column) => Number(row[column] || 0) || 0;
+  const categorySpecificity = row => {
+    const value = row["Product Substrate Category"] || row["Product Category"] || "";
+    return isBroadListingCategoryValue(value) ? 0 : normalizeListingSearchValue(value).length;
+  };
+  const shouldPreferIncomingColumn = (column, existing, incoming) => {
+    if (isMyApiRow(incoming) && !isMyApiRow(existing)) return true;
+    if (taxonomyColumns.has(column)) {
+      const incomingConfidence = rowConfidence(incoming, "Taxonomy Confidence");
+      const existingConfidence = rowConfidence(existing, "Taxonomy Confidence");
+      if (incomingConfidence !== existingConfidence) return incomingConfidence > existingConfidence;
+      const incomingSpecificity = categorySpecificity(incoming);
+      const existingSpecificity = categorySpecificity(existing);
+      if (incomingSpecificity !== existingSpecificity) return incomingSpecificity > existingSpecificity;
+      return feedPriority(incoming) > feedPriority(existing);
+    }
+    if (tagColumns.has(column)) {
+      const incomingConfidence = rowConfidence(incoming, "Tag Confidence");
+      const existingConfidence = rowConfidence(existing, "Tag Confidence");
+      if (incomingConfidence !== existingConfidence) return incomingConfidence > existingConfidence;
+      return feedPriority(incoming) > feedPriority(existing);
+    }
+    return false;
+  };
   const shouldPreferIncoming = (existing, incoming) => isMyApiRow(incoming) && !isMyApiRow(existing);
   rows.forEach(row => {
-    const key = `${row.Shop || ""}|${row["Listing URL"] || row["Product Title"] || ""}`;
+    const key = listingIdentityKey(row);
     const existing = byKey.get(key);
     if (!existing) {
       byKey.set(key, { ...row });
@@ -1947,8 +2135,11 @@ function getListingRows() {
     const secondary = preferIncoming ? existing : row;
     const merged = { ...base };
     Object.entries(secondary).forEach(([column, value]) => {
+      if (column === "__Listing Feed") return;
       if (value === null || value === undefined || value === "") return;
       if (merged[column] === null || merged[column] === undefined || merged[column] === "") {
+        merged[column] = value;
+      } else if (shouldPreferIncomingColumn(column, merged, secondary)) {
         merged[column] = value;
       } else if (column === "Category Aliases" && !String(merged[column]).includes(String(value))) {
         merged[column] = `${merged[column]}; ${value}`;
@@ -1958,6 +2149,7 @@ function getListingRows() {
   });
   return Array.from(byKey.values()).map(row => {
     const normalized = { ...row };
+    delete normalized["__Listing Feed"];
     if (!String(normalized["Product Substrate Category"] || "").trim()) {
       normalized["Product Substrate Category"] = normalized["Product Category"] || "Uncategorized";
     }
@@ -5132,9 +5324,9 @@ function sortListingRows(rows, selectedSort = null, query = "") {
   const [column, direction] = config;
   const queryPlan = listingQueryPlan(query);
   return rows.slice().sort((a, b) => {
-    if (queryPlan.occasion) {
-      const relevanceDelta = listingQueryRelevance(b, queryPlan).score - listingQueryRelevance(a, queryPlan).score;
-      if (relevanceDelta) return relevanceDelta;
+    if (queryPlan.normalized) {
+      const bucketDelta = listingQuerySortBucket(b, queryPlan) - listingQuerySortBucket(a, queryPlan);
+      if (bucketDelta) return bucketDelta;
     }
     if (column.startsWith("Last Year Timeframe")) {
       const missingA = typeof a[column] !== "number";
@@ -6793,7 +6985,7 @@ function renderListings() {
   if (query) {
     rows = rows.filter(row => listingMatchesQuery(row, query, queryPlan));
   }
-  const reviewRows = reviewListingRowsForListings(query, production, selectedListingSubstrate);
+  const reviewRows = reviewListingRowsForListings(query, production, selectedListingSubstrate, filters.sort);
   rows = rows.concat(reviewRows);
   let timeframeStatus = "";
   const hasValidTimeframe = timeframeWindow && !timeframeWindow.invalid;
@@ -6811,7 +7003,7 @@ function renderListings() {
   const totalCount = allRows.length + reviewListingTotal();
   const total = fmt(totalCount, "Listing Count");
   const shown = Math.min(rows.length, LISTING_RENDER_LIMIT);
-  const status = reviewListingStatusText(query, production, selectedListingSubstrate);
+  const status = reviewListingStatusText(query, production, selectedListingSubstrate, filters.sort);
   const baseText = rows.length === totalCount
     ? `Showing first ${fmt(shown, "Listing Count")} of ${total} listings`
     : `Showing first ${fmt(shown, "Listing Count")} of ${count} visible/matching listings from ${total} total`;
