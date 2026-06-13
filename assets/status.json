@@ -1,63 +1,62 @@
 {
   "activeDeepening": {
-    "apiErrors": 47,
+    "apiErrors": 0,
     "coverageStatuses": [
-      "queued_api_review_capture",
-      "queued"
+      "api_review_capture_partial"
     ],
-    "elapsedSeconds": 14.4,
+    "elapsedSeconds": 51.2,
     "estimatedRemainingSeconds": 0.0,
-    "lastShop": "CustomGiftopia",
+    "lastShop": "Gemsstonesglory",
     "queuedCandidates": 50,
-    "reviewRowsChanged": 169,
-    "reviewsFetched": 169,
+    "reviewRowsChanged": 1092,
+    "reviewsFetched": 1092,
     "reviewsMissingListingMetadata": 0,
     "runStatus": "complete",
-    "secondsPerShop": 0.3,
+    "secondsPerShop": 1.0,
     "shopsCompleted": 50,
-    "sourceFile": "deepen-write.json",
-    "updatedAt": "2026-06-13T14:09:18Z"
+    "sourceFile": "backlog-partial-write.json",
+    "updatedAt": "2026-06-13T14:57:02Z"
   },
   "activeWriterAlive": true,
   "coverageBacklog": {
     "capped": 0,
     "depthSatisfied": 144,
-    "partial": 2403,
+    "partial": 2353,
     "queued": 0,
     "queuedApiReviewCapture": 334,
     "queuedTotal": 334,
-    "windowComplete": 18306
+    "windowComplete": 18358
   },
   "currentPhase": "rollup_refresh_complete",
-  "generatedAt": "2026-06-13T14:11:50Z",
+  "generatedAt": "2026-06-13T14:59:37Z",
   "latestQueryYield": {
-    "generatedAt": "2026-06-13T14:03:08Z",
+    "generatedAt": "2026-06-13T14:43:33Z",
     "queryBank": "market_license_plates",
     "rateLimitErrors": 0,
-    "reviewRowsWritten": 2007,
-    "shopsPromoted": null
+    "reviewRowsWritten": 1,
+    "shopsPromoted": 1
   },
   "nextSafeAction": "monitor active phase `rollup_refresh_complete`; avoid launching another SQL writer",
-  "publicCommit": "07acfa2e1b58",
+  "publicCommit": "b59dcdfecec3",
   "publish": {
-    "lastReason": "thresholds not met: 2,259 new reviews since publish, 14120s elapsed, 20 runs",
-    "lastStatus": "skipped",
-    "lastStatusAt": "2026-06-13T14:02:55Z",
-    "lastSuccessfulAt": "2026-06-13T10:03:52Z",
-    "lastSuccessfulPublicCommit": "5d4bd27a9259",
-    "lastSuccessfulPublicDataReviewCount": 10229103,
-    "lastSuccessfulReviewLedgerCount": 10229119
+    "lastReason": "atomic dashboard refresh promoted",
+    "lastStatus": "success",
+    "lastStatusAt": "2026-06-13T14:45:55Z",
+    "lastSuccessfulAt": "2026-06-13T14:45:55Z",
+    "lastSuccessfulPublicCommit": "b59dcdfecec3",
+    "lastSuccessfulPublicDataReviewCount": 10231595,
+    "lastSuccessfulReviewLedgerCount": 10231596
   },
   "rateLimitCooldown": {
     "active": false
   },
-  "reviewLedgerCount": 10231547,
+  "reviewLedgerCount": 10231646,
   "reviewListingMapping": {
-    "cacheReviewDelta": 2444,
-    "dashboardGeneratedAt": "2026-06-13T05:56:48",
-    "distinctListingUrls": 1905273,
+    "cacheReviewDelta": 51,
+    "dashboardGeneratedAt": "2026-06-13T10:38:41",
+    "distinctListingUrls": 1906221,
     "gapDetailRows": 18,
-    "reviewRows": 10229103,
+    "reviewRows": 10231595,
     "rowsMissingListingMetadata": 18,
     "rowsMissingListingTitle": 18,
     "rowsMissingListingUrl": 0,
@@ -65,6 +64,6 @@
     "source": "dashboard-cache"
   },
   "rollupFreshnessStatus": "current",
-  "rollupSourceTotalReviews": 10231547,
+  "rollupSourceTotalReviews": 10231646,
   "rollupStaleReviewRows": 0
 }
