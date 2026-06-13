@@ -4,44 +4,44 @@
     "coverageStatuses": [
       "api_review_capture_partial"
     ],
-    "elapsedSeconds": 37.7,
+    "elapsedSeconds": 51.4,
     "estimatedRemainingSeconds": 0.0,
-    "lastShop": "DogWeddingCakeTop",
+    "lastShop": "FestaFlutter",
     "queuedCandidates": 50,
-    "reviewRowsChanged": 611,
-    "reviewsFetched": 611,
+    "reviewRowsChanged": 1921,
+    "reviewsFetched": 1921,
     "reviewsMissingListingMetadata": 0,
     "runStatus": "complete",
-    "secondsPerShop": 0.8,
+    "secondsPerShop": 1.0,
     "shopsCompleted": 50,
     "sourceFile": "backlog-partial-write.json",
-    "updatedAt": "2026-06-13T09:29:02Z"
+    "updatedAt": "2026-06-13T09:49:26Z"
   },
   "activeWriterAlive": true,
   "coverageBacklog": {
     "capped": 0,
     "depthSatisfied": 144,
-    "partial": 3003,
+    "partial": 2953,
     "queued": 0,
     "queuedApiReviewCapture": 334,
     "queuedTotal": 334,
-    "windowComplete": 17689
+    "windowComplete": 17739
   },
   "currentPhase": "rollup_refresh_complete",
-  "generatedAt": "2026-06-13T09:31:36Z",
+  "generatedAt": "2026-06-13T09:51:56Z",
   "latestQueryYield": {
-    "generatedAt": "2026-06-13T09:25:05Z",
+    "generatedAt": "2026-06-13T09:43:38Z",
     "queryBank": "market_penetration",
     "rateLimitErrors": 0,
     "reviewRowsWritten": 0,
     "shopsPromoted": null
   },
   "nextSafeAction": "monitor active phase `rollup_refresh_complete`; avoid launching another SQL writer",
-  "publicCommit": "8c78126ecf31",
+  "publicCommit": "51f05a736b7f",
   "publish": {
-    "lastReason": "thresholds not met: 3,033 new reviews since publish, 13444s elapsed, 20 runs",
+    "lastReason": "thresholds not met: 3,106 new reviews since publish, 14558s elapsed, 22 runs",
     "lastStatus": "skipped",
-    "lastStatusAt": "2026-06-13T09:24:53Z",
+    "lastStatusAt": "2026-06-13T09:43:27Z",
     "lastSuccessfulAt": "2026-06-13T05:40:48Z",
     "lastSuccessfulPublicCommit": "7e9ba7e97e09",
     "lastSuccessfulPublicDataReviewCount": 10225706,
@@ -50,9 +50,9 @@
   "rateLimitCooldown": {
     "active": false
   },
-  "reviewLedgerCount": 10228997,
+  "reviewLedgerCount": 10229103,
   "reviewListingMapping": {
-    "cacheReviewDelta": 3106,
+    "cacheReviewDelta": 3212,
     "dashboardGeneratedAt": "2026-06-13T01:41:40",
     "distinctListingUrls": 1904459,
     "gapDetailRows": 18,
@@ -64,6 +64,6 @@
     "source": "dashboard-cache"
   },
   "rollupFreshnessStatus": "current",
-  "rollupSourceTotalReviews": 10228997,
+  "rollupSourceTotalReviews": 10229103,
   "rollupStaleReviewRows": 0
 }
