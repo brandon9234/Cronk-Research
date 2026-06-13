@@ -4,44 +4,44 @@
     "coverageStatuses": [
       "api_review_capture_partial"
     ],
-    "elapsedSeconds": 87.7,
+    "elapsedSeconds": 82.9,
     "estimatedRemainingSeconds": 0.0,
-    "lastShop": "MasakiLong",
+    "lastShop": "LavenderMoonGiftCo",
     "queuedCandidates": 50,
-    "reviewRowsChanged": 4557,
-    "reviewsFetched": 4557,
+    "reviewRowsChanged": 4276,
+    "reviewsFetched": 4276,
     "reviewsMissingListingMetadata": 0,
     "runStatus": "complete",
-    "secondsPerShop": 1.8,
+    "secondsPerShop": 1.7,
     "shopsCompleted": 50,
     "sourceFile": "backlog-partial-write.json",
-    "updatedAt": "2026-06-13T19:52:05Z"
+    "updatedAt": "2026-06-13T20:08:06Z"
   },
   "activeWriterAlive": true,
   "coverageBacklog": {
     "capped": 0,
     "depthSatisfied": 144,
-    "partial": 1953,
+    "partial": 1903,
     "queued": 0,
     "queuedApiReviewCapture": 334,
     "queuedTotal": 334,
-    "windowComplete": 18782
+    "windowComplete": 18832
   },
   "currentPhase": "rollup_refresh_complete",
-  "generatedAt": "2026-06-13T19:54:59Z",
+  "generatedAt": "2026-06-13T20:11:32Z",
   "latestQueryYield": {
-    "generatedAt": "2026-06-13T19:39:01Z",
-    "queryBank": "market_led_nameplates",
+    "generatedAt": "2026-06-13T19:55:11Z",
+    "queryBank": "market_penetration",
     "rateLimitErrors": 0,
-    "reviewRowsWritten": 5904,
+    "reviewRowsWritten": 4557,
     "shopsPromoted": null
   },
   "nextSafeAction": "monitor active phase `rollup_refresh_complete`; avoid launching another SQL writer",
-  "publicCommit": "9e180427f93f",
+  "publicCommit": "b12e30b5b844",
   "publish": {
-    "lastReason": "thresholds not met: 243 new reviews since publish, 1168s elapsed, 2 runs",
+    "lastReason": "thresholds not met: 416 new reviews since publish, 2143s elapsed, 3 runs",
     "lastStatus": "skipped",
-    "lastStatusAt": "2026-06-13T19:38:48Z",
+    "lastStatusAt": "2026-06-13T19:55:01Z",
     "lastSuccessfulAt": "2026-06-13T19:16:22Z",
     "lastSuccessfulPublicCommit": "10ad641a6c72",
     "lastSuccessfulPublicDataReviewCount": 10234308,
@@ -50,9 +50,9 @@
   "rateLimitCooldown": {
     "active": false
   },
-  "reviewLedgerCount": 10235068,
+  "reviewLedgerCount": 10235302,
   "reviewListingMapping": {
-    "cacheReviewDelta": 760,
+    "cacheReviewDelta": 994,
     "dashboardGeneratedAt": "2026-06-13T15:09:22",
     "distinctListingUrls": 1906984,
     "gapDetailRows": 18,
@@ -64,6 +64,6 @@
     "source": "dashboard-cache"
   },
   "rollupFreshnessStatus": "current",
-  "rollupSourceTotalReviews": 10235068,
+  "rollupSourceTotalReviews": 10235302,
   "rollupStaleReviewRows": 0
 }
