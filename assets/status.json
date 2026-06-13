@@ -1,21 +1,22 @@
 {
   "activeDeepening": {
-    "apiErrors": 0,
+    "apiErrors": 43,
     "coverageStatuses": [
-      "api_review_capture_partial"
+      "queued_api_review_capture",
+      "queued"
     ],
-    "elapsedSeconds": 31.5,
+    "elapsedSeconds": 34.0,
     "estimatedRemainingSeconds": 0.0,
-    "lastShop": "KnittedhandkerchiArt",
+    "lastShop": "MiAmorHearts",
     "queuedCandidates": 50,
-    "reviewRowsChanged": 152,
-    "reviewsFetched": 152,
+    "reviewRowsChanged": 1273,
+    "reviewsFetched": 1273,
     "reviewsMissingListingMetadata": 0,
     "runStatus": "complete",
-    "secondsPerShop": 0.6,
+    "secondsPerShop": 0.7,
     "shopsCompleted": 50,
-    "sourceFile": "backlog-partial-write.json",
-    "updatedAt": "2026-06-13T13:06:23Z"
+    "sourceFile": "deepen-write.json",
+    "updatedAt": "2026-06-13T13:25:41Z"
   },
   "activeWriterAlive": true,
   "coverageBacklog": {
@@ -25,23 +26,23 @@
     "queued": 0,
     "queuedApiReviewCapture": 334,
     "queuedTotal": 334,
-    "windowComplete": 18146
+    "windowComplete": 18153
   },
   "currentPhase": "rollup_refresh_complete",
-  "generatedAt": "2026-06-13T13:08:53Z",
+  "generatedAt": "2026-06-13T13:28:14Z",
   "latestQueryYield": {
-    "generatedAt": "2026-06-13T12:55:08Z",
+    "generatedAt": "2026-06-13T13:20:04Z",
     "queryBank": "market_penetration",
     "rateLimitErrors": 0,
-    "reviewRowsWritten": 23,
-    "shopsPromoted": 1
+    "reviewRowsWritten": 0,
+    "shopsPromoted": null
   },
   "nextSafeAction": "monitor active phase `rollup_refresh_complete`; avoid launching another SQL writer",
-  "publicCommit": "e32ce4aa44a0",
+  "publicCommit": "56f63f9759b2",
   "publish": {
-    "lastReason": "thresholds not met: 716 new reviews since publish, 10113s elapsed, 14 runs",
+    "lastReason": "thresholds not met: 749 new reviews since publish, 11759s elapsed, 16 runs",
     "lastStatus": "skipped",
-    "lastStatusAt": "2026-06-13T12:54:56Z",
+    "lastStatusAt": "2026-06-13T13:19:52Z",
     "lastSuccessfulAt": "2026-06-13T10:03:52Z",
     "lastSuccessfulPublicCommit": "5d4bd27a9259",
     "lastSuccessfulPublicDataReviewCount": 10229103,
@@ -50,9 +51,9 @@
   "rateLimitCooldown": {
     "active": false
   },
-  "reviewLedgerCount": 10229868,
+  "reviewLedgerCount": 10231141,
   "reviewListingMapping": {
-    "cacheReviewDelta": 765,
+    "cacheReviewDelta": 2038,
     "dashboardGeneratedAt": "2026-06-13T05:56:48",
     "distinctListingUrls": 1905273,
     "gapDetailRows": 18,
@@ -64,6 +65,6 @@
     "source": "dashboard-cache"
   },
   "rollupFreshnessStatus": "current",
-  "rollupSourceTotalReviews": 10229868,
+  "rollupSourceTotalReviews": 10231141,
   "rollupStaleReviewRows": 0
 }
