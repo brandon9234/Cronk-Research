@@ -1,48 +1,47 @@
 {
   "activeDeepening": {
-    "apiErrors": 49,
+    "apiErrors": 0,
     "coverageStatuses": [
-      "queued_api_review_capture",
-      "queued"
+      "api_review_capture_partial"
     ],
-    "elapsedSeconds": 11.0,
+    "elapsedSeconds": 37.7,
     "estimatedRemainingSeconds": 0.0,
-    "lastShop": "ClayHiveCo",
+    "lastShop": "DogWeddingCakeTop",
     "queuedCandidates": 50,
-    "reviewRowsChanged": 6,
-    "reviewsFetched": 6,
+    "reviewRowsChanged": 611,
+    "reviewsFetched": 611,
     "reviewsMissingListingMetadata": 0,
     "runStatus": "complete",
-    "secondsPerShop": 0.2,
+    "secondsPerShop": 0.8,
     "shopsCompleted": 50,
-    "sourceFile": "deepen-write.json",
-    "updatedAt": "2026-06-13T09:11:11Z"
+    "sourceFile": "backlog-partial-write.json",
+    "updatedAt": "2026-06-13T09:29:02Z"
   },
   "activeWriterAlive": true,
   "coverageBacklog": {
     "capped": 0,
     "depthSatisfied": 144,
-    "partial": 3053,
+    "partial": 3003,
     "queued": 0,
     "queuedApiReviewCapture": 334,
     "queuedTotal": 334,
-    "windowComplete": 17639
+    "windowComplete": 17689
   },
   "currentPhase": "rollup_refresh_complete",
-  "generatedAt": "2026-06-13T09:13:44Z",
+  "generatedAt": "2026-06-13T09:31:36Z",
   "latestQueryYield": {
-    "generatedAt": "2026-06-13T08:57:31Z",
-    "queryBank": "market_license_plates",
+    "generatedAt": "2026-06-13T09:25:05Z",
+    "queryBank": "market_penetration",
     "rateLimitErrors": 0,
     "reviewRowsWritten": 0,
     "shopsPromoted": null
   },
   "nextSafeAction": "monitor active phase `rollup_refresh_complete`; avoid launching another SQL writer",
-  "publicCommit": "7ceed4fa52a4",
+  "publicCommit": "8c78126ecf31",
   "publish": {
-    "lastReason": "thresholds not met: 3,027 new reviews since publish, 11790s elapsed, 18 runs",
+    "lastReason": "thresholds not met: 3,033 new reviews since publish, 13444s elapsed, 20 runs",
     "lastStatus": "skipped",
-    "lastStatusAt": "2026-06-13T08:57:19Z",
+    "lastStatusAt": "2026-06-13T09:24:53Z",
     "lastSuccessfulAt": "2026-06-13T05:40:48Z",
     "lastSuccessfulPublicCommit": "7e9ba7e97e09",
     "lastSuccessfulPublicDataReviewCount": 10225706,
@@ -51,9 +50,9 @@
   "rateLimitCooldown": {
     "active": false
   },
-  "reviewLedgerCount": 10228924,
+  "reviewLedgerCount": 10228997,
   "reviewListingMapping": {
-    "cacheReviewDelta": 3033,
+    "cacheReviewDelta": 3106,
     "dashboardGeneratedAt": "2026-06-13T01:41:40",
     "distinctListingUrls": 1904459,
     "gapDetailRows": 18,
@@ -65,6 +64,6 @@
     "source": "dashboard-cache"
   },
   "rollupFreshnessStatus": "current",
-  "rollupSourceTotalReviews": 10228924,
+  "rollupSourceTotalReviews": 10228997,
   "rollupStaleReviewRows": 0
 }
