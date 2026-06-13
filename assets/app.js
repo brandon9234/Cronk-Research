@@ -1455,18 +1455,24 @@ function fullListingCycleRows(cycle) {
   const start = new Date(`${cycle.weekStart}T00:00:00`);
   const end = new Date(`${cycle.weekEnd}T00:00:00`);
   if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return [];
+  const countColumn = cycle.countColumn || "Review Count";
+  const ratioColumn = cycle.ratioColumn || (countColumn === "Review Count" ? "Sales Per Review Used" : "Sales Per Unit Used");
   const rows = [];
   for (let cursor = new Date(start); cursor <= end; cursor.setUTCDate(cursor.getUTCDate() + 7)) {
     const week = cursor.toISOString().slice(0, 10);
     const point = byWeek.get(week) || [week, 0, 0];
-    rows.push(withDailySales({
+    const count = Number(point[1] || 0);
+    const row = {
       "Week Start": week,
-      "Review Count": Number(point[1] || 0),
+      [countColumn]: count,
       "Estimated Weekly Sales": Number(point[2] || 0),
-      "Sales Per Review Used": cycle.salesPerReview,
+      [ratioColumn]: cycle.salesPerReview,
       "Trend Source": cycle.source,
       "Trend Confidence": cycle.confidence
-    }));
+    };
+    if (countColumn !== "Review Count") row["Review Count"] = count;
+    if (ratioColumn !== "Sales Per Review Used") row["Sales Per Review Used"] = cycle.salesPerReview;
+    rows.push(withDailySales(row));
   }
   return rows;
 }
@@ -1676,15 +1682,19 @@ function renderListingCycle(cycleKey = selectedListingCycleKey) {
   }
   const rows = fullListingCycleRows(cycle);
   const title = cycle.title || "Selected listing";
-  summary.textContent = `${cycle.shop || "Unknown shop"} · ${fmt(cycle.reviewCount, "Review Corpus Count")} reviews · ${cycle.confidence || "Estimated"} · ${cycle.source || ""}`;
+  const countColumn = cycle.countColumn || "Review Count";
+  const ratioColumn = cycle.ratioColumn || (countColumn === "Review Count" ? "Sales Per Review Used" : "Sales Per Unit Used");
+  const countLabel = cycle.countLabel || "reviews";
+  const ratioLabel = countColumn === "Review Count" ? "Sales/review" : "Sales/unit";
+  summary.textContent = `${cycle.shop || "Unknown shop"} · ${fmt(cycle.reviewCount, "Review Corpus Count")} ${countLabel} · ${cycle.confidence || "Estimated"} · ${cycle.source || ""}`;
   Plotly.newPlot("listing-cycle-chart", [{
     type: "bar",
     name: "Estimated daily sales",
     x: rows.map(row => row["Week Start"]),
     y: rows.map(row => row["Estimated Daily Sales"]),
-    customdata: rows.map(row => [row["Estimated Weekly Sales"], row["Review Count"], row["Sales Per Review Used"], row["Trend Confidence"]]),
+    customdata: rows.map(row => [row["Estimated Weekly Sales"], row[countColumn] ?? row["Review Count"], row[ratioColumn] ?? row["Sales Per Review Used"], row["Trend Confidence"]]),
     marker: { color: "#1f5fbf" },
-    hovertemplate: "%{x}<br>Estimated daily sales: %{y:,.1f}<br>Estimated weekly sales: %{customdata[0]:,.1f}<br>Reviews: %{customdata[1]:,.0f}<br>Sales/review: %{customdata[2]:,.2f}<br>%{customdata[3]}<extra></extra>"
+    hovertemplate: `%{x}<br>Estimated daily sales: %{y:,.1f}<br>Estimated weekly sales: %{customdata[0]:,.1f}<br>${countColumn}: %{customdata[1]:,.0f}<br>${ratioLabel}: %{customdata[2]:,.2f}<br>%{customdata[3]}<extra></extra>`
   }], {
     title: { text: title, font: { size: 14 } },
     margin: { l: 58, r: 18, t: 38, b: 44 },
@@ -1692,7 +1702,7 @@ function renderListingCycle(cycleKey = selectedListingCycleKey) {
     paper_bgcolor: "white",
     plot_bgcolor: "white"
   }, plotConfig);
-  renderTable("listing-cycle-table", [...rows].reverse(), ["Week Start", "Estimated Daily Sales", "Estimated Weekly Sales", "Review Count", "Sales Per Review Used", "Trend Confidence", "Trend Source"], 52);
+  renderTable("listing-cycle-table", [...rows].reverse(), ["Week Start", "Estimated Daily Sales", "Estimated Weekly Sales", countColumn, ratioColumn, "Trend Confidence", "Trend Source"], 52);
 }
 
 function openListingCycle(cycleKey, options = {}) {
