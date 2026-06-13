@@ -2679,6 +2679,11 @@ function listingReferenceDate() {
   return parseIsoDate(generated) || new Date();
 }
 
+function listingTodayDate() {
+  const now = new Date();
+  return new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
+}
+
 function last30ListingTimeframePreset() {
   const reference = listingReferenceDate();
   const start = new Date(Date.UTC(2025, reference.getUTCMonth(), reference.getUTCDate()));
@@ -2691,8 +2696,8 @@ function last30ListingTimeframePreset() {
 }
 
 function next40ListingTimeframePreset() {
-  const reference = listingReferenceDate();
-  const start = new Date(Date.UTC(2025, reference.getUTCMonth(), reference.getUTCDate()));
+  const today = listingTodayDate();
+  const start = new Date(Date.UTC(2025, today.getUTCMonth(), today.getUTCDate()));
   const end = new Date(start);
   end.setUTCDate(end.getUTCDate() + LISTING_TIMEFRAME_NEXT_40_DAYS - 1);
   return {
