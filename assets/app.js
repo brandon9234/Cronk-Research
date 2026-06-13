@@ -20,7 +20,7 @@ let customBuyerMomentRange = null;
 let reviewMappingGapControlSignature = "";
 let reviewShopCoverageControlSignature = "";
 const CUSTOM_BUYER_MOMENT_ID = "custom-date-range";
-const DATA_ASSET_VERSION = "relevance-search-20260613-2";
+const DATA_ASSET_VERSION = "occasion-search-20260613-1";
 const STATUS_ASSET_VERSION = "public-status-20260611-1";
 const BUYER_MOMENT_LANE_HEIGHT = 30;
 const BUYER_MOMENT_HIGH_OPPORTUNITY_SCORE = 68;
@@ -41,7 +41,7 @@ const BUYER_MOMENT_FILTER_IDS = [
 ];
 const LISTING_RENDER_LIMIT = 500;
 const REVIEW_LISTING_PREVIEW_CHUNKS = 1;
-const REVIEW_LISTING_RESULT_LIMIT = 5000;
+const REVIEW_LISTING_RESULT_LIMIT = 50000;
 const REVIEW_LISTING_SEARCH_MIN_CHARS = 2;
 const LISTING_SUBSTRATE_GROUPS = [
   {
@@ -154,6 +154,28 @@ const LED_NAMEPLATE_NEGATIVE_TERMS = [
   "dog collar",
   "tumbler",
   "cup"
+];
+const LISTING_OCCASION_QUERY_GROUPS = [
+  {
+    id: "fathers-day",
+    queryTerms: ["fathers day", "father day", "father s day", "dad", "daddy", "father", "grandpa", "grandfather", "papa", "stepdad", "bonus dad", "gift for dad", "gifts for dad", "dad gift", "dad gifts"],
+    matchTerms: ["fathers day", "father day", "father s day", "dad", "daddy", "father", "grandpa", "grandfather", "papa", "stepdad", "bonus dad", "gift for dad", "gifts for dad", "dad gift", "dad gifts", "father gift", "father gifts", "grandpa gift", "grandpa gifts", "new dad"]
+  },
+  {
+    id: "mothers-day",
+    queryTerms: ["mothers day", "mother day", "mother s day", "mom", "mommy", "mama", "mother", "grandma", "grandmother", "nana", "stepmom", "bonus mom", "gift for mom", "gifts for mom", "mom gift", "mom gifts"],
+    matchTerms: ["mothers day", "mother day", "mother s day", "mom", "mommy", "mama", "mother", "grandma", "grandmother", "nana", "stepmom", "bonus mom", "gift for mom", "gifts for mom", "mom gift", "mom gifts", "mother gift", "mother gifts", "grandma gift", "grandma gifts", "new mom"]
+  },
+  {
+    id: "graduation",
+    queryTerms: ["graduation", "graduate", "grad gift", "graduation gift", "class of"],
+    matchTerms: ["graduation", "graduate", "grad gift", "grad gifts", "graduation gift", "graduation gifts", "class of", "college graduation", "high school graduation", "phd gift", "phd gifts"]
+  },
+  {
+    id: "christmas-holiday",
+    queryTerms: ["christmas", "xmas", "holiday gift", "holiday gifts", "stocking stuffer", "secret santa"],
+    matchTerms: ["christmas", "xmas", "holiday gift", "holiday gifts", "stocking stuffer", "stocking stuffers", "secret santa", "christmas gift", "christmas gifts"]
+  }
 ];
 const REVIEW_LISTING_PROGRESS_RENDER_MS = 500;
 const REVIEW_SHOP_COVERAGE_RESULT_LIMIT = 500;
@@ -893,8 +915,12 @@ function renderMetrics() {
 function normalizeListingSearchValue(value) {
   return String(value || "")
     .toLowerCase()
+    .replace(/&(?:#39|#x27|apos);/gi, "")
+    .replace(/&(?:quot|#34);/gi, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, " and ")
     .replace(/&/g, " and ")
-    .replace(/['']/g, "")
+    .replace(/[''`‘’]/g, "")
     .replace(/[^a-z0-9]+/g, " ")
     .replace(/\s+/g, " ")
     .trim();
@@ -999,6 +1025,21 @@ function listingNormalizedHasAnyTerm(normalizedText, terms) {
   return (terms || []).some(term => listingNormalizedHasTerm(normalizedText, normalizeListingSearchValue(term)));
 }
 
+function listingOccasionQueryGroup(normalizedQuery) {
+  return LISTING_OCCASION_QUERY_GROUPS.find(group =>
+    listingNormalizedHasAnyTerm(normalizedQuery, group.queryTerms)
+  ) || null;
+}
+
+function listingOccasionMatchScore(normalizedText, terms, weight) {
+  return (terms || []).reduce((score, term) => {
+    const normalizedTerm = normalizeListingSearchValue(term);
+    if (!listingNormalizedHasTerm(normalizedText, normalizedTerm)) return score;
+    const words = normalizedTerm.split(/\s+/).filter(Boolean).length;
+    return score + (words > 1 ? 30 * weight : 12 * weight);
+  }, 0);
+}
+
 function listingNormalizedHasLedNameplateLightIntent(normalizedText) {
   return listingNormalizedHasAnyTerm(normalizedText, LED_NAMEPLATE_LIGHT_TERMS);
 }
@@ -1051,6 +1092,7 @@ function listingQueryPlan(query) {
   const stemmed = stemListingSearchValue(normalized);
   const tokens = stemmed.split(/\s+/).filter(token => token.length >= 2);
   const compact = compactListingSearchValue(normalized);
+  const occasion = listingOccasionQueryGroup(normalized);
   const hasLedNameplateQuery =
     listingNormalizedHasAnyTerm(normalized, LED_NAMEPLATE_NAME_TERMS) ||
     ((listingNormalizedHasTerm(normalized, "desk") || listingNormalizedHasTerm(normalized, "office")) &&
@@ -1060,6 +1102,7 @@ function listingQueryPlan(query) {
     stemmed,
     tokens,
     compact,
+    occasion,
     isLedNameplateIntent: Boolean(
       listingNormalizedHasLedNameplateLightIntent(normalized) &&
       hasLedNameplateQuery
@@ -1090,6 +1133,25 @@ function listingTextMatchScore(text, planOrQuery, weight) {
   const matchedTokens = plan.tokens.filter(token => listingHasTerm(normalizedText, token)).length;
   if (plan.tokens.length && matchedTokens === plan.tokens.length) score += (12 + matchedTokens * 3) * weight;
   return score;
+}
+
+function occasionListingQueryRelevance(row, plan) {
+  const buckets = listingSearchBuckets(row);
+  const terms = plan.occasion?.matchTerms || [];
+  const titleScore = listingOccasionMatchScore(buckets.title, terms, 10);
+  const primaryScore = listingOccasionMatchScore(buckets.primary, terms, 7);
+  const secondaryScore = listingOccasionMatchScore(buckets.secondary, terms, 5);
+  const taxonomyScore = listingOccasionMatchScore(buckets.taxonomy, terms, 2);
+  const shopMatch = listingTextMatchesQuery(buckets.shop, plan);
+  if (!titleScore && !primaryScore && !secondaryScore && !taxonomyScore && !shopMatch) {
+    return { match: false, score: 0 };
+  }
+  const exactQueryScore =
+    listingTextMatchScore(buckets.title, plan, 8) +
+    listingTextMatchScore(buckets.primary, plan, 5) +
+    listingTextMatchScore(buckets.secondary, plan, 3);
+  const score = titleScore + primaryScore + secondaryScore + taxonomyScore + exactQueryScore + (shopMatch ? 40 : 0);
+  return { match: true, score };
 }
 
 function genericListingQueryRelevance(row, plan) {
@@ -1167,9 +1229,9 @@ function listingQueryRelevance(row, planOrQuery) {
   const canCache = !String(row["Weekly Cycle Key"] || "").startsWith("review:");
   if (!row.__listingQueryRelevanceCache) {
     if (!canCache) {
-      return plan.isLedNameplateIntent
-        ? ledNameplateListingRelevance(row, plan)
-        : genericListingQueryRelevance(row, plan);
+      if (plan.isLedNameplateIntent) return ledNameplateListingRelevance(row, plan);
+      if (plan.occasion) return occasionListingQueryRelevance(row, plan);
+      return genericListingQueryRelevance(row, plan);
     }
     Object.defineProperty(row, "__listingQueryRelevanceCache", {
       value: new Map(),
@@ -1182,7 +1244,9 @@ function listingQueryRelevance(row, planOrQuery) {
   }
   const result = plan.isLedNameplateIntent
     ? ledNameplateListingRelevance(row, plan)
-    : genericListingQueryRelevance(row, plan);
+    : plan.occasion
+      ? occasionListingQueryRelevance(row, plan)
+      : genericListingQueryRelevance(row, plan);
   row.__listingQueryRelevanceCache.set(plan.normalized, result);
   return result;
 }
@@ -5046,6 +5110,10 @@ function sortListingRows(rows, selectedSort = null, query = "") {
   const [column, direction] = config;
   const queryPlan = listingQueryPlan(query);
   return rows.slice().sort((a, b) => {
+    if (queryPlan.occasion) {
+      const relevanceDelta = listingQueryRelevance(b, queryPlan).score - listingQueryRelevance(a, queryPlan).score;
+      if (relevanceDelta) return relevanceDelta;
+    }
     if (column.startsWith("Last Year Timeframe")) {
       const missingA = typeof a[column] !== "number";
       const missingB = typeof b[column] !== "number";
