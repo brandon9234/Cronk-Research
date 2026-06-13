@@ -20,7 +20,7 @@ let customBuyerMomentRange = null;
 let reviewMappingGapControlSignature = "";
 let reviewShopCoverageControlSignature = "";
 const CUSTOM_BUYER_MOMENT_ID = "custom-date-range";
-const DATA_ASSET_VERSION = "listing-search-packs-20260613-2";
+const DATA_ASSET_VERSION = "listing-search-packs-chunked-20260613-3";
 const STATUS_ASSET_VERSION = "public-status-20260611-1";
 const BUYER_MOMENT_LANE_HEIGHT = 30;
 const BUYER_MOMENT_HIGH_OPPORTUNITY_SCORE = 68;
@@ -42,6 +42,7 @@ const BUYER_MOMENT_FILTER_IDS = [
 const LISTING_RENDER_LIMIT = 500;
 const REVIEW_LISTING_PREVIEW_CHUNKS = 1;
 const REVIEW_LISTING_RESULT_LIMIT = 50000;
+const REVIEW_LISTING_SEARCH_PACK_RESULT_LIMIT = 1000;
 const REVIEW_LISTING_SEARCH_MIN_CHARS = 2;
 const LISTING_SUBSTRATE_GROUPS = [
   {
@@ -247,6 +248,7 @@ const LISTING_PRODUCT_QUERY_GROUPS = [
   }
 ];
 const REVIEW_LISTING_PROGRESS_RENDER_MS = 500;
+const REVIEW_LISTING_SEARCH_PACK_PROGRESS_RENDER_MS = 2500;
 const REVIEW_SHOP_COVERAGE_RESULT_LIMIT = 500;
 const LISTING_TIMEFRAME_CUSTOM_ID = "custom";
 const LISTING_TIMEFRAME_NEXT_40_ID = "next-40";
@@ -284,6 +286,10 @@ const reviewListingState = {
   searchPackComplete: false,
   searchPackLoading: false,
   searchPackError: "",
+  searchPackFastPath: false,
+  searchPackToken: 0,
+  searchPackAbortController: null,
+  lastSearchPackProgressRenderAt: 0,
   searchPackCache: new Map()
 };
 const reviewShopCoverageState = {
@@ -1559,6 +1565,7 @@ function decodeReviewSearchPackRows(payload, pack, options = {}) {
   const columns = payload.columns || manifest.rowColumns || [];
   const labels = manifest.columnLabels || {};
   const packId = payload.id || pack?.id || "";
+  const rowOffset = Number(options.rowOffset ?? payload.rowOffset ?? 0) || 0;
   const rows = (payload.rows || []).map((values, rowIndex) => {
     const row = {};
     columns.forEach((column, index) => {
@@ -1575,9 +1582,10 @@ function decodeReviewSearchPackRows(payload, pack, options = {}) {
       const label = labels[column];
       if (label) row[label] = value;
     });
-    const listingId = listingIdFromUrl(row["Listing URL"]) || row["Overall Rank"] || rowIndex;
+    const globalRowIndex = rowOffset + rowIndex;
+    const listingId = listingIdFromUrl(row["Listing URL"]) || row["Overall Rank"] || globalRowIndex;
     row["Weekly Sales Graph"] = "Open graph";
-    row["Weekly Cycle Key"] = `pack:${packId}:${rowIndex}:${listingId}`;
+    row["Weekly Cycle Key"] = `pack:${packId}:${globalRowIndex}:${listingId}`;
     row["__Review Search Pack"] = packId;
     row["Evidence Confidence"] = row["Evidence Confidence"] || "Full review search pack estimate";
     row["Review Corpus Latest ISO"] = row["Review Corpus Latest ISO"] || row["Last Review ISO"] || "";
@@ -1731,6 +1739,37 @@ function reviewSearchPackFilterKey(pack, query, production, substrate, sort = ""
   return `${pack?.id || ""}\n${query || ""}\n${production || ""}\n${substrate || ""}\n${sort || ""}`;
 }
 
+function reviewSearchPackFiles(pack) {
+  if (Array.isArray(pack?.rowFiles) && pack.rowFiles.length) return pack.rowFiles;
+  return pack?.rowFile ? [pack.rowFile] : [];
+}
+
+function reviewSearchPackChunkOffset(pack, chunkIndex) {
+  if (Array.isArray(pack?.chunkRowCounts) && pack.chunkRowCounts.length) {
+    return pack.chunkRowCounts
+      .slice(0, chunkIndex)
+      .reduce((sum, count) => sum + (Number(count) || 0), 0);
+  }
+  return (Number(pack?.chunkSize) || 0) * chunkIndex;
+}
+
+function reviewSearchPackCanTrustMembership(pack, queryPlan) {
+  if (!pack || !queryPlan?.normalized) return false;
+  const terms = (pack.queryTerms || []).map(term => normalizeListingSearchValue(term)).filter(Boolean);
+  if (!terms.length) return false;
+  const stripped = normalizeListingSearchValue(
+    queryPlan.normalized.replace(/\b(custom|personalized|personalised|gift|gifts|for|the|a|an)\b/g, " ")
+  );
+  return terms.includes(queryPlan.normalized) || terms.includes(stripped);
+}
+
+function rowMatchesSearchPackFilters(row, query, production, substrate, queryPlan, trustPackMembership = false) {
+  if (production && row["Production Tag"] !== production) return false;
+  if (!listingMatchesSubstrate(row, substrate)) return false;
+  if (!trustPackMembership && !listingMatchesQuery(row, query, queryPlan)) return false;
+  return true;
+}
+
 function reviewSearchPackForQuery(query, queryPlan = null) {
   const manifest = reviewListingSearchManifest();
   if (!manifest) return null;
@@ -1749,6 +1788,11 @@ function reviewSearchPackForQuery(query, queryPlan = null) {
 
 function cancelReviewSearchPack() {
   if (!reviewListingState.searchPackLoading && !reviewListingState.searchPackKey && !reviewListingState.searchPackRows.length) return;
+  if (reviewListingState.searchPackAbortController) {
+    reviewListingState.searchPackAbortController.abort();
+    reviewListingState.searchPackAbortController = null;
+  }
+  reviewListingState.searchPackToken += 1;
   reviewListingState.searchPackKey = "";
   reviewListingState.searchPackId = "";
   reviewListingState.searchPackRows = [];
@@ -1757,17 +1801,28 @@ function cancelReviewSearchPack() {
   reviewListingState.searchPackComplete = false;
   reviewListingState.searchPackLoading = false;
   reviewListingState.searchPackError = "";
+  reviewListingState.searchPackFastPath = false;
+  reviewListingState.lastSearchPackProgressRenderAt = 0;
 }
 
-async function fetchReviewSearchPackRows(pack, options = {}) {
-  if (!pack?.rowFile) return [];
-  if (reviewListingState.searchPackCache.has(pack.id)) {
-    return reviewListingState.searchPackCache.get(pack.id);
+async function fetchReviewSearchPackChunk(pack, chunkIndex, options = {}) {
+  const files = reviewSearchPackFiles(pack);
+  const file = files[chunkIndex];
+  if (!file) return [];
+  const cacheKey = `${pack.id || ""}:${chunkIndex}`;
+  if (options.cacheRows && reviewListingState.searchPackCache.has(cacheKey)) {
+    return reviewListingState.searchPackCache.get(cacheKey);
   }
-  const response = await fetch(reviewListingAssetUrl(pack.rowFile));
-  if (!response.ok) throw new Error(`Review search pack ${pack.id} failed to load`);
-  const rows = decodeReviewSearchPackRows(await response.json(), pack, options);
-  reviewListingState.searchPackCache.set(pack.id, rows);
+  const fetchOptions = options.signal ? { signal: options.signal } : undefined;
+  const response = await fetch(reviewListingAssetUrl(file), fetchOptions);
+  if (!response.ok) throw new Error(`Review search pack ${pack.id} chunk ${chunkIndex + 1} failed to load`);
+  const rows = decodeReviewSearchPackRows(await response.json(), pack, {
+    ...options,
+    rowOffset: reviewSearchPackChunkOffset(pack, chunkIndex),
+  });
+  if (options.cacheRows) {
+    reviewListingState.searchPackCache.set(cacheKey, rows);
+  }
   return rows;
 }
 
@@ -1775,6 +1830,14 @@ function startReviewSearchPackSearch(pack, query, production, substrate, selecte
   if (!pack) return;
   const key = reviewSearchPackFilterKey(pack, query, production, substrate, selectedSort || "");
   if (reviewListingState.searchPackKey === key && (reviewListingState.searchPackLoading || reviewListingState.searchPackComplete)) return;
+  if (reviewListingState.searchPackAbortController) {
+    reviewListingState.searchPackAbortController.abort();
+  }
+  const controller = new AbortController();
+  const token = reviewListingState.searchPackToken + 1;
+  const files = reviewSearchPackFiles(pack);
+  reviewListingState.searchPackToken = token;
+  reviewListingState.searchPackAbortController = controller;
   reviewListingState.searchPackKey = key;
   reviewListingState.searchPackId = pack.id;
   reviewListingState.searchPackRows = [];
@@ -1783,23 +1846,100 @@ function startReviewSearchPackSearch(pack, query, production, substrate, selecte
   reviewListingState.searchPackComplete = false;
   reviewListingState.searchPackLoading = true;
   reviewListingState.searchPackError = "";
+  reviewListingState.searchPackFastPath = false;
+  reviewListingState.lastSearchPackProgressRenderAt = 0;
   const queryPlan = listingQueryPlan(query);
+  const trustPackMembership = reviewSearchPackCanTrustMembership(pack, queryPlan);
+  const useRankedPackPreview = trustPackMembership && !production && !substrate;
+  reviewListingState.searchPackFastPath = useRankedPackPreview;
+  const trustedCandidateRows = [];
+  const trimSearchPackRows = () => {
+    if (reviewListingState.searchPackRows.length <= REVIEW_LISTING_SEARCH_PACK_RESULT_LIMIT) return;
+    reviewListingState.searchPackRows = sortListingRows(reviewListingState.searchPackRows, selectedSort, queryPlan)
+      .slice(0, REVIEW_LISTING_SEARCH_PACK_RESULT_LIMIT);
+  };
   (async () => {
     try {
-      const rows = await fetchReviewSearchPackRows(pack, { trackRows: true });
-      if (reviewListingState.searchPackKey !== key) return;
-      reviewListingState.searchPackScanned = rows.length;
-      const matched = rows.filter(row => rowMatchesListingFilters(row, query, production, substrate, queryPlan));
-      reviewListingState.searchPackMatches = matched.length;
-      reviewListingState.searchPackRows = sortListingRows(matched, selectedSort, queryPlan).slice(0, REVIEW_LISTING_RESULT_LIMIT);
+      for (let index = 0; index < files.length; index += 1) {
+        if (reviewListingState.searchPackToken !== token) return;
+        const rows = await fetchReviewSearchPackChunk(pack, index, {
+          cacheRows: files.length <= 2,
+          trackRows: false,
+          signal: controller.signal,
+        });
+        if (reviewListingState.searchPackToken !== token) return;
+        const visibleRowsBefore = reviewListingState.searchPackRows.length;
+        reviewListingState.searchPackScanned += rows.length;
+        for (const row of rows) {
+          if (!rowMatchesSearchPackFilters(row, query, production, substrate, queryPlan, trustPackMembership)) continue;
+          if (useRankedPackPreview) {
+            if (trustedCandidateRows.length < REVIEW_LISTING_SEARCH_PACK_RESULT_LIMIT) {
+              trustedCandidateRows.push(row);
+            }
+            if (trustedCandidateRows.length >= REVIEW_LISTING_SEARCH_PACK_RESULT_LIMIT) break;
+          } else if (trustPackMembership) {
+            reviewListingState.searchPackMatches += 1;
+            trustedCandidateRows.push(row);
+          } else {
+            reviewListingState.searchPackMatches += 1;
+            reviewListingState.searchPackRows.push(row);
+          }
+        }
+        if (useRankedPackPreview && trustedCandidateRows.length >= REVIEW_LISTING_SEARCH_PACK_RESULT_LIMIT) {
+          const rankedRows = sortListingRows(trustedCandidateRows, selectedSort, queryPlan)
+            .slice(0, REVIEW_LISTING_SEARCH_PACK_RESULT_LIMIT);
+          reviewListingState.searchPackRows = rankedRows;
+          reviewListingState.searchPackScanned = Number(pack.rowCount || reviewListingState.searchPackScanned);
+          reviewListingState.searchPackMatches = Number(pack.rowCount || rankedRows.length);
+          reviewListingState.searchPackRows.forEach(row => {
+            reviewListingState.rowByCycleKey.set(row["Weekly Cycle Key"], row);
+          });
+          reviewListingState.searchPackComplete = true;
+          return;
+        }
+        if (trustPackMembership) {
+          if (!reviewListingState.searchPackRows.length && trustedCandidateRows.length) {
+            reviewListingState.searchPackRows = trustedCandidateRows.slice(0, REVIEW_LISTING_SEARCH_PACK_RESULT_LIMIT);
+          }
+        } else {
+          trimSearchPackRows();
+        }
+        reviewListingState.searchPackRows.forEach(row => {
+          reviewListingState.rowByCycleKey.set(row["Weekly Cycle Key"], row);
+        });
+        const now = Date.now();
+        const firstVisibleRows = visibleRowsBefore === 0 && reviewListingState.searchPackRows.length > 0;
+        const shouldRenderProgress = firstVisibleRows || (!trustPackMembership && now - reviewListingState.lastSearchPackProgressRenderAt >= REVIEW_LISTING_SEARCH_PACK_PROGRESS_RENDER_MS);
+        if (listingsViewIsActive() && shouldRenderProgress) {
+          reviewListingState.lastSearchPackProgressRenderAt = now;
+          renderListings();
+        }
+        await new Promise(resolve => setTimeout(resolve, 0));
+      }
+      if (trustPackMembership) {
+        reviewListingState.searchPackRows = sortListingRows(trustedCandidateRows, selectedSort, queryPlan)
+          .slice(0, REVIEW_LISTING_SEARCH_PACK_RESULT_LIMIT);
+        if (useRankedPackPreview) {
+          reviewListingState.searchPackMatches = Number(pack.rowCount || reviewListingState.searchPackRows.length);
+          reviewListingState.searchPackScanned = Number(pack.rowCount || reviewListingState.searchPackScanned);
+        }
+      } else {
+        trimSearchPackRows();
+      }
+      reviewListingState.searchPackRows.forEach(row => {
+        reviewListingState.rowByCycleKey.set(row["Weekly Cycle Key"], row);
+      });
       reviewListingState.searchPackComplete = true;
     } catch (error) {
-      console.warn(error);
-      if (reviewListingState.searchPackKey === key) {
+      if (error?.name !== "AbortError") console.warn(error);
+      if (error?.name !== "AbortError" && reviewListingState.searchPackToken === token) {
         reviewListingState.searchPackError = error?.message || "Review search pack failed to load";
       }
     } finally {
-      if (reviewListingState.searchPackKey === key) {
+      if (reviewListingState.searchPackToken === token) {
+        if (reviewListingState.searchPackAbortController === controller) {
+          reviewListingState.searchPackAbortController = null;
+        }
         reviewListingState.searchPackLoading = false;
         if (listingsViewIsActive()) renderListings();
       }
@@ -1838,9 +1978,11 @@ function reviewListingStatusText(query, production, substrate, selectedSort = nu
   if (pack) {
     const key = reviewSearchPackFilterKey(pack, query, production, substrate, selectedSort || "");
     const packRows = fmt(pack.rowCount || 0, "Listing Count");
+    const packChunks = reviewSearchPackFiles(pack).length;
+    const chunkText = packChunks > 1 ? ` in ${fmt(packChunks, "Listing Count")} chunks` : "";
     const universe = fmt(reviewListingSearchTotal(), "Listing Count");
     if (reviewListingState.searchPackKey !== key) {
-      return `Full review search pack queued: ${pack.label || pack.id} (${packRows} indexed rows from ${universe} review-sourced listings).`;
+      return `Full review search pack queued: ${pack.label || pack.id} (${packRows} indexed rows${chunkText} from ${universe} review-sourced listings).`;
     }
     if (reviewListingState.searchPackError) {
       return `Full review search pack failed: ${reviewListingState.searchPackError}.`;
@@ -1850,9 +1992,12 @@ function reviewListingStatusText(query, production, substrate, selectedSort = nu
       const capped = reviewListingState.searchPackMatches > reviewListingState.searchPackRows.length
         ? `; top ${fmt(reviewListingState.searchPackRows.length, "Listing Count")} loaded by current sort`
         : "";
-      return `Full review search pack searched ${packRows} ${pack.label || pack.id} rows from ${universe} review-sourced listings; ${matches} matches${capped}.`;
+      if (reviewListingState.searchPackFastPath) {
+        return `Loaded ranked full review search pack preview for ${packRows} ${pack.label || pack.id} rows${chunkText} from ${universe} review-sourced listings; ${matches} matches${capped}.`;
+      }
+      return `Full review search pack searched ${packRows} ${pack.label || pack.id} rows${chunkText} from ${universe} review-sourced listings; ${matches} matches${capped}.`;
     }
-    return `Loading full review search pack: ${fmt(reviewListingState.searchPackScanned, "Listing Count")} of ${packRows} ${pack.label || pack.id} rows scanned so far.`;
+    return `Streaming full review search pack: ${fmt(reviewListingState.searchPackScanned, "Listing Count")} of ${packRows} ${pack.label || pack.id} rows scanned so far; ${matches} matches.`;
   }
   if (!manifest) return "";
   const total = fmt(reviewListingTotal(), "Listing Count");
@@ -7262,6 +7407,10 @@ function renderRaw() {
 function activateView(viewId) {
   const view = document.getElementById(viewId);
   if (!view) return;
+  if (viewId !== "listings") {
+    cancelReviewListingSearch();
+    cancelReviewSearchPack();
+  }
   document.querySelectorAll(".tab").forEach(tab => {
     tab.classList.toggle("active", tab.dataset.view === viewId);
   });
