@@ -5,18 +5,18 @@
       "queued_api_review_capture",
       "queued"
     ],
-    "elapsedSeconds": 20.6,
+    "elapsedSeconds": 12.0,
     "estimatedRemainingSeconds": 0.0,
     "lastShop": "ClayHiveCo",
     "queuedCandidates": 50,
-    "reviewRowsChanged": 948,
-    "reviewsFetched": 948,
+    "reviewRowsChanged": 66,
+    "reviewsFetched": 66,
     "reviewsMissingListingMetadata": 0,
     "runStatus": "complete",
-    "secondsPerShop": 0.4,
+    "secondsPerShop": 0.2,
     "shopsCompleted": 50,
     "sourceFile": "deepen-write.json",
-    "updatedAt": "2026-06-13T16:57:38Z"
+    "updatedAt": "2026-06-13T17:13:14Z"
   },
   "activeWriterAlive": true,
   "coverageBacklog": {
@@ -26,23 +26,23 @@
     "queued": 0,
     "queuedApiReviewCapture": 334,
     "queuedTotal": 334,
-    "windowComplete": 18419
+    "windowComplete": 18420
   },
   "currentPhase": "rollup_refresh_complete",
-  "generatedAt": "2026-06-13T17:00:09Z",
+  "generatedAt": "2026-06-13T17:15:44Z",
   "latestQueryYield": {
-    "generatedAt": "2026-06-13T16:44:45Z",
-    "queryBank": "market_hangers",
+    "generatedAt": "2026-06-13T17:00:21Z",
+    "queryBank": "market_penetration",
     "rateLimitErrors": 0,
-    "reviewRowsWritten": 293,
-    "shopsPromoted": 2
+    "reviewRowsWritten": 948,
+    "shopsPromoted": 1
   },
   "nextSafeAction": "monitor active phase `rollup_refresh_complete`; avoid launching another SQL writer",
-  "publicCommit": "d32eb32ea913",
+  "publicCommit": "aef7d4a84424",
   "publish": {
-    "lastReason": "thresholds not met: 699 new reviews since publish, 6967s elapsed, 12 runs",
+    "lastReason": "thresholds not met: 1,647 new reviews since publish, 7903s elapsed, 13 runs",
     "lastStatus": "skipped",
-    "lastStatusAt": "2026-06-13T16:44:35Z",
+    "lastStatusAt": "2026-06-13T17:00:10Z",
     "lastSuccessfulAt": "2026-06-13T14:45:55Z",
     "lastSuccessfulPublicCommit": "b59dcdfecec3",
     "lastSuccessfulPublicDataReviewCount": 10231595,
@@ -51,9 +51,9 @@
   "rateLimitCooldown": {
     "active": false
   },
-  "reviewLedgerCount": 10233243,
+  "reviewLedgerCount": 10233309,
   "reviewListingMapping": {
-    "cacheReviewDelta": 1648,
+    "cacheReviewDelta": 1714,
     "dashboardGeneratedAt": "2026-06-13T10:38:41",
     "distinctListingUrls": 1906221,
     "gapDetailRows": 18,
@@ -65,6 +65,6 @@
     "source": "dashboard-cache"
   },
   "rollupFreshnessStatus": "current",
-  "rollupSourceTotalReviews": 10233243,
+  "rollupSourceTotalReviews": 10233309,
   "rollupStaleReviewRows": 0
 }
