@@ -5,18 +5,18 @@
       "queued_api_review_capture",
       "queued"
     ],
-    "elapsedSeconds": 11.4,
+    "elapsedSeconds": 12.0,
     "estimatedRemainingSeconds": 0.0,
     "lastShop": "ClayHiveCo",
     "queuedCandidates": 50,
-    "reviewRowsChanged": 26,
-    "reviewsFetched": 26,
+    "reviewRowsChanged": 74,
+    "reviewsFetched": 74,
     "reviewsMissingListingMetadata": 0,
     "runStatus": "complete",
     "secondsPerShop": 0.2,
     "shopsCompleted": 50,
     "sourceFile": "deepen-write.json",
-    "updatedAt": "2026-06-12T23:43:02Z"
+    "updatedAt": "2026-06-13T00:07:04Z"
   },
   "activeWriterAlive": true,
   "coverageBacklog": {
@@ -26,23 +26,23 @@
     "queued": 37,
     "queuedApiReviewCapture": 334,
     "queuedTotal": 371,
-    "windowComplete": 16618
+    "windowComplete": 16620
   },
   "currentPhase": "rollup_refresh_complete",
-  "generatedAt": "2026-06-12T23:45:36Z",
+  "generatedAt": "2026-06-13T00:09:37Z",
   "latestQueryYield": {
-    "generatedAt": "2026-06-12T23:30:32Z",
+    "generatedAt": "2026-06-12T23:54:19Z",
     "queryBank": "market_license_plates",
     "rateLimitErrors": 0,
-    "reviewRowsWritten": 18917,
-    "shopsPromoted": null
+    "reviewRowsWritten": 158,
+    "shopsPromoted": 1
   },
   "nextSafeAction": "monitor active phase `rollup_refresh_complete`; avoid launching another SQL writer",
-  "publicCommit": "c852f41f2a65",
+  "publicCommit": "5064b8073b9b",
   "publish": {
-    "lastReason": "thresholds not met: 82,575 new reviews since publish, 13218s elapsed, 19 runs",
+    "lastReason": "thresholds not met: 82,759 new reviews since publish, 14651s elapsed, 21 runs",
     "lastStatus": "skipped",
-    "lastStatusAt": "2026-06-12T23:30:21Z",
+    "lastStatusAt": "2026-06-12T23:54:09Z",
     "lastSuccessfulAt": "2026-06-12T19:47:24Z",
     "lastSuccessfulPublicCommit": "1db4420bfcad",
     "lastSuccessfulPublicDataReviewCount": 10128567,
@@ -51,9 +51,9 @@
   "rateLimitCooldown": {
     "active": false
   },
-  "reviewLedgerCount": 10211168,
+  "reviewLedgerCount": 10211400,
   "reviewListingMapping": {
-    "cacheReviewDelta": 82601,
+    "cacheReviewDelta": 82833,
     "dashboardGeneratedAt": "2026-06-12T15:42:44",
     "distinctListingUrls": 1900280,
     "gapDetailRows": 18,
@@ -65,6 +65,6 @@
     "source": "dashboard-cache"
   },
   "rollupFreshnessStatus": "current",
-  "rollupSourceTotalReviews": 10211168,
+  "rollupSourceTotalReviews": 10211400,
   "rollupStaleReviewRows": 0
 }
