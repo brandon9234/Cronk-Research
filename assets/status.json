@@ -4,44 +4,44 @@
     "coverageStatuses": [
       "api_review_capture_partial"
     ],
-    "elapsedSeconds": 53.1,
+    "elapsedSeconds": 61.7,
     "estimatedRemainingSeconds": 0.0,
-    "lastShop": "LaseredGrain",
+    "lastShop": "EverlyMadeGifts",
     "queuedCandidates": 50,
-    "reviewRowsChanged": 1974,
-    "reviewsFetched": 1974,
+    "reviewRowsChanged": 2511,
+    "reviewsFetched": 2511,
     "reviewsMissingListingMetadata": 0,
     "runStatus": "complete",
-    "secondsPerShop": 1.1,
+    "secondsPerShop": 1.2,
     "shopsCompleted": 50,
     "sourceFile": "backlog-partial-write.json",
-    "updatedAt": "2026-06-14T04:07:37Z"
+    "updatedAt": "2026-06-14T04:23:02Z"
   },
   "activeWriterAlive": true,
   "coverageBacklog": {
     "capped": 0,
     "depthSatisfied": 144,
-    "partial": 1303,
+    "partial": 1253,
     "queued": 0,
     "queuedApiReviewCapture": 334,
     "queuedTotal": 334,
-    "windowComplete": 19466
+    "windowComplete": 19516
   },
   "currentPhase": "rollup_refresh_complete",
-  "generatedAt": "2026-06-14T04:10:05Z",
+  "generatedAt": "2026-06-14T04:25:43Z",
   "latestQueryYield": {
-    "generatedAt": "2026-06-14T03:54:39Z",
+    "generatedAt": "2026-06-14T04:10:19Z",
     "queryBank": "market_penetration",
     "rateLimitErrors": 0,
-    "reviewRowsWritten": 1776,
+    "reviewRowsWritten": 1974,
     "shopsPromoted": null
   },
   "nextSafeAction": "monitor active phase `rollup_refresh_complete`; avoid launching another SQL writer",
-  "publicCommit": "4046fe25960d",
+  "publicCommit": "f8bfc72594c3",
   "publish": {
-    "lastReason": "thresholds not met: 81 new reviews since publish, 438s elapsed, 1 runs",
+    "lastReason": "thresholds not met: 156 new reviews since publish, 1383s elapsed, 2 runs",
     "lastStatus": "skipped",
-    "lastStatusAt": "2026-06-14T03:54:27Z",
+    "lastStatusAt": "2026-06-14T04:10:07Z",
     "lastSuccessfulAt": "2026-06-14T03:44:35Z",
     "lastSuccessfulPublicCommit": "4c75b87b18c5",
     "lastSuccessfulPublicDataReviewCount": 10240518,
@@ -50,9 +50,9 @@
   "rateLimitCooldown": {
     "active": false
   },
-  "reviewLedgerCount": 10240870,
+  "reviewLedgerCount": 10240956,
   "reviewListingMapping": {
-    "cacheReviewDelta": 352,
+    "cacheReviewDelta": 438,
     "dashboardGeneratedAt": "2026-06-13T23:37:13",
     "distinctListingUrls": 1908676,
     "gapDetailRows": 18,
@@ -64,6 +64,6 @@
     "source": "dashboard-cache"
   },
   "rollupFreshnessStatus": "current",
-  "rollupSourceTotalReviews": 10240870,
+  "rollupSourceTotalReviews": 10240956,
   "rollupStaleReviewRows": 0
 }
