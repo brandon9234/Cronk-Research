@@ -1,22 +1,22 @@
 {
   "activeDeepening": {
-    "apiErrors": 45,
+    "apiErrors": 0,
     "coverageStatuses": [
       "queued_api_review_capture",
       "queued"
     ],
-    "elapsedSeconds": 13.9,
+    "elapsedSeconds": 0.6,
     "estimatedRemainingSeconds": 0.0,
-    "lastShop": "TheTStoreDesign",
-    "queuedCandidates": 50,
-    "reviewRowsChanged": 107,
-    "reviewsFetched": 107,
+    "lastShop": "PercolatePresCo",
+    "queuedCandidates": 1,
+    "reviewRowsChanged": 0,
+    "reviewsFetched": 0,
     "reviewsMissingListingMetadata": 0,
     "runStatus": "complete",
-    "secondsPerShop": 0.3,
-    "shopsCompleted": 50,
-    "sourceFile": "deepen-write.json",
-    "updatedAt": "2026-06-14T01:45:22Z"
+    "secondsPerShop": 0.6,
+    "shopsCompleted": 1,
+    "sourceFile": "backlog-queued-write.json",
+    "updatedAt": "2026-06-14T02:03:35Z"
   },
   "activeWriterAlive": true,
   "coverageBacklog": {
@@ -24,25 +24,25 @@
     "depthSatisfied": 144,
     "partial": 1553,
     "queued": 0,
-    "queuedApiReviewCapture": 335,
-    "queuedTotal": 335,
-    "windowComplete": 19212
+    "queuedApiReviewCapture": 334,
+    "queuedTotal": 334,
+    "windowComplete": 19215
   },
-  "currentPhase": "rollup_refresh_complete",
-  "generatedAt": "2026-06-14T01:47:59Z",
+  "currentPhase": "review_backlog_fallback_running",
+  "generatedAt": "2026-06-14T02:03:36Z",
   "latestQueryYield": {
-    "generatedAt": "2026-06-14T01:39:10Z",
-    "queryBank": "market_led_nameplates",
+    "generatedAt": "2026-06-14T01:58:23Z",
+    "queryBank": "market_hangers",
     "rateLimitErrors": 0,
-    "reviewRowsWritten": 5354,
-    "shopsPromoted": null
+    "reviewRowsWritten": 122,
+    "shopsPromoted": 3
   },
-  "nextSafeAction": "monitor active phase `rollup_refresh_complete`; avoid launching another SQL writer",
-  "publicCommit": "902a35db9cac",
+  "nextSafeAction": "monitor active phase `review_backlog_fallback_running`; avoid launching another SQL writer",
+  "publicCommit": "50a037a18cc5",
   "publish": {
-    "lastReason": "thresholds not met: 1,886 new reviews since publish, 12125s elapsed, 20 runs",
+    "lastReason": "thresholds not met: 2,115 new reviews since publish, 13281s elapsed, 22 runs",
     "lastStatus": "skipped",
-    "lastStatusAt": "2026-06-14T01:38:58Z",
+    "lastStatusAt": "2026-06-14T01:58:11Z",
     "lastSuccessfulAt": "2026-06-13T22:14:15Z",
     "lastSuccessfulPublicCommit": "421d81e0efb5",
     "lastSuccessfulPublicDataReviewCount": 10237981,
@@ -51,9 +51,9 @@
   "rateLimitCooldown": {
     "active": false
   },
-  "reviewLedgerCount": 10240087,
+  "reviewLedgerCount": 10240209,
   "reviewListingMapping": {
-    "cacheReviewDelta": 2106,
+    "cacheReviewDelta": 2228,
     "dashboardGeneratedAt": "2026-06-13T18:05:49",
     "distinctListingUrls": 1907975,
     "gapDetailRows": 18,
@@ -65,6 +65,6 @@
     "source": "dashboard-cache"
   },
   "rollupFreshnessStatus": "current",
-  "rollupSourceTotalReviews": 10240087,
+  "rollupSourceTotalReviews": 10240209,
   "rollupStaleReviewRows": 0
 }
