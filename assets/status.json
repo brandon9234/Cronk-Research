@@ -1,22 +1,22 @@
 {
   "activeDeepening": {
-    "apiErrors": 50,
+    "apiErrors": 44,
     "coverageStatuses": [
       "queued_api_review_capture",
       "queued"
     ],
-    "elapsedSeconds": 9.9,
+    "elapsedSeconds": 16.6,
     "estimatedRemainingSeconds": 0.0,
-    "lastShop": "LMVlettering",
+    "lastShop": "SimplyMagnoliaMarket",
     "queuedCandidates": 50,
-    "reviewRowsChanged": 0,
-    "reviewsFetched": 0,
+    "reviewRowsChanged": 256,
+    "reviewsFetched": 256,
     "reviewsMissingListingMetadata": 0,
     "runStatus": "complete",
-    "secondsPerShop": 0.2,
+    "secondsPerShop": 0.3,
     "shopsCompleted": 50,
-    "sourceFile": "backlog-queued-write.json",
-    "updatedAt": "2026-06-14T05:42:00Z"
+    "sourceFile": "deepen-write.json",
+    "updatedAt": "2026-06-14T16:28:08Z"
   },
   "activeWriterAlive": true,
   "coverageBacklog": {
@@ -24,40 +24,40 @@
     "depthSatisfied": 144,
     "partial": 1203,
     "queued": 0,
-    "queuedApiReviewCapture": 334,
-    "queuedTotal": 334,
-    "windowComplete": 19572
+    "queuedApiReviewCapture": 335,
+    "queuedTotal": 335,
+    "windowComplete": 19579
   },
-  "currentPhase": "review_backlog_fallback_running",
-  "generatedAt": "2026-06-14T05:42:01Z",
+  "currentPhase": "rollup_refresh_complete",
+  "generatedAt": "2026-06-14T16:32:56Z",
   "latestQueryYield": {
-    "generatedAt": "2026-06-14T05:30:47Z",
-    "queryBank": "market_led_nameplates",
+    "generatedAt": "2026-06-14T16:15:57Z",
+    "queryBank": "market_penetration",
     "rateLimitErrors": 0,
-    "reviewRowsWritten": 3,
+    "reviewRowsWritten": 7,
     "shopsPromoted": 1
   },
-  "nextSafeAction": "monitor active phase `review_backlog_fallback_running`; avoid launching another SQL writer",
-  "publicCommit": "1d8185c59fd7",
+  "nextSafeAction": "monitor active phase `rollup_refresh_complete`; avoid launching another SQL writer",
+  "publicCommit": "b588f97bc73e",
   "publish": {
-    "lastReason": "thresholds not met: 762 new reviews since publish, 6176s elapsed, 10 runs",
-    "lastStatus": "skipped",
-    "lastStatusAt": "2026-06-14T05:30:34Z",
-    "lastSuccessfulAt": "2026-06-14T03:44:35Z",
-    "lastSuccessfulPublicCommit": "4c75b87b18c5",
-    "lastSuccessfulPublicDataReviewCount": 10240518,
-    "lastSuccessfulReviewLedgerCount": 10240714
+    "lastReason": "atomic dashboard refresh promoted",
+    "lastStatus": "success",
+    "lastStatusAt": "2026-06-14T16:27:58Z",
+    "lastSuccessfulAt": "2026-06-14T16:27:58Z",
+    "lastSuccessfulPublicCommit": "b588f97bc73e",
+    "lastSuccessfulPublicDataReviewCount": 10241483,
+    "lastSuccessfulReviewLedgerCount": 10241483
   },
   "rateLimitCooldown": {
     "active": false
   },
-  "reviewLedgerCount": 10241476,
+  "reviewLedgerCount": 10241739,
   "reviewListingMapping": {
-    "cacheReviewDelta": 958,
-    "dashboardGeneratedAt": "2026-06-13T23:37:13",
-    "distinctListingUrls": 1908676,
+    "cacheReviewDelta": 256,
+    "dashboardGeneratedAt": "2026-06-14T12:20:05",
+    "distinctListingUrls": 1908963,
     "gapDetailRows": 18,
-    "reviewRows": 10240518,
+    "reviewRows": 10241483,
     "rowsMissingListingMetadata": 18,
     "rowsMissingListingTitle": 18,
     "rowsMissingListingUrl": 0,
@@ -65,6 +65,6 @@
     "source": "dashboard-cache"
   },
   "rollupFreshnessStatus": "current",
-  "rollupSourceTotalReviews": 10241476,
+  "rollupSourceTotalReviews": 10241739,
   "rollupStaleReviewRows": 0
 }
