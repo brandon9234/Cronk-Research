@@ -21,13 +21,9 @@ let reviewMappingGapControlSignature = "";
 let reviewShopCoverageControlSignature = "";
 const CUSTOM_BUYER_MOMENT_ID = "custom-date-range";
 const DATA_ASSET_VERSION = "thin-client-shards-20260613-1";
-const DEFAULT_DASHBOARD_VIEW = "mymaravia";
+const DEFAULT_DASHBOARD_VIEW = "market-penetration";
 const VISIBLE_DASHBOARD_VIEWS = new Set([
-  "mymaravia",
-  "market-control",
-  "market-size",
   "market-penetration",
-  "comparison",
   "company",
   "buyer-moments",
   "listings"
@@ -5671,6 +5667,8 @@ function renderMarketPenetration() {
     "Market", "Shop", "Subsegment", "Reviews 365D", "Reviews 90D", "Total Reviews",
     "Avg Rating", "Title", "URL"
   ], 90, { preserveOrder: true });
+  renderMarketSize();
+  renderMarketControl();
 }
 
 function renderMarketControl() {
@@ -6423,7 +6421,7 @@ function writeViewUrlState(params, viewId) {
   if (viewId === "listings") writeListingUrlState(params);
   if (viewId === "buyer-moments") writeBuyerMomentUrlState(params);
   if (viewId === "company") writeCompanyUrlState(params);
-  if (viewId === "market-size") writeMarketSizeUrlState(params);
+  if (viewId === "market-penetration") writeMarketSizeUrlState(params);
 }
 
 function applyNextActionUrlState() {
@@ -7555,7 +7553,6 @@ async function activateView(viewId, options = {}) {
   if (viewId === "comparison") renderComparisonView();
   if (viewId === "buyer-moments") renderBuyerMomentsView();
   if (viewId === "company") renderCompanyView();
-  if (viewId === "market-size") renderMarketSize();
   if (viewId === "market-penetration") renderMarketPenetration();
   if (options.updateUrl !== false) updateViewUrl(viewId);
   requestAnimationFrame(updateAllBottomScrollbars);
@@ -8378,12 +8375,12 @@ function initMarketSizeFilters() {
     element.addEventListener("input", () => {
       if (id === "market-size-product-filter") selectedMarketSizeProduct = element.value;
       renderMarketSize();
-      updateViewUrl("market-size");
+      updateViewUrl("market-penetration");
     });
     element.addEventListener("change", () => {
       if (id === "market-size-product-filter") selectedMarketSizeProduct = element.value;
       renderMarketSize();
-      updateViewUrl("market-size");
+      updateViewUrl("market-penetration");
     });
     element.dataset.bound = "true";
   });
