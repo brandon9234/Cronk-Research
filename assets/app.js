@@ -20,7 +20,7 @@ let customBuyerMomentRange = null;
 let reviewMappingGapControlSignature = "";
 let reviewShopCoverageControlSignature = "";
 const CUSTOM_BUYER_MOMENT_ID = "custom-date-range";
-const DATA_ASSET_VERSION = "thin-client-shards-20260613-1";
+const DATA_ASSET_VERSION = "pipeline-status-20260616-1";
 const DEFAULT_DASHBOARD_VIEW = "market-penetration";
 const VISIBLE_DASHBOARD_VIEWS = new Set([
   "market-penetration",
@@ -9000,6 +9000,7 @@ function renderAll() {
   document.getElementById("snapshot-note").innerHTML =
     `${escapeHtml(dashboard.meta.source)} Generated ${escapeHtml(dashboard.meta.generatedAt)} from cache modified ${escapeHtml(dashboard.meta.sourceWorkbookModifiedAt)}.`;
   document.getElementById("workbook-link").href = dashboard.meta.workbookUrl;
+  loadPublicStatus();
   renderOpportunity();
   initMyMaraviaFilters();
   renderMyMaravia();
@@ -9020,6 +9021,45 @@ function renderAll() {
   renderOperations();
   renderTable("quality-table", dashboard.market.quality, ["Date", "Raw Rows", "Unique Shops", "Duplicate Shop-Date Pairs", "Raw Market Sales", "Deduped Market Sales", "Potential Inflation", "Likely Partial Final Day", "Source Files"], 120);
   initRawSelect();
+}
+
+function publicStatusPhaseText(phase) {
+  return String(phase || "status unknown").replace(/_/g, " ");
+}
+
+function publicStatusCardClass(status) {
+  const phase = String(status?.currentPhase || "");
+  const publishStatus = String(status?.publish?.lastStatus || "");
+  if (/blocked|error|fail|stale/i.test(`${phase} ${publishStatus}`)) return "bad";
+  if (/refresh|running|rollup/i.test(phase)) return "warn";
+  return "";
+}
+
+async function loadPublicStatus() {
+  const card = document.getElementById("pipeline-status-card");
+  const title = document.getElementById("pipeline-status-title");
+  const meta = document.getElementById("pipeline-status-meta");
+  if (!card || !title || !meta) return;
+  try {
+    const response = await fetch(`assets/status.json?v=${DATA_ASSET_VERSION}`);
+    if (!response.ok) throw new Error(`status ${response.status}`);
+    const status = await response.json();
+    const phase = publicStatusPhaseText(status.currentPhase);
+    const reviewCount = status.reviewLedgerCount != null ? fmt(status.reviewLedgerCount, "Listing Count") : "";
+    const generatedAt = status.generatedAt ? String(status.generatedAt) : "";
+    const nextAction = status.nextSafeAction ? String(status.nextSafeAction) : "";
+    card.className = ["pipeline-status-card", publicStatusCardClass(status)].filter(Boolean).join(" ");
+    title.textContent = nextAction || phase;
+    meta.innerHTML = [
+      phase ? `<span class="pipeline-status-pill">${escapeHtml(phase)}</span>` : "",
+      reviewCount ? `<span class="pipeline-status-pill">${escapeHtml(reviewCount)} reviews</span>` : "",
+      generatedAt ? `<span class="pipeline-status-pill">${escapeHtml(generatedAt)}</span>` : ""
+    ].filter(Boolean).join("");
+  } catch (error) {
+    card.className = "pipeline-status-card warn";
+    title.textContent = "Dashboard heartbeat unavailable";
+    meta.innerHTML = `<span class="pipeline-status-pill">${escapeHtml(error.message)}</span>`;
+  }
 }
 
 async function boot() {

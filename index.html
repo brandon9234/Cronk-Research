@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Cronk Research</title>
-  <link rel="stylesheet" href="assets/styles.css?v=thin-client-shards-20260613-1">
+  <link rel="stylesheet" href="assets/styles.css?v=pipeline-status-20260616-1">
   <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
 </head>
 <body>
@@ -16,6 +16,13 @@
       </div>
       <a id="workbook-link" class="link-button" href="#" target="_blank" rel="noreferrer">Open research workbook</a>
     </header>
+    <section id="pipeline-status-card" class="pipeline-status-card" aria-live="polite">
+      <div>
+        <p class="status-label">Pipeline status</p>
+        <p id="pipeline-status-title">Checking dashboard heartbeat...</p>
+      </div>
+      <div id="pipeline-status-meta" class="pipeline-status-meta"></div>
+    </section>
     <nav class="tabs" aria-label="Dashboard sections">
       <button class="tab active" data-view="market-penetration">Market</button>
       <button class="tab" data-view="company">Company</button>
@@ -897,6 +904,6 @@
       </section>
     </main>
   </div>
-  <script src="assets/app.js?v=thin-client-shards-20260613-1"></script>
+  <script src="assets/app.js?v=pipeline-status-20260616-1"></script>
 </body>
 </html>

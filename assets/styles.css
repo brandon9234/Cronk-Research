@@ -105,6 +105,59 @@ input {
   border-bottom-color: var(--blue);
 }
 
+.pipeline-status-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 2px 0 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--teal);
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: var(--shadow);
+}
+
+.pipeline-status-card.warn {
+  border-left-color: var(--amber);
+}
+
+.pipeline-status-card.bad {
+  border-left-color: var(--red);
+}
+
+.status-label {
+  margin-bottom: 3px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.2;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+#pipeline-status-title {
+  font-weight: 720;
+  line-height: 1.3;
+}
+
+.pipeline-status-meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.pipeline-status-pill {
+  padding: 3px 7px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #f9fafb;
+}
+
 .view { display: none; }
 .view.active { display: block; }
 
