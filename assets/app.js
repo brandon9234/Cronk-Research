@@ -27,7 +27,7 @@ let customBuyerMomentRange = null;
 let reviewMappingGapControlSignature = "";
 let reviewShopCoverageControlSignature = "";
 const CUSTOM_BUYER_MOMENT_ID = "custom-date-range";
-const DATA_ASSET_VERSION = "speed-lazy-20260624-1";
+const DATA_ASSET_VERSION = "payload-split-20260624-1";
 const DEFAULT_DASHBOARD_VIEW = "market-penetration";
 const VISIBLE_DASHBOARD_VIEWS = new Set([
   "market-penetration",
@@ -77,6 +77,13 @@ function buyerMomentListingMatchesReady() {
   return !asset || (Array.isArray(rows) && rows.length > 0);
 }
 
+function buyerMomentDashboardReady() {
+  const buyerMoments = dashboard?.buyerMoments || {};
+  const asset = buyerMoments.detailAsset;
+  const rows = buyerMoments.moments;
+  return !asset || (Array.isArray(rows) && rows.length > 0);
+}
+
 function comparisonTrendsReady() {
   const comparison = dashboard?.comparison || {};
   const asset = comparison.shopTrendsAsset;
@@ -106,6 +113,19 @@ async function loadDashboardShard(key, file, applyPayload) {
     });
   viewShardState.set(key, { promise });
   return promise;
+}
+
+async function ensureBuyerMomentDashboardData() {
+  if (buyerMomentDashboardReady()) return;
+  const buyerMoments = dashboard.buyerMoments || {};
+  await loadDashboardShard("buyer-moment-dashboard", buyerMoments.detailAsset, payload => {
+    const detail = payload.buyerMoments || payload || {};
+    dashboard.buyerMoments = {
+      ...dashboard.buyerMoments,
+      ...detail
+    };
+    resetBuyerMomentCaches();
+  });
 }
 
 async function ensureBuyerMomentListingMatches() {
@@ -575,6 +595,37 @@ const recentDailySalesSortOptions = { sortableColumns: ["Recent Daily Sales"] };
 const tableSortState = new Map();
 
 const plotConfig = { responsive: true, displayModeBar: false };
+const PLOTLY_SCRIPT_URL = "https://cdn.plot.ly/plotly-2.35.2.min.js";
+let plotlyLoadPromise = null;
+
+function ensurePlotly() {
+  if (window.Plotly) return Promise.resolve(window.Plotly);
+  if (plotlyLoadPromise) return plotlyLoadPromise;
+  plotlyLoadPromise = new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = PLOTLY_SCRIPT_URL;
+    script.async = true;
+    script.onload = () => resolve(window.Plotly);
+    script.onerror = () => reject(new Error("Chart library failed to load"));
+    document.head.appendChild(script);
+  });
+  return plotlyLoadPromise;
+}
+
+function plotlyNewPlot(targetId, traces, layout, config) {
+  const target = typeof targetId === "string" ? document.getElementById(targetId) : targetId;
+  if (target && !window.Plotly) {
+    target.innerHTML = `<div class="empty">Loading chart...</div>`;
+  }
+  ensurePlotly()
+    .then(PlotlyRef => {
+      if (target) target.innerHTML = "";
+      return PlotlyRef.newPlot(targetId, traces, layout, config);
+    })
+    .catch(error => {
+      if (target) target.innerHTML = `<div class="empty">${escapeHtml(error.message)}</div>`;
+    });
+}
 
 function formatSharePercent(value) {
   const number = Number(value);
@@ -1667,6 +1718,17 @@ async function fetchReviewListingRows(chunkIndex, options = {}) {
   return rows;
 }
 
+async function fetchReviewListingPreviewAsset(options = {}) {
+  const manifest = reviewListingManifest();
+  if (!manifest?.previewAsset) return [];
+  const fetchOptions = options.signal ? { signal: options.signal } : undefined;
+  const response = await fetch(reviewListingAssetUrl(manifest.previewAsset), fetchOptions);
+  if (!response.ok) throw new Error("Review listing preview failed to load");
+  const payload = await response.json();
+  const chunkIndex = Number(payload.sourceChunkIndex ?? manifest.previewSourceChunkIndex ?? 0) || 0;
+  return decodeReviewListingRows(payload, chunkIndex, options);
+}
+
 function reviewListingFilterKey(query, production, substrate, sort = "") {
   return `${query || ""}\n${production || ""}\n${substrate || ""}\n${sort || ""}`;
 }
@@ -1707,10 +1769,19 @@ function ensureReviewListingPreview() {
   reviewListingState.previewLoading = true;
   (async () => {
     try {
-      const chunkCount = Math.min(REVIEW_LISTING_PREVIEW_CHUNKS, manifest.rowFiles?.length || 0);
       const rows = [];
-      for (let index = 0; index < chunkCount; index += 1) {
-        rows.push(...await fetchReviewListingRows(index, { cacheRows: true, trackRows: true }));
+      if (manifest.previewAsset) {
+        try {
+          rows.push(...await fetchReviewListingPreviewAsset({ trackRows: true }));
+        } catch (error) {
+          console.warn(error);
+        }
+      }
+      if (!rows.length) {
+        const chunkCount = Math.min(REVIEW_LISTING_PREVIEW_CHUNKS, manifest.rowFiles?.length || 0);
+        for (let index = 0; index < chunkCount; index += 1) {
+          rows.push(...await fetchReviewListingRows(index, { cacheRows: true, trackRows: true }));
+        }
       }
       reviewListingState.previewRows = rows;
       reviewListingState.previewLoaded = true;
@@ -2334,7 +2405,7 @@ function renderCategoryWorkspace() {
 
 function renderOverallChart() {
   const rows = dashboard.market.overall10DaySales || [];
-  Plotly.newPlot("overall-chart", [
+  plotlyNewPlot("overall-chart", [
     {
       type: "bar",
       x: rows.map(r => r.Date),
@@ -2369,7 +2440,7 @@ function renderOverallChart() {
 
 function renderImportChart() {
   const rows = dashboard.market.importAdjustedSales || [];
-  Plotly.newPlot("import-chart", [
+  plotlyNewPlot("import-chart", [
     {
       type: "bar",
       x: rows.map(r => r["Entered Date"]),
@@ -2414,7 +2485,7 @@ function renderLineByGroup(targetId, rows, xKey, yKey, groupKey) {
       hovertemplate: `${group}<br>%{x}<br>${yKey}: %{y:,.0f}<extra></extra>`
     };
   });
-  Plotly.newPlot(targetId, traces, {
+  plotlyNewPlot(targetId, traces, {
     margin: { l: 48, r: 16, t: 8, b: 44 },
     yaxis: { title: yKey },
     legend: { orientation: "h", y: -0.22 },
@@ -2425,7 +2496,7 @@ function renderLineByGroup(targetId, rows, xKey, yKey, groupKey) {
 
 function renderMarketTrend() {
   const rows = dashboard.market.dailyTrend || [];
-  Plotly.newPlot("market-trend-chart", [{
+  plotlyNewPlot("market-trend-chart", [{
     type: "scatter",
     mode: "lines+markers",
     x: rows.map(r => r.Date),
@@ -2443,7 +2514,7 @@ function renderMarketTrend() {
 
 function renderBar(targetId, rows, xKey, yKey, limit = 15, color = "#1f5fbf") {
   const data = rows.slice(0, limit).reverse();
-  Plotly.newPlot(targetId, [{
+  plotlyNewPlot(targetId, [{
     type: "bar",
     orientation: "h",
     x: data.map(r => r[xKey]),
@@ -2701,7 +2772,7 @@ function renderReviewListingCycle(cycleKey, target, summary) {
       const title = row["Product Title"] || "Review-sourced listing";
       summary.textContent = `${row.Shop || "Unknown shop"} · ${fmt(row["Review Corpus Count"], "Review Corpus Count")} reviews · ${row["Cycle Confidence"] || row["Evidence Confidence"] || "Review-derived estimate"} · ${row["Trend Source"] || ""}`;
       target.innerHTML = "";
-      Plotly.newPlot("listing-cycle-chart", [{
+      plotlyNewPlot("listing-cycle-chart", [{
         type: "bar",
         name: "Estimated daily sales",
         x: rows.map(item => item["Week Start"]),
@@ -2743,7 +2814,7 @@ function renderReviewSearchPackCycle(cycleKey, target, summary) {
   }
   const title = row["Product Title"] || "Full-search listing";
   summary.textContent = `${row.Shop || "Unknown shop"} · ${fmt(row["Review Corpus Count"], "Review Corpus Count")} reviews · ${row["Cycle Confidence"] || row["Evidence Confidence"] || "Full review search pack"} · ${row["Trend Source"] || ""}`;
-  Plotly.newPlot("listing-cycle-chart", [{
+  plotlyNewPlot("listing-cycle-chart", [{
     type: "bar",
     name: "Estimated daily sales",
     x: rows.map(item => item["Week Start"]),
@@ -2778,7 +2849,7 @@ function renderBuyerMomentListingCycle(cycleKey, target, summary) {
     document.getElementById("listing-cycle-table").innerHTML = "";
     return;
   }
-  Plotly.newPlot("listing-cycle-chart", [{
+  plotlyNewPlot("listing-cycle-chart", [{
     type: "bar",
     name: "Estimated daily sales",
     x: rows.map(item => item["Week Start"]),
@@ -2829,7 +2900,7 @@ function renderListingCycle(cycleKey = selectedListingCycleKey) {
   const countLabel = cycle.countLabel || "reviews";
   const ratioLabel = countColumn === "Review Count" ? "Sales/review" : "Sales/unit";
   summary.textContent = `${cycle.shop || "Unknown shop"} · ${fmt(cycle.reviewCount, "Review Corpus Count")} ${countLabel} · ${cycle.confidence || "Estimated"} · ${cycle.source || ""}`;
-  Plotly.newPlot("listing-cycle-chart", [{
+  plotlyNewPlot("listing-cycle-chart", [{
     type: "bar",
     name: "Estimated daily sales",
     x: rows.map(row => row["Week Start"]),
@@ -4243,7 +4314,7 @@ function renderBuyerMomentWeekChart(rows) {
     document.getElementById("buyer-moment-week-table").innerHTML = "";
     return;
   }
-  Plotly.newPlot("buyer-moment-week-chart", [{
+  plotlyNewPlot("buyer-moment-week-chart", [{
     type: "bar",
     x: data.map(row => row["Week Start"]),
     y: data.map(row => row["Estimated Daily Sales"]),
@@ -4262,8 +4333,11 @@ function renderBuyerMomentWeekChart(rows) {
 function renderBuyerMoments() {
   const summaryTarget = document.getElementById("buyer-moment-summary");
   if (!summaryTarget) return;
-  if (!buyerMomentListingMatchesReady()) {
-    summaryTarget.textContent = "Loading buyer moment listing evidence...";
+  if (!buyerMomentDashboardReady() || !buyerMomentListingMatchesReady()) {
+    const message = !buyerMomentDashboardReady()
+      ? "Loading buyer moment calendar..."
+      : "Loading buyer moment listing evidence...";
+    summaryTarget.textContent = message;
     [
       "buyer-moment-metrics",
       "buyer-moment-rollup-chart",
@@ -4273,11 +4347,14 @@ function renderBuyerMoments() {
       "buyer-moment-listings",
       "buyer-moment-week-chart",
       "buyer-moment-week-table"
-    ].forEach(id => setLoading(id, "Loading buyer moment listing evidence..."));
-    ensureBuyerMomentListingMatches()
+    ].forEach(id => setLoading(id, message));
+    Promise.all([
+      ensureBuyerMomentDashboardData(),
+      ensureBuyerMomentListingMatches()
+    ])
       .then(renderBuyerMoments)
       .catch(error => {
-        summaryTarget.textContent = `Buyer moment listing evidence failed to load: ${error.message}`;
+        summaryTarget.textContent = `Buyer moment data failed to load: ${error.message}`;
       });
     return;
   }
@@ -5555,7 +5632,7 @@ function renderMarketPenetrationShareMixChart(rows) {
     { name: "#3 shop", shareKey: "#3 Shop Share %", ordersKey: "#3 Shop Est. Orders", shopKey: "#3 Shop", color: "#d97706" },
     { name: "Long-tail competitors", shareKey: "Long Tail Competitor Share %", ordersKey: "Long Tail Competitor Est. Orders", shopKey: null, color: "#94a3b8" }
   ];
-  Plotly.newPlot("market-penetration-chart", traces.map(trace => ({
+  plotlyNewPlot("market-penetration-chart", traces.map(trace => ({
     type: "bar",
     orientation: "h",
     name: trace.name,
@@ -5728,7 +5805,7 @@ function renderMarketControl() {
 
   if (shopRows.length) {
     const chartRows = shopRows.slice(0, 10).reverse();
-    Plotly.newPlot("market-control-shop-chart", [{
+    plotlyNewPlot("market-control-shop-chart", [{
       type: "bar",
       orientation: "h",
       x: chartRows.map(row => row["Segment Daily Sales"]),
@@ -6203,7 +6280,7 @@ function renderCompanyProfile() {
   }]);
 
   if (chartRows.length) {
-    Plotly.newPlot("company-sales-chart", [{
+    plotlyNewPlot("company-sales-chart", [{
       type: "scatter",
       mode: "lines+markers",
       x: chartRows.map(row => row.Date),
@@ -6227,7 +6304,7 @@ function renderCompanyProfile() {
     .sort((a, b) => String(a["Week Start"] || "").localeCompare(String(b["Week Start"] || "")))
     .map(withDailySales);
   if (weeklyRows.length) {
-    Plotly.newPlot("company-review-cycle-chart", [{
+    plotlyNewPlot("company-review-cycle-chart", [{
       type: "bar",
       x: weeklyRows.map(row => row["Week Start"]),
       y: weeklyRows.map(row => row["Estimated Daily Sales"]),
@@ -7296,7 +7373,7 @@ function renderMyMaravia() {
   const categoryRows = my.categories || [];
   if (categoryRows.length) {
     const chartRows = categoryRows.slice().sort((a, b) => Number(b["Market Daily Sales"] || 0) - Number(a["Market Daily Sales"] || 0)).slice(0, 12).reverse();
-    Plotly.newPlot("mymaravia-category-chart", [
+    plotlyNewPlot("mymaravia-category-chart", [
       {
         type: "bar",
         orientation: "h",
@@ -7595,7 +7672,10 @@ function viewRenderSignature(viewId) {
 
 async function ensureViewData(viewId) {
   if (viewId === "comparison" || viewId === "company") await ensureComparisonTrends();
-  if (viewId === "buyer-moments") await ensureBuyerMomentListingMatches();
+  if (viewId === "buyer-moments") {
+    await ensureBuyerMomentDashboardData();
+    await ensureBuyerMomentListingMatches();
+  }
 }
 
 async function activateView(viewId, options = {}) {
