@@ -10,7 +10,14 @@ let selectedMarketSegment = "";
 let selectedMarketSizeProduct = "";
 let selectedNextActionKey = "";
 let viewShardState = new Map();
+let viewRenderSignatures = new Map();
 let nextActionTraceCache = new Map();
+let listingRowsCache = null;
+let listingLookupByUrlCache = null;
+let listingCycleMapCache = null;
+let shopTrendLookupCache = null;
+let companyStatsCache = null;
+let reviewShopCoverageLookupCache = null;
 let buyerMomentRowsCache = new Map();
 let buyerMomentSummariesCache = null;
 let buyerMomentCatalogCache = null;
@@ -20,7 +27,7 @@ let customBuyerMomentRange = null;
 let reviewMappingGapControlSignature = "";
 let reviewShopCoverageControlSignature = "";
 const CUSTOM_BUYER_MOMENT_ID = "custom-date-range";
-const DATA_ASSET_VERSION = "pipeline-status-20260616-1";
+const DATA_ASSET_VERSION = "speed-lazy-20260624-1";
 const DEFAULT_DASHBOARD_VIEW = "market-penetration";
 const VISIBLE_DASHBOARD_VIEWS = new Set([
   "market-penetration",
@@ -56,6 +63,11 @@ function resetBuyerMomentCaches() {
   buyerMomentCatalogCache = null;
   buyerMomentTopListingRowsCache = null;
   buyerMomentListingCycleRowsCache.clear();
+}
+
+function resetCompanyDerivedCaches() {
+  companyStatsCache = null;
+  reviewShopCoverageLookupCache = null;
 }
 
 function buyerMomentListingMatchesReady() {
@@ -125,6 +137,8 @@ async function ensureComparisonTrends() {
       shopTrends: Array.isArray(trendRows) ? trendRows : [],
       shopTrendChart: Array.isArray(chartRows) ? chartRows : []
     };
+    shopTrendLookupCache = null;
+    resetCompanyDerivedCaches();
   });
 }
 
@@ -1658,7 +1672,7 @@ function reviewListingFilterKey(query, production, substrate, sort = "") {
 }
 
 function shouldSearchReviewListings(query, production, substrate) {
-  return Boolean(reviewListingManifest() && (production || substrate || query.length === 0 || query.length >= REVIEW_LISTING_SEARCH_MIN_CHARS));
+  return Boolean(reviewListingManifest() && (production || substrate || query.length >= REVIEW_LISTING_SEARCH_MIN_CHARS));
 }
 
 function abortReviewListingSearchRequest() {
@@ -2153,7 +2167,10 @@ function getComparisonListingRows() {
 }
 
 function shopTrendLookup() {
-  return new Map((dashboard.comparison.shopTrends || []).map(row => [row.Shop, row]));
+  if (!shopTrendLookupCache) {
+    shopTrendLookupCache = new Map((dashboard.comparison.shopTrends || []).map(row => [row.Shop, row]));
+  }
+  return shopTrendLookupCache;
 }
 
 function summarizeShopTrends(shops, trends) {
@@ -2443,6 +2460,7 @@ function renderBar(targetId, rows, xKey, yKey, limit = 15, color = "#1f5fbf") {
 }
 
 function getListingRows() {
+  if (listingRowsCache) return listingRowsCache;
   const rows = [
     ...(dashboard.listing.topListings || []).map(row => ({ ...row, "__Listing Feed": "topListings" })),
     ...(dashboard.listing.categoryListings || []).map(row => ({ ...row, "__Listing Feed": "categoryListings" })),
@@ -2516,7 +2534,7 @@ function getListingRows() {
     });
     byKey.set(key, merged);
   });
-  return Array.from(byKey.values()).map(row => {
+  listingRowsCache = Array.from(byKey.values()).map(row => {
     const normalized = { ...row };
     delete normalized["__Listing Feed"];
     if (!String(normalized["Product Substrate Category"] || "").trim()) {
@@ -2524,10 +2542,14 @@ function getListingRows() {
     }
     return withDailySales(normalized);
   });
+  return listingRowsCache;
 }
 
 function listingCycleMap() {
-  return new Map((dashboard.reviewCorpus?.listingCycles || []).map(cycle => [String(cycle.key || ""), cycle]).filter(([key]) => key));
+  if (!listingCycleMapCache) {
+    listingCycleMapCache = new Map((dashboard.reviewCorpus?.listingCycles || []).map(cycle => [String(cycle.key || ""), cycle]).filter(([key]) => key));
+  }
+  return listingCycleMapCache;
 }
 
 function fullListingCycleRows(cycle) {
@@ -3235,12 +3257,14 @@ function buyerMomentListingCounts() {
 }
 
 function listingLookupByUrl() {
+  if (listingLookupByUrlCache) return listingLookupByUrlCache;
   const byUrl = new Map();
   getListingRows().forEach(row => {
     const url = String(row["Listing URL"] || "").trim();
     if (url && !byUrl.has(url)) byUrl.set(url, row);
   });
-  return byUrl;
+  listingLookupByUrlCache = byUrl;
+  return listingLookupByUrlCache;
 }
 
 function parseIsoDate(value) {
@@ -4332,7 +4356,7 @@ function renderBuyerMoments() {
     "Review Corpus Count", "Review Corpus 90D", "Review Corpus 365D", "Local Review Signal", "Local Review Rows",
     "API Rank Score", "Review Velocity Score", "Engagement Score", "Shop Strength Score", "Moment Fit Score", "Category Fit Score",
     "Moment Source", "Listing URL"
-  ], 250);
+  ], 250, { preserveOrder: true });
 }
 
 function lookupSnapshotMetric(label) {
@@ -5789,6 +5813,7 @@ function renderTopShops() {
 }
 
 function companyStats() {
+  if (companyStatsCache) return companyStatsCache;
   const stats = new Map();
   const ensure = name => {
     const clean = companyName(name);
@@ -5831,11 +5856,15 @@ function companyStats() {
   stats.forEach(stat => {
     stat.score = Math.max(stat.thirty, stat.eRank30, stat.score);
   });
-  return stats;
+  companyStatsCache = stats;
+  return companyStatsCache;
 }
 
 function reviewShopCoverageLookup() {
-  return companyLookup(reviewShopCoverageState.rows || []);
+  if (!reviewShopCoverageLookupCache) {
+    reviewShopCoverageLookupCache = companyLookup(reviewShopCoverageState.rows || []);
+  }
+  return reviewShopCoverageLookupCache;
 }
 
 function reviewShopCoverageRowForCompany(company) {
@@ -6251,7 +6280,7 @@ function renderCompanyProfile() {
     "Recent 180D Sales", "Recent 30D Revenue", "Recent 180D Revenue", "Sales Rate Window Days", "Recent Reviews",
     "Recent Avg Rating", "Review Corpus Count", "Review Corpus 90D", "Review Corpus 365D",
     "Review Corpus Avg Rating", "Review Corpus Latest ISO", "Blank / Generic Sources", "Listing URL"
-  ], 300, recentDailySalesSortOptions);
+  ], 300, { ...recentDailySalesSortOptions, preserveOrder: true });
 
   requestAnimationFrame(updateAllBottomScrollbars);
 }
@@ -7473,7 +7502,7 @@ function renderListings() {
     "Production Tag", "Customization Tag", "Tag Confidence", "Tag Evidence",
     "Review Corpus Count", "Review Corpus 90D", "Review Corpus 365D",
     "Review Corpus Avg Rating", "Review Corpus Latest ISO", "Evidence Confidence", "Last Review ISO", "Listing URL"
-  ], LISTING_RENDER_LIMIT, recentDailySalesSortOptions);
+  ], LISTING_RENDER_LIMIT, { ...recentDailySalesSortOptions, preserveOrder: true });
   renderListingCycle(selectedListingCycleKey);
 }
 
@@ -7502,6 +7531,13 @@ function renderComparisonView() {
   renderTrendTable("shop-trends", dashboard.comparison.shopTrends, ["Shop", "Trend", "Recent Avg Daily Sales", "Prior Avg Daily Sales", "Delta", "Delta %", "Latest Complete Date", "Latest Complete Daily Sales", "Total Daily Sales In Range", "Days Used", "Review Count", "Sales Per Review Used", "Trend Confidence", "Trend Source"], 120);
 }
 
+function renderMarketPenetrationView() {
+  initMarketControlFilters();
+  initMarketSizeFilters();
+  applyMarketSizeUrlState();
+  renderMarketPenetration();
+}
+
 function renderBuyerMomentsView() {
   initBuyerMomentFilters();
   applyBuyerMomentUrlState();
@@ -7520,6 +7556,41 @@ function renderListingsView() {
   renderTable("category-rollup-table", dashboard.listing.categoryRollup, ["Product Substrate Category", "Product Family", "Total Est. Daily Sales", "Total Est. 30D Sales", "Review Corpus Count", "Review Corpus 90D", "Review Corpus 365D", "Review Corpus Listings", "Listing Count", "Shop Count"], 40);
   renderBar("demand-summary-chart", dashboard.listing.demandSummary || [], "Total Est. Daily Sales", "Demand Intent Cluster", 20, "#0f766e");
   renderTable("demand-summary-table", dashboard.listing.demandSummary, ["Demand Intent Cluster", "Total Est. Daily Sales", "Listing Count", "Review Count", "Review Corpus Count", "Review Corpus 90D", "Review Corpus Listings", "Avg Daily Sales / Listing", "Shop Count"], 50);
+}
+
+function viewRenderSignature(viewId) {
+  const view = document.getElementById(viewId);
+  const controls = view
+    ? [...view.querySelectorAll("input, select")].map(element => [element.id || element.name || "", element.type === "checkbox" ? element.checked : element.value])
+    : [];
+  return JSON.stringify({
+    viewId,
+    controls,
+    selectedCompany,
+    selectedCompanyProduction,
+    selectedListingCycleKey,
+    selectedListingSubstrate,
+    selectedListingTimeframePreset,
+    selectedBuyerMomentId,
+    selectedImportBuyerMomentId,
+    selectedMarketSegment,
+    selectedMarketSizeProduct,
+    selectedNextActionKey,
+    customBuyerMomentRange,
+    buyerMomentListingMatches: dashboard?.buyerMoments?.listingMatches?.length || 0,
+    comparisonShopTrends: dashboard?.comparison?.shopTrends?.length || 0,
+    comparisonShopTrendChart: dashboard?.comparison?.shopTrendChart?.length || 0,
+    reviewShopCoverageLoaded: reviewShopCoverageState.loaded,
+    reviewShopCoverageRows: reviewShopCoverageState.rows.length,
+    reviewListingPreviewLoaded: reviewListingState.previewLoaded,
+    reviewListingPreviewRows: reviewListingState.previewRows.length,
+    reviewListingSearchKey: reviewListingState.searchKey,
+    reviewListingSearchRows: reviewListingState.searchRows.length,
+    reviewListingSearchComplete: reviewListingState.searchComplete,
+    reviewListingSearchPackKey: reviewListingState.searchPackKey,
+    reviewListingSearchPackRows: reviewListingState.searchPackRows.length,
+    reviewListingSearchPackComplete: reviewListingState.searchPackComplete
+  });
 }
 
 async function ensureViewData(viewId) {
@@ -7549,11 +7620,15 @@ async function activateView(viewId, options = {}) {
     console.error(error);
     return;
   }
-  if (viewId === "listings") renderListingsView();
-  if (viewId === "comparison") renderComparisonView();
-  if (viewId === "buyer-moments") renderBuyerMomentsView();
-  if (viewId === "company") renderCompanyView();
-  if (viewId === "market-penetration") renderMarketPenetration();
+  const signature = viewRenderSignature(viewId);
+  if (viewRenderSignatures.get(viewId) !== signature) {
+    if (viewId === "listings") renderListingsView();
+    if (viewId === "comparison") renderComparisonView();
+    if (viewId === "buyer-moments") renderBuyerMomentsView();
+    if (viewId === "company") renderCompanyView();
+    if (viewId === "market-penetration") renderMarketPenetrationView();
+    viewRenderSignatures.set(viewId, viewRenderSignature(viewId));
+  }
   if (options.updateUrl !== false) updateViewUrl(viewId);
   requestAnimationFrame(updateAllBottomScrollbars);
 }
@@ -8618,11 +8693,14 @@ function loadReviewShopCoverageRows() {
       }
       reviewShopCoverageState.rows = chunks;
       reviewShopCoverageState.loaded = true;
+      resetCompanyDerivedCaches();
     } catch (error) {
       reviewShopCoverageState.error = error?.message || "Shop coverage failed to load";
     } finally {
       reviewShopCoverageState.loading = false;
-      renderReviewShopCoverageDetails();
+      if (document.getElementById("operations")?.classList.contains("active")) {
+        renderReviewShopCoverageDetails();
+      }
       if (document.getElementById("company")?.classList.contains("active")) {
         renderCompanyOptions();
         renderCompanyProfile();
@@ -8636,6 +8714,7 @@ function retryReviewShopCoverageRows() {
   reviewShopCoverageState.loaded = false;
   reviewShopCoverageState.loading = false;
   reviewShopCoverageState.rows = [];
+  resetCompanyDerivedCaches();
   loadReviewShopCoverageRows();
   renderReviewShopCoverageDetails();
 }
@@ -9001,26 +9080,6 @@ function renderAll() {
     `${escapeHtml(dashboard.meta.source)} Generated ${escapeHtml(dashboard.meta.generatedAt)} from cache modified ${escapeHtml(dashboard.meta.sourceWorkbookModifiedAt)}.`;
   document.getElementById("workbook-link").href = dashboard.meta.workbookUrl;
   loadPublicStatus();
-  renderOpportunity();
-  initMyMaraviaFilters();
-  renderMyMaravia();
-  initMarketControlFilters();
-  renderMarketControl();
-  initMarketSizeFilters();
-  applyMarketSizeUrlState();
-  renderMarketSize();
-  renderMarketPenetration();
-  renderMetrics();
-  renderStatusTable("latest-ok", dashboard.automation.latestOk, ["Status", "Run Timestamp", "Pipeline / Stage", "Automation Version", "eRank Sales Date", "Next Action"]);
-  renderStatusTable("latest-problem", dashboard.automation.latestProblem, ["Status", "Run Timestamp", "Pipeline / Stage", "Blocker / Issue", "Next Action"]);
-  renderOverallChart();
-  renderImportChart();
-  renderMarketTrend();
-  renderTopShops();
-  initListingStateRecoveryFilters();
-  renderOperations();
-  renderTable("quality-table", dashboard.market.quality, ["Date", "Raw Rows", "Unique Shops", "Duplicate Shop-Date Pairs", "Raw Market Sales", "Deduped Market Sales", "Potential Inflation", "Likely Partial Final Day", "Source Files"], 120);
-  initRawSelect();
 }
 
 function publicStatusPhaseText(phase) {
