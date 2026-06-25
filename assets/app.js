@@ -9203,7 +9203,7 @@ async function loadPublicStatus() {
 
 async function boot() {
   setupTabs();
-  const response = await fetch(`assets/data.json?v=${DATA_ASSET_VERSION}`);
+  const response = await fetch(`assets/data.json?v=payload-split-20260624-1`);
   dashboard = await response.json();
   applyNextActionUrlState();
   renderAll();
