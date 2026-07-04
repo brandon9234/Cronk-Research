@@ -29,7 +29,7 @@
     "windowComplete": 19579
   },
   "currentPhase": "dashboard_refresh_complete",
-  "generatedAt": "2026-07-03T03:43:07Z",
+  "generatedAt": "2026-07-04T14:35:29Z",
   "latestQueryYield": {
     "generatedAt": "2026-06-14T16:33:12Z",
     "queryBank": "market_license_plates",
@@ -38,13 +38,13 @@
     "shopsPromoted": 7
   },
   "nextSafeAction": "dashboard cache matches ledger; continue monitoring the background scrape",
-  "publicCommit": "fe4fc2174371",
+  "publicCommit": "3cd4f58ed9d4",
   "publish": {
     "lastReason": "atomic dashboard refresh promoted",
     "lastStatus": "success",
-    "lastStatusAt": "2026-07-03T03:42:48Z",
-    "lastSuccessfulAt": "2026-07-03T03:42:48Z",
-    "lastSuccessfulPublicCommit": "fe4fc2174371",
+    "lastStatusAt": "2026-07-04T14:34:58Z",
+    "lastSuccessfulAt": "2026-07-04T14:34:58Z",
+    "lastSuccessfulPublicCommit": "3cd4f58ed9d4",
     "lastSuccessfulPublicDataReviewCount": 10241739,
     "lastSuccessfulReviewLedgerCount": 10241739
   },
@@ -54,7 +54,7 @@
   "reviewLedgerCount": 10241739,
   "reviewListingMapping": {
     "cacheReviewDelta": 0,
-    "dashboardGeneratedAt": "2026-07-02T23:35:47",
+    "dashboardGeneratedAt": "2026-07-04T10:27:06",
     "distinctListingUrls": 1909098,
     "gapDetailRows": 18,
     "reviewRows": 10241739,
