@@ -1,0 +1,24 @@
+name: Research data and workspace checks
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate normalized public snapshot and original source hashes
+        run: python3 tools/research/scripts/research_workspace_site.py --export-dir . --verify-only
+      - name: Verify data boundaries and local snapshot transactions
+        working-directory: tools/research
+        run: |
+          python3 -m unittest discover -s tests -v
+          python3 scripts/test_research_workspace_store.py
+      - name: Verify JavaScript syntax and pure UI behavior
+        working-directory: tools/research
+        run: |
+          for source in research-workspace/modules/*.js; do node --check "$source"; done
+          node --test research-workspace/tests/core.test.mjs

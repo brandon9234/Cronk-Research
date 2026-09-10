@@ -1,0 +1,910 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cronk Research</title>
+  <link rel="icon" href="data:,">
+  <link rel="preload" href="assets/data.json?v=payload-split-20260624-1" as="fetch" type="application/json" crossorigin="anonymous">
+  <link rel="stylesheet" href="assets/styles.css?v=af4e45c937fee86a">
+</head>
+<body><div id="workspace-return" style="padding:12px 24px;background:#17231d;color:white"><a href="./" style="color:white">← Research workspace</a> · Advanced research · Historical source dates and estimate caveats still apply.</div>
+  <div class="shell">
+    <header class="topbar">
+      <div>
+        <h1>Cronk Research</h1>
+        <p id="snapshot-note">Loading snapshot...</p>
+      </div>
+      <a id="workbook-link" class="link-button" href="#" target="_blank" rel="noreferrer">Open research workbook</a>
+    </header>
+    <section id="pipeline-status-card" class="pipeline-status-card" aria-live="polite">
+      <div>
+        <p class="status-label">Pipeline status</p>
+        <p id="pipeline-status-title">Checking dashboard heartbeat...</p>
+      </div>
+      <div id="pipeline-status-meta" class="pipeline-status-meta"></div>
+    </section>
+    <nav class="tabs" aria-label="Dashboard sections">
+      <button class="tab active" data-view="market-penetration">Market</button>
+      <button class="tab" data-view="company">Company</button>
+      <button class="tab" data-view="buyer-moments">Buyer Moments</button>
+      <button class="tab" data-view="listings">Listings</button>
+    </nav>
+
+    <main>
+      <section id="opportunity" class="view">
+        <div id="opportunity-metrics" class="metric-grid"></div>
+        <section class="panel">
+          <div class="panel-head with-control">
+            <div>
+              <h2>Next Build Actions</h2>
+              <p id="next-actions-summary" class="subtle"></p>
+            </div>
+            <div class="listing-controls">
+              <select id="next-action-preset-filter" aria-label="Next action preset filter">
+                <option value="">All action lanes</option>
+                <option value="nameplates">Nameplate lane</option>
+                <option value="launch">Launch briefs</option>
+                <option value="build">Build gaps</option>
+                <option value="fix">Fix now</option>
+                <option value="scale">Scale winners</option>
+                <option value="seasonal">Seasonal timing</option>
+              </select>
+              <select id="next-action-type-filter" aria-label="Next action type filter">
+                <option value="">All action types</option>
+                <option value="Build">Build</option>
+                <option value="Fix">Fix</option>
+                <option value="Scale">Scale</option>
+                <option value="Seasonal">Seasonal</option>
+                <option value="Launch">Launch</option>
+              </select>
+              <select id="next-action-trace-filter" aria-label="Next action trace strength filter">
+                <option value="">All trace strength</option>
+                <option value="strong">Strong source</option>
+                <option value="good">Good or stronger</option>
+                <option value="exact">Exact listing trace</option>
+                <option value="audit">Needs source audit</option>
+              </select>
+              <input id="next-action-search" type="search" placeholder="Find category, listing, cue">
+              <button id="next-action-copy-link" class="link-button" type="button">Copy link</button>
+              <button id="next-action-reset-view" class="link-button" type="button">Reset</button>
+              <p id="next-action-link-status" class="subtle next-action-share-status"></p>
+            </div>
+          </div>
+          <div id="next-action-recipe" class="callout"></div>
+          <div id="next-actions"></div>
+        </section>
+        <section class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>Cronk Research Opportunity Command Center</h2>
+              <p id="opportunity-summary" class="subtle"></p>
+            </div>
+          </div>
+          <div id="opportunity-callout" class="callout"></div>
+          <div id="opportunity-score-chart" class="chart"></div>
+          <div id="opportunity-queue"></div>
+        </section>
+        <div class="grid two-wide">
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Launch Queue</h2>
+            </div>
+            <div id="launch-queue"></div>
+          </section>
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Cronk Baseline</h2>
+            </div>
+            <div id="cronk-baseline"></div>
+          </section>
+        </div>
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Intent x Product Matrix</h2>
+          </div>
+          <div id="intent-product-matrix"></div>
+        </section>
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Data Freshness And Export Path</h2>
+          </div>
+          <div id="opportunity-health"></div>
+        </section>
+      </section>
+
+      <section id="mymaravia" class="view">
+        <div id="mymaravia-metrics" class="metric-grid"></div>
+        <section class="panel">
+          <div class="panel-head">
+            <h2>MyMaravia Accuracy Health</h2>
+          </div>
+          <div id="mymaravia-accuracy-health"></div>
+        </section>
+        <section class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>MyMaravia Market Control</h2>
+              <p id="mymaravia-method" class="subtle"></p>
+            </div>
+          </div>
+          <div id="mymaravia-summary" class="callout"></div>
+          <div id="mymaravia-category-chart" class="chart"></div>
+          <div id="mymaravia-categories"></div>
+        </section>
+        <section class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>Listing State Change Audit</h2>
+              <p id="mymaravia-state-change-summary" class="subtle"></p>
+            </div>
+          </div>
+          <div id="mymaravia-state-change-table"></div>
+        </section>
+        <section class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>Tag Rank Monitor</h2>
+              <p id="mymaravia-tag-rank-summary" class="subtle"></p>
+            </div>
+          </div>
+          <div id="mymaravia-tag-rank-metrics" class="metric-grid compact"></div>
+          <p id="mymaravia-tag-rank-caveat" class="subtle"></p>
+          <div id="mymaravia-tag-rank-weak-tags"></div>
+        </section>
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Per-Listing Tag Rank Summary</h2>
+          </div>
+          <div id="mymaravia-tag-rank-listings"></div>
+        </section>
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Tag Rank Detail</h2>
+          </div>
+          <div id="mymaravia-tag-rank-detail"></div>
+        </section>
+        <section class="panel">
+          <div class="panel-head with-control">
+            <div>
+              <h2>Listing Battle Plan</h2>
+              <p id="mymaravia-listing-count" class="subtle listing-count"></p>
+            </div>
+            <div class="listing-controls">
+              <select id="my-listing-status-filter" aria-label="MyMaravia listing status filter">
+                <option value="">All diagnostics</option>
+                <option value="Fix conversion">Fix conversion</option>
+                <option value="Tag gap">Tag gap</option>
+                <option value="Leader chase">Leader chase</option>
+                <option value="Saturated / niche down">Saturated / niche down</option>
+                <option value="Needs traffic data">Needs traffic data</option>
+                <option value="Draft / inactive">Draft / inactive</option>
+              </select>
+              <select id="my-listing-state-filter" aria-label="MyMaravia listing state filter">
+                <option value="">All listing states</option>
+                <option value="active">Active</option>
+                <option value="draft">Draft</option>
+              </select>
+              <input id="my-listing-search" type="search" placeholder="Find listing or market">
+            </div>
+          </div>
+          <div id="mymaravia-listing-diagnostics"></div>
+        </section>
+        <section class="panel">
+          <div class="panel-head">
+            <h2>All MyMaravia Listings</h2>
+          </div>
+          <div id="mymaravia-listings"></div>
+        </section>
+        <section class="panel">
+          <div class="panel-head with-control">
+            <div>
+              <h2>Build Queue</h2>
+              <p id="mymaravia-long-tail-count" class="subtle listing-count"></p>
+            </div>
+            <div class="listing-controls">
+              <select id="my-category-filter" aria-label="MyMaravia category filter">
+                <option value="">All current categories</option>
+              </select>
+              <select id="my-status-filter" aria-label="MyMaravia build status filter">
+                <option value="">All statuses</option>
+                <option value="Needs build">Needs build</option>
+                <option value="Built">Built</option>
+              </select>
+              <input id="my-long-tail-search" type="search" placeholder="Filter long tails">
+            </div>
+          </div>
+          <div id="mymaravia-long-tail-queue"></div>
+        </section>
+      </section>
+
+      <section id="market-penetration" class="view active">
+        <div id="market-penetration-metrics" class="metric-grid"></div>
+        <section class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>Market Penetration</h2>
+              <p id="market-penetration-summary" class="subtle"></p>
+            </div>
+          </div>
+          <div id="market-penetration-chart" class="chart"></div>
+          <div id="market-penetration-share-mix"></div>
+          <div id="market-penetration-leader-gap"></div>
+          <div id="market-penetration-concentration"></div>
+          <div id="market-penetration-segments"></div>
+          <div id="market-penetration-subsegments"></div>
+        </section>
+        <section class="panel">
+          <div class="panel-head with-control">
+            <div>
+              <h2>Market Size By Product</h2>
+              <p id="market-size-count" class="subtle listing-count"></p>
+            </div>
+            <div class="listing-controls">
+              <select id="market-size-product-filter" aria-label="Market size product filter">
+                <option value="">All products and segments</option>
+              </select>
+              <select id="market-size-source-filter" aria-label="Market size source filter">
+                <option value="">Best available market-size read</option>
+                <option value="rollup">Broad category rollup only</option>
+                <option value="segment">MyMaravia segment sizing only</option>
+                <option value="build">Build-queue long-tail evidence</option>
+                <option value="listing">Listing evidence rows</option>
+              </select>
+              <select id="market-size-sort" aria-label="Market size sort">
+                <option value="primary-desc">Market size: high to low</option>
+                <option value="gap-desc">Leader gap: high to low</option>
+                <option value="coverage-asc">Coverage: low to high</option>
+                <option value="listings-desc">Listing evidence: high to low</option>
+                <option value="name-asc">Product: A to Z</option>
+              </select>
+              <input id="market-size-search" type="search" placeholder="Search product, long tail, shop, cue">
+            </div>
+          </div>
+          <div id="market-size-metrics" class="metric-grid compact"></div>
+          <div id="market-size-summary" class="callout"></div>
+          <div id="market-size-chart" class="chart"></div>
+          <div id="market-size-products"></div>
+        </section>
+        <div class="grid two-wide">
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Market Size: Top Competitor Shops</h2>
+            </div>
+            <div id="market-size-shops"></div>
+          </section>
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Demand Context</h2>
+            </div>
+            <div id="market-size-demand"></div>
+          </section>
+        </div>
+        <section class="panel">
+          <div class="panel-head with-control">
+            <div>
+              <h2>Product Segment Control</h2>
+              <p id="market-control-count" class="subtle listing-count"></p>
+            </div>
+            <div class="listing-controls">
+              <select id="market-segment-filter" aria-label="Product segment filter"></select>
+              <select id="market-segment-sort" aria-label="Market segment listing sort">
+                <option value="daily-desc">Competitor daily sales: high to low</option>
+                <option value="share-desc">Segment share: high to low</option>
+                <option value="shop-asc">Shop: A to Z</option>
+              </select>
+              <input id="market-segment-search" type="search" placeholder="Filter listings, shops, cues">
+            </div>
+          </div>
+          <div id="market-control-metrics" class="metric-grid compact"></div>
+          <div id="market-control-summary" class="callout"></div>
+          <div id="market-control-shop-chart" class="chart"></div>
+          <div id="market-control-shop-share"></div>
+        </section>
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Competitor Listings Driving The Segment</h2>
+          </div>
+          <div id="market-control-competitor-listings"></div>
+        </section>
+        <div class="grid two-wide">
+          <section class="panel">
+            <div class="panel-head">
+              <h2>MyMaravia Listings In This Segment</h2>
+            </div>
+            <div id="market-control-my-listings"></div>
+          </section>
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Coverage By MyMaravia Listing</h2>
+            </div>
+            <div id="market-control-coverage"></div>
+          </section>
+        </div>
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Winner Cues And Action Queue</h2>
+          </div>
+          <div id="market-control-actions"></div>
+        </section>
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Competitor Long-Tail Evidence</h2>
+          </div>
+          <div id="market-size-long-tails"></div>
+        </section>
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Listing Evidence</h2>
+          </div>
+          <div id="market-size-listings"></div>
+        </section>
+        <section class="panel">
+          <div class="panel-head">
+            <h2>MyMaravia Coverage</h2>
+          </div>
+          <div id="market-size-coverage"></div>
+        </section>
+        <section class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>Market Indexing Coverage</h2>
+              <p id="market-penetration-coverage-summary" class="subtle"></p>
+            </div>
+          </div>
+          <div id="market-penetration-coverage"></div>
+          <div id="market-penetration-completion-gates"></div>
+          <div id="market-penetration-open-shops"></div>
+          <div id="market-penetration-yield"></div>
+        </section>
+        <div class="grid two-wide">
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Top Competitor Shops</h2>
+            </div>
+            <div id="market-penetration-shops"></div>
+          </section>
+          <section class="panel">
+            <div class="panel-head">
+              <h2>MyMaravia Footprint</h2>
+            </div>
+            <div id="market-penetration-my-listings"></div>
+          </section>
+        </div>
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Top Review-Proven Listings</h2>
+          </div>
+          <div id="market-penetration-listings"></div>
+        </section>
+      </section>
+
+      <section id="overview" class="view">
+        <div id="metric-grid" class="metric-grid"></div>
+        <div class="grid two">
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Latest Successful Automation Stages</h2>
+            </div>
+            <div id="latest-ok"></div>
+          </section>
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Blocked Or Partial Stages</h2>
+            </div>
+            <div id="latest-problem"></div>
+          </section>
+        </div>
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Overall 10-Day Sales Trend</h2>
+          </div>
+          <div id="overall-chart" class="chart tall"></div>
+          <div id="overall-table"></div>
+        </section>
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Data-Entry Adjusted Sales View</h2>
+          </div>
+          <div id="import-chart" class="chart"></div>
+        </section>
+        <div class="grid two-wide">
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Daily Sales Trend</h2>
+            </div>
+            <div id="market-trend-chart" class="chart"></div>
+          </section>
+          <section class="panel">
+            <div class="panel-head with-control">
+              <h2>Top Shops</h2>
+              <select id="top-shop-metric" aria-label="Top shop metric">
+                <option>30D Sales</option>
+                <option>7D Sales</option>
+                <option>Avg Daily Sales (30D)</option>
+              </select>
+            </div>
+            <div id="top-shops"></div>
+          </section>
+        </div>
+      </section>
+
+      <section id="comparison" class="view">
+        <section class="panel">
+          <div class="panel-head with-control">
+            <div>
+              <h2>Product Category Workspace</h2>
+              <p id="category-query" class="subtle"></p>
+            </div>
+            <div class="listing-controls">
+              <select id="comparison-category-filter" aria-label="Comparison product category filter">
+                <option value="">All product categories</option>
+              </select>
+              <select id="comparison-production-filter" aria-label="Comparison production method filter">
+                <option value="">All production methods</option>
+              </select>
+              <select id="comparison-sort" aria-label="Comparison sort">
+                <option value="">Default: est. daily sales high to low</option>
+                <option value="daily-desc">Est. daily sales: high to low</option>
+                <option value="daily-asc">Est. daily sales: low to high</option>
+                <option value="thirty-desc">Est. 30-day sales: high to low</option>
+                <option value="thirty-asc">Est. 30-day sales: low to high</option>
+              </select>
+              <input id="comparison-search" type="search" placeholder="Filter comparison">
+            </div>
+          </div>
+          <div id="category-metrics" class="metric-grid compact"></div>
+          <div id="category-movement-callout" class="callout"></div>
+          <div id="category-shop-chart" class="chart"></div>
+          <div id="category-comparison"></div>
+        </section>
+        <div class="grid two">
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Demand Intent Rollup</h2>
+            </div>
+            <div id="demand-intent-chart" class="chart"></div>
+            <div id="demand-intent-table"></div>
+          </section>
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Shop Movement</h2>
+            </div>
+            <div id="shop-trend-chart" class="chart"></div>
+            <div id="shop-trends"></div>
+          </section>
+        </div>
+      </section>
+
+      <section id="company" class="view">
+        <section class="panel">
+          <div class="panel-head with-control">
+            <div>
+              <h2>Company Profile</h2>
+              <p id="company-summary" class="subtle"></p>
+            </div>
+            <div class="listing-controls">
+              <select id="company-select" aria-label="Company profile selector"></select>
+              <div class="company-search-wrap">
+                <input id="company-search" type="search" placeholder="Find company" autocomplete="off" aria-autocomplete="list" aria-controls="company-suggestions">
+                <div id="company-suggestions" class="company-suggestions" role="listbox" hidden></div>
+              </div>
+            </div>
+          </div>
+          <div id="company-metrics" class="metric-grid compact"></div>
+          <div id="company-callout" class="callout"></div>
+          <div id="company-accuracy-health"></div>
+        </section>
+        <div class="grid two-wide">
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Sales Trend</h2>
+            </div>
+            <div id="company-sales-chart" class="chart"></div>
+          </section>
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Company Snapshot</h2>
+            </div>
+            <div id="company-snapshot"></div>
+          </section>
+        </div>
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Daily / Weekly Sales Cycle</h2>
+          </div>
+          <div id="company-review-cycle-chart" class="chart"></div>
+          <div id="company-review-cycle"></div>
+        </section>
+        <div class="grid two-wide">
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Products Sold</h2>
+            </div>
+            <div id="company-product-chart" class="chart"></div>
+            <div id="company-products"></div>
+          </section>
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Production Methods</h2>
+            </div>
+            <div id="company-production-chart" class="chart"></div>
+            <div id="company-production"></div>
+          </section>
+        </div>
+        <section class="panel">
+          <div class="panel-head with-control">
+            <div>
+              <h2>Listings And Evidence</h2>
+              <p id="company-listing-filter" class="subtle listing-count"></p>
+            </div>
+            <button id="company-production-clear" class="prompt-button" type="button">Show all listings</button>
+          </div>
+          <div id="company-listings"></div>
+        </section>
+      </section>
+
+      <section id="buyer-moments" class="view">
+        <div id="buyer-moment-metrics" class="metric-grid"></div>
+        <section class="panel">
+          <div class="panel-head with-control">
+            <div>
+              <h2>Buyer Moment Calendar</h2>
+              <p id="buyer-moment-count" class="subtle listing-count"></p>
+            </div>
+            <div class="listing-controls">
+              <select id="buyer-moment-source-filter" aria-label="Buyer moment source filter">
+                <option value="">All sources</option>
+              </select>
+              <select id="buyer-moment-sort" aria-label="Buyer moment sort">
+                <option value="velocity-desc">Moment daily velocity: high to low</option>
+                <option value="opportunity-desc">Opportunity score: high to low</option>
+                <option value="sales-desc">Moment estimated sales: high to low</option>
+                <option value="reviews-desc">Moment reviews: high to low</option>
+                <option value="daily-desc">Current daily sales: high to low</option>
+                <option value="thirty-desc">Current 30-day sales: high to low</option>
+              </select>
+              <input id="buyer-moment-calendar-search" type="search" placeholder="Find buyer moment">
+              <input id="buyer-moment-search" type="search" placeholder="Filter top listings">
+            </div>
+          </div>
+          <div class="buyer-moment-range-controls">
+            <label>
+              <span>Start</span>
+              <input id="buyer-moment-range-start" type="date" aria-label="Custom buyer moment start date">
+            </label>
+            <label>
+              <span>End</span>
+              <input id="buyer-moment-range-end" type="date" aria-label="Custom buyer moment end date">
+            </label>
+            <button id="buyer-moment-apply-range" class="primary-button" type="button">Apply range</button>
+            <button id="buyer-moment-clear-range" class="prompt-button" type="button">Clear range</button>
+          </div>
+          <div class="buyer-moment-filter-controls" aria-label="Buyer moment quick filters">
+            <label><input id="buyer-moment-filter-opportunity" type="checkbox"> High-opportunity</label>
+            <label><input id="buyer-moment-filter-holiday" type="checkbox"> Holiday</label>
+            <label><input id="buyer-moment-filter-work" type="checkbox"> Professional / work</label>
+            <label><input id="buyer-moment-filter-recipient" type="checkbox"> Recipient</label>
+            <label><input id="buyer-moment-filter-life" type="checkbox"> Life events</label>
+            <label><input id="buyer-moment-filter-local" type="checkbox"> Local review signal</label>
+          </div>
+          <div class="buyer-moment-calendar giant" aria-label="Buyer moment calendar">
+            <div id="buyer-moment-months" class="buyer-moment-months"></div>
+            <div class="buyer-moment-timeline-shell">
+              <div id="buyer-moment-timeline" class="buyer-moment-timeline"></div>
+            </div>
+          </div>
+          <div id="buyer-moment-summary" class="callout"></div>
+          <div class="buyer-moment-decision-grid">
+            <div>
+              <h3>Why This Moment</h3>
+              <div id="buyer-moment-decision-read" class="buyer-moment-decision-read"></div>
+            </div>
+            <div>
+              <h3>Best Bets by Build Fit</h3>
+              <div id="buyer-moment-best-bets"></div>
+            </div>
+          </div>
+          <div id="buyer-moment-listings"></div>
+        </section>
+        <div class="grid two-wide">
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Best-Selling Categories</h2>
+            </div>
+            <div id="buyer-moment-rollup-chart" class="chart"></div>
+            <div id="buyer-moment-rollups"></div>
+          </section>
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Selected Moment Sales Curve</h2>
+            </div>
+            <div id="buyer-moment-week-chart" class="chart"></div>
+            <div id="buyer-moment-week-table"></div>
+          </section>
+        </div>
+      </section>
+
+      <section id="listings" class="view">
+        <div class="grid two-wide">
+          <section class="panel">
+            <div class="panel-head with-control">
+              <div>
+                <h2>All Listings</h2>
+                <p id="listing-count" class="subtle listing-count"></p>
+              </div>
+              <div class="listing-controls">
+                <select id="production-filter" aria-label="Production method filter">
+                  <option value="">All production methods</option>
+                </select>
+                <select id="substrate-filter" aria-label="Product substrate filter">
+                  <option value="">All product substrates</option>
+                </select>
+                <select id="listing-sort" aria-label="Listing sort">
+                  <option value="">Default: relevant matches, sales high to low</option>
+                  <option value="daily-desc">Est. daily sales: high to low</option>
+                  <option value="daily-asc">Est. daily sales: low to high</option>
+                  <option value="thirty-desc">Est. 30-day sales: high to low</option>
+                  <option value="thirty-asc">Est. 30-day sales: low to high</option>
+                  <option value="timeframe-sales-desc">Last-year timeframe sales: high to low</option>
+                  <option value="timeframe-daily-desc">Last-year timeframe daily velocity: high to low</option>
+                  <option value="timeframe-reviews-desc">Last-year timeframe reviews: high to low</option>
+                </select>
+                <input id="listing-search" type="search" placeholder="Filter listings, shops, categories">
+                <button id="listing-search-submit" class="primary-button" type="button">Search</button>
+              </div>
+            </div>
+            <div class="listing-timeframe-controls">
+              <label>
+                <span>Timeframe</span>
+                <select id="listing-timeframe-preset" aria-label="Listing timeframe preset">
+                  <option value="">No timeframe</option>
+                  <option value="last-30">Last 30 days last year</option>
+                  <option value="next-40">Best sellers: next 40 days last year</option>
+                  <option value="mothers-day">Mother's Day season last year</option>
+                  <option value="graduation">Graduation season last year</option>
+                  <option value="christmas">Christmas season last year</option>
+                  <option value="custom">Custom range</option>
+                </select>
+              </label>
+              <label>
+                <span>Start</span>
+                <input id="listing-timeframe-start" type="text" inputmode="numeric" placeholder="MM-DD" aria-label="Listing timeframe start month and day">
+              </label>
+              <label>
+                <span>End</span>
+                <input id="listing-timeframe-end" type="text" inputmode="numeric" placeholder="MM-DD" aria-label="Listing timeframe end month and day">
+              </label>
+            </div>
+            <div id="top-listings"></div>
+          </section>
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Product Category Rollups</h2>
+            </div>
+            <div id="category-rollup-chart" class="chart"></div>
+            <div id="category-rollup-table"></div>
+          </section>
+        </div>
+        <section id="listing-cycle-panel" class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>Listing Daily / Weekly Sales Cycle</h2>
+              <p id="listing-cycle-summary" class="subtle listing-count"></p>
+            </div>
+          </div>
+          <div id="listing-cycle-chart" class="chart"></div>
+          <div id="listing-cycle-table"></div>
+        </section>
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Demand Clusters</h2>
+          </div>
+          <div id="demand-summary-chart" class="chart"></div>
+          <div id="demand-summary-table"></div>
+        </section>
+      </section>
+
+      <section id="operations" class="view">
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Refresh Priorities</h2>
+          </div>
+          <div id="refresh-priority-table"></div>
+        </section>
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Shop Discovery Queue</h2>
+          </div>
+          <div id="shop-discovery-status"></div>
+          <div id="shop-discovery-queue"></div>
+        </section>
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Shop API Evidence Tabs</h2>
+          </div>
+          <div id="shop-discovery-tab-status"></div>
+          <div id="shop-discovery-tab-rows"></div>
+        </section>
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Review Mapping Health</h2>
+          </div>
+          <div id="review-mapping-health"></div>
+          <div id="review-mapping-gap-summary" class="metric-grid compact operation-metrics"></div>
+          <div id="review-mapping-gap-controls"></div>
+          <div id="review-mapping-gap-count" class="subtle listing-count"></div>
+          <div id="review-mapping-gap-details"></div>
+        </section>
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Shop Listing Coverage</h2>
+          </div>
+          <div id="review-shop-coverage-health"></div>
+          <div id="review-shop-coverage-summary" class="metric-grid compact operation-metrics"></div>
+          <div id="review-shop-coverage-controls"></div>
+          <div id="review-shop-coverage-count" class="subtle listing-count"></div>
+          <div id="review-shop-coverage-details"></div>
+        </section>
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Next Build Template Gap Decisions</h2>
+          </div>
+          <div id="next-action-template-gap-decision-sheet-status"></div>
+        </section>
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Template Gap Decision Rows</h2>
+          </div>
+          <div id="next-action-template-gap-decision-rows"></div>
+        </section>
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Package Fact-Fill Plan</h2>
+          </div>
+          <div id="next-action-package-fact-sheet-status"></div>
+          <div id="next-action-package-fact-fill-status"></div>
+          <div id="next-action-package-fact-fill-plan"></div>
+        </section>
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Package Fact Research Packets</h2>
+          </div>
+          <div id="next-action-package-fact-research-status"></div>
+          <div id="next-action-package-fact-research-packets"></div>
+        </section>
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Template Starter Briefs</h2>
+          </div>
+          <div id="next-action-template-starter-briefs"></div>
+        </section>
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Template Source Audit Checklists</h2>
+          </div>
+          <div id="next-action-template-source-audit-sheet-status"></div>
+          <div id="next-action-template-source-audit-evidence-packets"></div>
+          <div id="next-action-template-source-audit-checklists"></div>
+        </section>
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Listing State Alerts</h2>
+          </div>
+          <div id="listing-state-alerts-table"></div>
+        </section>
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Listing State Investigation</h2>
+          </div>
+          <div id="listing-state-investigation-table"></div>
+        </section>
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Recovery Market Priority</h2>
+          </div>
+          <div id="listing-state-recovery-market-priority-table"></div>
+        </section>
+        <section class="panel">
+          <div class="panel-head with-control">
+            <div>
+              <h2>Recovery Execution Plan</h2>
+              <p id="listing-state-recovery-execution-copy-status" class="next-action-share-status"></p>
+            </div>
+            <div class="listing-controls">
+              <button id="listing-state-recovery-execution-decision-copy" class="link-button" type="button">Copy execution TSV</button>
+            </div>
+          </div>
+          <div id="listing-state-recovery-execution-plan-table"></div>
+        </section>
+        <section class="panel">
+          <div class="panel-head with-control">
+            <div>
+              <h2>Recovery Decision Intake</h2>
+              <p id="listing-state-recovery-intake-copy-status" class="next-action-share-status"></p>
+            </div>
+            <div class="listing-controls">
+              <button id="listing-state-recovery-intake-copy" class="link-button" type="button">Copy intake brief</button>
+              <button id="listing-state-recovery-intake-tsv-copy" class="link-button" type="button">Copy intake TSV</button>
+            </div>
+          </div>
+          <div id="listing-state-recovery-decision-sheet-status"></div>
+          <div id="listing-state-recovery-decision-intake-table"></div>
+        </section>
+        <section class="panel">
+          <div class="panel-head with-control">
+            <div>
+              <h2>Listing State Recovery Queue</h2>
+              <p id="listing-state-recovery-count" class="subtle listing-count"></p>
+              <p id="listing-state-recovery-copy-status" class="next-action-share-status"></p>
+            </div>
+            <div class="listing-controls">
+              <select id="listing-state-recovery-segment-filter" aria-label="Recovery segment filter">
+                <option value="">All recovery segments</option>
+              </select>
+              <select id="listing-state-recovery-status-filter" aria-label="Recovery status filter">
+                <option value="">All recovery statuses</option>
+              </select>
+              <button id="listing-state-recovery-copy" class="link-button" type="button">Copy handoff</button>
+              <button id="listing-state-recovery-decision-copy" class="link-button" type="button">Copy decision TSV</button>
+              <button id="listing-state-recovery-reset" class="link-button" type="button">Reset</button>
+            </div>
+          </div>
+          <div id="listing-state-recovery-batches-table"></div>
+          <div id="listing-state-recovery-table"></div>
+        </section>
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Recovery Decision Log</h2>
+          </div>
+          <div id="listing-state-recovery-decision-status"></div>
+          <div id="listing-state-recovery-decision-log"></div>
+        </section>
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Data Freshness Control Tower</h2>
+          </div>
+          <div id="data-freshness-table"></div>
+        </section>
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Taxonomy Quality Control</h2>
+          </div>
+          <div id="taxonomy-quality-table"></div>
+        </section>
+        <div class="grid two">
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Shop Coverage Queue</h2>
+            </div>
+            <div id="coverage-queue"></div>
+          </section>
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Recent Automation Runs</h2>
+            </div>
+            <div id="recent-runs"></div>
+          </section>
+        </div>
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Daily Sales Data Quality</h2>
+          </div>
+          <div id="quality-table"></div>
+        </section>
+      </section>
+
+      <section id="raw" class="view">
+        <section class="panel">
+          <div class="panel-head with-control">
+            <h2>Raw Tab Previews</h2>
+            <select id="raw-select" aria-label="Raw tab"></select>
+          </div>
+          <div id="raw-table"></div>
+        </section>
+      </section>
+    </main>
+  </div>
+  <script defer src="assets/app.js?v=132c00cd3ada679e"></script>
+</body>
+</html>
